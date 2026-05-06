@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @db.Uuid
+  email        String    @unique
+  name         String
+  avatarUrl    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  itineraries   Itinerary[]
+  groupMembers  GroupMember[]
+  comments      Comment[]
+  votes         Vote[]
+
+  @@map("users")
+}
+
+model Itinerary {
+  id          String     @id @default(cuid())
+  userId      String
+  destination String
+  startDate   DateTime
+  endDate     DateTime
+  travelType  TravelType
+  weatherData Json?
+  days        Json // Array of days with attractions
+  shareToken  String?    @unique
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupItineraries GroupItinerary[]
+
+  @@index([userId])
+  @@map("itineraries")
+}
+
+model Group {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  members     GroupMember[]
+  itineraries GroupItinerary[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String    @id @default(cuid())
+  groupId   String
+  userId    String
+  role      GroupRole @default(MEMBER)
+  joinedAt  DateTime  @default(now())
+  deletedAt DateTime?
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+model GroupItinerary {
+  id          String    @id @default(cuid())
+  groupId     String
+  itineraryId String
+  addedAt     DateTime  @default(now())
+  deletedAt   DateTime?
+
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  votes     Vote[]
+
+  @@index([groupId])
+  @@index([itineraryId])
+  @@map("group_itineraries")
+}
+
+model Comment {
+  id               String    @id @default(cuid())
+  groupItineraryId String
+  userId           String
+  content          String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  groupItinerary GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupItineraryId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model Vote {
+  id               String    @id @default(cuid())
+  groupItineraryId String
+  userId           String
+  attractionId     String
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+
+  groupItinerary GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupItineraryId, userId, attractionId])
+  @@index([groupItineraryId])
+  @@index([userId])
+  @@map("votes")
+}
+
+
+
+enum TravelType {
+  CULTURAL
+  GASTRONOMIC
+  NATURE
+  ADVENTURE
+}
+
+enum GroupRole {
+  ADMIN
+  MEMBER
+}
