@@ -27,11 +27,11 @@ export class ItineraryModule {}
 
 // Re-export types for consumers
 export type {
-  DayActivity,
-  DayMeal,
-  DayTransportation,
-  DayWeather,
+  GeneratedActivity,
+  GeneratedDay,
+  GeneratedDayWeather,
   GeneratedItinerary,
-  ItineraryDay,
-  ItinerarySummary,
+  GeneratedMeal,
+  GeneratedSummary,
+  GeneratedTransportation,
 } from './types';

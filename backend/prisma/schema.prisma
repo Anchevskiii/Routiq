@@ -1,5 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Routiq — Enterprise-Grade Database Schema
+// Stack: Prisma ORM + PostgreSQL (Supabase)
+// All models use soft-delete (deletedAt) for data retention.
+// All UUIDs come from Supabase auth (User.id) or Prisma defaults.
 
 generator client {
   provider = "prisma-client-js"
@@ -9,72 +11,266 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id        String    @id @db.Uuid
-  email     String    @unique
-  name      String
-  avatarUrl String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+// ─────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────
 
-  itineraries  Itinerary[]
-  groupMembers GroupMember[]
-  comments     Comment[]
-  votes        Vote[]
+enum TravelType {
+  CULTURAL
+  GASTRONOMIC
+  NATURE
+  ADVENTURE
+  RELAX
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+enum VoteType {
+  UPVOTE
+  DOWNVOTE
+}
+
+enum ActivityType {
+  ATTRACTION
+  MEAL
+  TRANSPORT
+  FREE_TIME
+  ACCOMMODATION
+}
+
+enum ExportFormat {
+  ICS
+  PDF
+}
+
+// ─────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @db.Uuid
+  email        String    @unique
+  name         String
+  avatarUrl    String?
+  passwordHash String?
+  googleId     String?   @unique
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  itineraries       Itinerary[]
+  groupMemberships  GroupMember[]
+  comments          Comment[]
+  votes             Vote[]
+  refreshTokens     RefreshToken[]
+  createdGroups     Group[]          @relation("GroupCreator")
+  activityLogs      ActivityLog[]
+  calendarExports   CalendarExport[]
+  invitedBy         GroupMember[]     @relation("InvitedByUser")
 
   @@map("users")
 }
+
+// ─────────────────────────────────────────────────────────────
+// ITINERARY — Core Feature
+// ─────────────────────────────────────────────────────────────
 
 model Itinerary {
   id          String     @id @default(uuid()) @db.Uuid
   userId      String     @db.Uuid
   destination String
-  startDate   DateTime
-  endDate     DateTime
+  startDate   DateTime   @db.Date
+  endDate     DateTime   @db.Date
   travelType  TravelType
-  weatherData Json?
-  days        Json // Array of days with attractions
+  totalDays   Int
   shareToken  String?    @unique
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  deletedAt   DateTime?
+  isPublic    Boolean    @default(false)
 
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // AI generation metadata
+  aiModel        String?
+  aiPromptHash   String?
+  generatedAt    DateTime?
+  generationTimeMs Int?
+
+  // Summary fields from AI response
+  bestSeason      String?
+  estimatedBudget String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days             ItineraryDay[]
   groupItineraries GroupItinerary[]
+  calendarExports  CalendarExport[]
+  generalTips      ItineraryTip[]
 
   @@index([userId])
+  @@index([destination])
+  @@index([startDate, endDate])
+  @@index([createdAt])
   @@map("itineraries")
 }
+
+model ItineraryDay {
+  id          String @id @default(uuid()) @db.Uuid
+  itineraryId String @db.Uuid
+  dayNumber   Int
+  date        DateTime @db.Date
+  theme       String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  itinerary  Itinerary                @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  activities ItineraryActivity[]
+  weather    ItineraryWeatherSnapshot?
+
+  @@unique([itineraryId, dayNumber])
+  @@index([itineraryId])
+  @@map("itinerary_days")
+}
+
+model ItineraryActivity {
+  id             String       @id @default(uuid()) @db.Uuid
+  dayId          String       @db.Uuid
+  activityType   ActivityType @default(ATTRACTION)
+  sortOrder      Int
+  title          String
+  description    String?
+  location       String?
+  address        String?
+  startTime      String?
+  durationMinutes Int?
+  cost           String?
+  tips           String?
+  latitude       Float?
+  longitude      Float?
+  placeId        String?
+
+  // Meal-specific fields
+  mealType       String?
+  priceRange     String?
+
+  // Transport-specific fields
+  transportMethod String?
+  transportCost   String?
+  transportNotes  String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  day   ItineraryDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  votes Vote[]
+
+  @@index([dayId])
+  @@index([activityType])
+  @@index([placeId])
+  @@map("itinerary_activities")
+}
+
+model ItineraryWeatherSnapshot {
+  id        String @id @default(uuid()) @db.Uuid
+  dayId     String @unique @db.Uuid
+
+  condition    String
+  tempMin      Float?
+  tempMax      Float?
+  humidity     Int?
+  windSpeed    Float?
+  precipitation Float?
+  iconCode     String?
+  recommendation String?
+
+  fetchedAt DateTime @default(now())
+
+  // Relations
+  day ItineraryDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  @@map("itinerary_weather_snapshots")
+}
+
+model ItineraryTip {
+  id          String @id @default(uuid()) @db.Uuid
+  itineraryId String @db.Uuid
+  sortOrder   Int
+  content     String
+
+  // Relations
+  itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@index([itineraryId])
+  @@map("itinerary_tips")
+}
+
+// ─────────────────────────────────────────────────────────────
+// GROUP — Collaborative Travel
+// ─────────────────────────────────────────────────────────────
 
 model Group {
   id          String    @id @default(uuid()) @db.Uuid
   name        String
   description String?
+  createdById String    @db.Uuid
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  members     GroupMember[]
-  itineraries GroupItinerary[]
+  // Relations
+  createdBy    User            @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members      GroupMember[]
+  itineraries  GroupItinerary[]
+  activityLogs ActivityLog[]
 
+  @@index([createdById])
   @@map("groups")
 }
 
 model GroupMember {
-  id        String    @id @default(uuid()) @db.Uuid
-  groupId   String    @db.Uuid
-  userId    String    @db.Uuid
-  role      GroupRole @default(MEMBER)
-  joinedAt  DateTime  @default(now())
+  id          String           @id @default(uuid()) @db.Uuid
+  groupId     String           @db.Uuid
+  userId      String           @db.Uuid
+  role        GroupRole         @default(MEMBER)
+  status      InvitationStatus @default(PENDING)
+
+  invitedById String?  @db.Uuid
+  invitedAt   DateTime @default(now())
+  respondedAt DateTime?
+  joinedAt    DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Relations
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User? @relation("InvitedByUser", fields: [invitedById], references: [id], onDelete: SetNull)
 
   @@unique([groupId, userId])
   @@index([groupId])
   @@index([userId])
+  @@index([status])
   @@map("group_members")
 }
 
@@ -82,33 +278,45 @@ model GroupItinerary {
   id          String    @id @default(uuid()) @db.Uuid
   groupId     String    @db.Uuid
   itineraryId String    @db.Uuid
+  addedById   String    @db.Uuid
   addedAt     DateTime  @default(now())
   deletedAt   DateTime?
 
+  // Relations
   group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
   itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
   comments  Comment[]
   votes     Vote[]
 
+  @@unique([groupId, itineraryId])
   @@index([groupId])
   @@index([itineraryId])
   @@map("group_itineraries")
 }
 
+// ─────────────────────────────────────────────────────────────
+// INTERACTIONS — Comments, Votes, Activity Log
+// ─────────────────────────────────────────────────────────────
+
 model Comment {
   id               String    @id @default(uuid()) @db.Uuid
   groupItineraryId String    @db.Uuid
   userId           String    @db.Uuid
+  parentId         String?   @db.Uuid
   content          String
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
+  // Relations
   groupItinerary GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent         Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies        Comment[]      @relation("CommentReplies")
 
   @@index([groupItineraryId])
   @@index([userId])
+  @@index([parentId])
   @@map("comments")
 }
 
@@ -116,27 +324,74 @@ model Vote {
   id               String    @id @default(uuid()) @db.Uuid
   groupItineraryId String    @db.Uuid
   userId           String    @db.Uuid
-  attractionId     String
+  activityId       String?   @db.Uuid
+  voteType         VoteType  @default(UPVOTE)
+  rating           Int?
   createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
-  groupItinerary GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Relations
+  groupItinerary GroupItinerary    @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity       ItineraryActivity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
-  @@unique([groupItineraryId, userId, attractionId])
+  @@unique([groupItineraryId, userId, activityId])
   @@index([groupItineraryId])
   @@index([userId])
+  @@index([activityId])
   @@map("votes")
 }
 
-enum TravelType {
-  CULTURAL
-  GASTRONOMIC
-  NATURE
-  ADVENTURE
+model ActivityLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @db.Uuid
+  userId    String   @db.Uuid
+  action    String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  // Relations
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_logs")
 }
 
-enum GroupRole {
-  ADMIN
-  MEMBER
+// ─────────────────────────────────────────────────────────────
+// AUTH & EXPORT
+// ─────────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model CalendarExport {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @db.Uuid
+  itineraryId String       @db.Uuid
+  format      ExportFormat
+  exportedAt  DateTime     @default(now())
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([itineraryId])
+  @@map("calendar_exports")
 }

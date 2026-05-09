@@ -1,8 +1,12 @@
-import { IsString, MinLength, MaxLength } from 'class-validator';
+import { IsString, MinLength, MaxLength, IsOptional, IsUUID } from 'class-validator';
 
 export class AddCommentDto {
   @IsString()
   @MinLength(1)
-  @MaxLength(1000)
-  content: string;
+  @MaxLength(2000)
+  content!: string;
+
+  @IsUUID()
+  @IsOptional()
+  parentId?: string;
 }

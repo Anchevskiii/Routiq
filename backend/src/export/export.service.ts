@@ -4,40 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as ics from 'ics';
+import { ActivityType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-interface ItineraryModel {
-  id: string;
-  userId: string;
-  destination: string;
-  startDate: Date;
-  endDate: Date;
-  travelType: string;
-  weatherData?: Record<string, unknown>;
-  days: unknown;
-  shareToken?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface DayEvent {
+interface IcsEvent {
   title: string;
   description: string;
   startTime: string;
   endTime: string;
   location: string;
-}
-
-interface Activity {
-  title?: string;
-  description?: string;
-  location?: string;
-  time?: string;
-  duration?: number;
-}
-
-interface ItineraryDay {
-  activities?: Activity[];
 }
 
 @Injectable()
@@ -50,15 +25,41 @@ export class ExportService {
         id: itineraryId,
         ...(userId && { userId }),
       },
+      include: {
+        days: {
+          orderBy: { dayNumber: 'asc' },
+          include: {
+            activities: {
+              where: {
+                activityType: {
+                  in: [ActivityType.ATTRACTION, ActivityType.MEAL],
+                },
+              },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
+      },
     });
 
     if (!itinerary) {
       throw new NotFoundException('Itinerary not found');
     }
 
+    // Track export
+    if (userId) {
+      await this.prisma.calendarExport.create({
+        data: {
+          userId,
+          itineraryId,
+          format: 'ICS',
+        },
+      });
+    }
+
     try {
-      const events = this.parseItineraryToEvents(itinerary);
-      const icsData = await this.createIcsCalendar(events, itinerary);
+      const events = this.buildEventsFromDays(itinerary);
+      const icsData = await this.createIcsCalendar(events, itinerary.destination);
 
       return Buffer.from(icsData);
     } catch {
@@ -66,37 +67,36 @@ export class ExportService {
     }
   }
 
-  private parseItineraryToEvents(
-    itinerary: ItineraryModel & { days?: ItineraryDay[] },
-  ): DayEvent[] {
-    const events: DayEvent[] = [];
+  private buildEventsFromDays(itinerary: {
+    destination: string;
+    days: Array<{
+      date: Date;
+      activities: Array<{
+        title: string;
+        description: string | null;
+        location: string | null;
+        startTime: string | null;
+        durationMinutes: number | null;
+        activityType: ActivityType;
+      }>;
+    }>;
+  }): IcsEvent[] {
+    const events: IcsEvent[] = [];
 
-    if (!itinerary.days || !Array.isArray(itinerary.days)) {
-      return events;
-    }
+    for (const day of itinerary.days) {
+      for (const activity of day.activities) {
+        const startTime = activity.startTime ?? '09:00';
+        const durationHours = (activity.durationMinutes ?? 120) / 60;
 
-    itinerary.days.forEach((day: ItineraryDay, dayIndex: number) => {
-      const dayDate = new Date(itinerary.startDate);
-      dayDate.setDate(dayDate.getDate() + dayIndex);
-
-      if (day.activities && Array.isArray(day.activities)) {
-        day.activities.forEach((activity: Activity) => {
-          const event: DayEvent = {
-            title: activity.title || 'Activity',
-            description: activity.description || '',
-            location: activity.location || itinerary.destination,
-            startTime: this.combineDateTime(dayDate, activity.time || '09:00'),
-            endTime: this.calculateEndTime(
-              dayDate,
-              activity.time || '09:00',
-              activity.duration || 2,
-            ),
-          };
-
-          events.push(event);
+        events.push({
+          title: activity.title,
+          description: activity.description ?? '',
+          location: activity.location ?? itinerary.destination,
+          startTime: this.combineDateTime(day.date, startTime),
+          endTime: this.calculateEndTime(day.date, startTime, durationHours),
         });
       }
-    });
+    }
 
     return events;
   }
@@ -104,7 +104,7 @@ export class ExportService {
   private combineDateTime(date: Date, time: string): string {
     const [hours, minutes] = time.split(':').map(Number);
     const eventDate = new Date(date);
-    eventDate.setHours(hours, minutes, 0, 0);
+    eventDate.setHours(hours || 9, minutes || 0, 0, 0);
 
     return eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   }
@@ -116,14 +116,14 @@ export class ExportService {
   ): string {
     const [hours, minutes] = startTime.split(':').map(Number);
     const eventDate = new Date(date);
-    eventDate.setHours(hours + durationHours, minutes, 0, 0);
+    eventDate.setHours((hours || 9) + durationHours, minutes || 0, 0, 0);
 
     return eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   }
 
   private async createIcsCalendar(
-    events: DayEvent[],
-    itinerary: ItineraryModel,
+    events: IcsEvent[],
+    destination: string,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const icsEvents = events.map((event) => ({
@@ -132,7 +132,7 @@ export class ExportService {
         title: event.title,
         description: event.description,
         location: event.location,
-        calName: `${itinerary.destination} - Itinerary`,
+        calName: `${destination} - Routiq Itinerary`,
       }));
 
       ics.createEvents(icsEvents, (error, value) => {
@@ -159,8 +159,6 @@ export class ExportService {
   }
 
   async getExportUrl(itineraryId: string): Promise<string> {
-    // In a real implementation, you might generate a temporary signed URL
-    // For now, we'll return the direct endpoint URL
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     return `${baseUrl}/api/export/${itineraryId}/ics`;
   }

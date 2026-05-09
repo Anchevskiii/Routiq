@@ -3,16 +3,21 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
+import { GroupRole, InvitationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
-import { GroupRole } from '@prisma/client';
 
 @Injectable()
 export class GroupsService {
+  private readonly logger = new Logger(GroupsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  // ─── Group CRUD ───────────────────────────────────────────
 
   async getUserGroups(userId: string) {
     const groups = await this.prisma.group.findMany({
@@ -20,11 +25,22 @@ export class GroupsService {
         members: {
           some: {
             userId,
+            status: InvitationStatus.ACCEPTED,
           },
         },
       },
       include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
         members: {
+          where: {
+            status: InvitationStatus.ACCEPTED,
+          },
           include: {
             user: {
               select: {
@@ -38,7 +54,9 @@ export class GroupsService {
         },
         _count: {
           select: {
-            members: true,
+            members: {
+              where: { status: InvitationStatus.ACCEPTED },
+            },
             itineraries: true,
           },
         },
@@ -56,16 +74,19 @@ export class GroupsService {
   }
 
   async getGroupById(groupId: string, userId: string) {
+    // Verify user is an accepted member
+    await this.requireAcceptedMember(groupId, userId);
+
     const group = await this.prisma.group.findFirst({
-      where: {
-        id: groupId,
-        members: {
-          some: {
-            userId,
+      where: { id: groupId },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
           },
         },
-      },
-      include: {
         members: {
           include: {
             user: {
@@ -76,6 +97,15 @@ export class GroupsService {
                 avatarUrl: true,
               },
             },
+            invitedBy: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
           },
         },
         itineraries: {
@@ -87,6 +117,7 @@ export class GroupsService {
                 startDate: true,
                 endDate: true,
                 travelType: true,
+                totalDays: true,
                 createdAt: true,
                 user: {
                   select: {
@@ -136,7 +167,7 @@ export class GroupsService {
     });
 
     if (!group) {
-      throw new NotFoundException('Group not found or access denied');
+      throw new NotFoundException('Group not found');
     }
 
     return group;
@@ -147,14 +178,25 @@ export class GroupsService {
       data: {
         name: createGroupDto.name,
         description: createGroupDto.description,
+        createdById: userId,
         members: {
           create: {
             userId,
-            role: GroupRole.ADMIN,
+            role: GroupRole.OWNER,
+            status: InvitationStatus.ACCEPTED,
+            joinedAt: new Date(),
+            respondedAt: new Date(),
           },
         },
       },
       include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
         members: {
           include: {
             user: {
@@ -170,22 +212,16 @@ export class GroupsService {
       },
     });
 
+    // Log activity
+    await this.logActivity(group.id, userId, 'GROUP_CREATED', {
+      groupName: group.name,
+    });
+
     return group;
   }
 
   async deleteGroup(groupId: string, userId: string) {
-    // Check if user is admin of the group
-    const membership = await this.prisma.groupMember.findFirst({
-      where: {
-        groupId,
-        userId,
-        role: GroupRole.ADMIN,
-      },
-    });
-
-    if (!membership) {
-      throw new ForbiddenException('Only group admins can delete groups');
-    }
+    await this.requireRole(groupId, userId, [GroupRole.OWNER]);
 
     await this.prisma.group.delete({
       where: { id: groupId },
@@ -194,34 +230,32 @@ export class GroupsService {
     return { message: 'Group deleted successfully' };
   }
 
+  // ─── Invitation Workflow ──────────────────────────────────
+
   async inviteMember(
     groupId: string,
-    userId: string,
+    inviterId: string,
     inviteMemberDto: InviteMemberDto,
   ) {
-    // Check if user is admin of the group
-    const membership = await this.prisma.groupMember.findFirst({
-      where: {
-        groupId,
-        userId,
-        role: GroupRole.ADMIN,
-      },
-    });
+    // Only OWNER, ADMIN, MODERATOR can invite
+    await this.requireRole(groupId, inviterId, [
+      GroupRole.OWNER,
+      GroupRole.ADMIN,
+      GroupRole.MODERATOR,
+    ]);
 
-    if (!membership) {
-      throw new ForbiddenException('Only group admins can invite members');
-    }
-
-    // Check if the user to invite exists
+    // Find the user to invite
     const userToInvite = await this.prisma.user.findUnique({
       where: { email: inviteMemberDto.email },
     });
 
     if (!userToInvite) {
-      throw new NotFoundException('User with this email does not exist');
+      throw new NotFoundException(
+        'User with this email does not exist. They must have an account on Routiq.',
+      );
     }
 
-    // Check if user is already a member
+    // Check if user already has a membership record
     const existingMembership = await this.prisma.groupMember.findFirst({
       where: {
         groupId,
@@ -230,15 +264,54 @@ export class GroupsService {
     });
 
     if (existingMembership) {
-      throw new BadRequestException('User is already a member of this group');
+      if (existingMembership.status === InvitationStatus.ACCEPTED) {
+        throw new BadRequestException('User is already a member of this group');
+      }
+      if (existingMembership.status === InvitationStatus.PENDING) {
+        throw new BadRequestException(
+          'User already has a pending invitation to this group',
+        );
+      }
+      // If previously declined/expired/cancelled, re-invite
+      const updatedMembership = await this.prisma.groupMember.update({
+        where: { id: existingMembership.id },
+        data: {
+          status: InvitationStatus.PENDING,
+          invitedById: inviterId,
+          invitedAt: new Date(),
+          respondedAt: null,
+          joinedAt: null,
+          role: GroupRole.MEMBER,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      });
+
+      await this.logActivity(groupId, inviterId, 'MEMBER_RE_INVITED', {
+        invitedUserId: userToInvite.id,
+        invitedEmail: inviteMemberDto.email,
+      });
+
+      return updatedMembership;
     }
 
-    // Add the user to the group
+    // Create new invitation
     const newMember = await this.prisma.groupMember.create({
       data: {
         groupId,
         userId: userToInvite.id,
         role: GroupRole.MEMBER,
+        status: InvitationStatus.PENDING,
+        invitedById: inviterId,
+        invitedAt: new Date(),
       },
       include: {
         user: {
@@ -252,46 +325,179 @@ export class GroupsService {
       },
     });
 
+    await this.logActivity(groupId, inviterId, 'MEMBER_INVITED', {
+      invitedUserId: userToInvite.id,
+      invitedEmail: inviteMemberDto.email,
+    });
+
     return newMember;
   }
 
-  async removeMember(
-    groupId: string,
-    userId: string,
-    memberToRemoveId: string,
-  ) {
-    // Check if user is admin of the group
+  async acceptInvitation(groupId: string, userId: string) {
     const membership = await this.prisma.groupMember.findFirst({
       where: {
         groupId,
         userId,
-        role: GroupRole.ADMIN,
+        status: InvitationStatus.PENDING,
       },
     });
 
     if (!membership) {
-      throw new ForbiddenException('Only group admins can remove members');
+      throw new NotFoundException('No pending invitation found for this group');
     }
 
-    // Don't allow removing the last admin
-    const adminCount = await this.prisma.groupMember.count({
-      where: {
-        groupId,
-        role: GroupRole.ADMIN,
+    const now = new Date();
+    const updatedMembership = await this.prisma.groupMember.update({
+      where: { id: membership.id },
+      data: {
+        status: InvitationStatus.ACCEPTED,
+        respondedAt: now,
+        joinedAt: now,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+        group: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
-    const memberToRemove = await this.prisma.groupMember.findFirst({
+    await this.logActivity(groupId, userId, 'INVITATION_ACCEPTED');
+
+    return updatedMembership;
+  }
+
+  async declineInvitation(groupId: string, userId: string) {
+    const membership = await this.prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId,
+        status: InvitationStatus.PENDING,
+      },
+    });
+
+    if (!membership) {
+      throw new NotFoundException('No pending invitation found for this group');
+    }
+
+    const updatedMembership = await this.prisma.groupMember.update({
+      where: { id: membership.id },
+      data: {
+        status: InvitationStatus.DECLINED,
+        respondedAt: new Date(),
+      },
+    });
+
+    await this.logActivity(groupId, userId, 'INVITATION_DECLINED');
+
+    return updatedMembership;
+  }
+
+  async getPendingInvitations(userId: string) {
+    return this.prisma.groupMember.findMany({
+      where: {
+        userId,
+        status: InvitationStatus.PENDING,
+      },
+      include: {
+        group: {
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+            _count: {
+              select: {
+                members: {
+                  where: { status: InvitationStatus.ACCEPTED },
+                },
+              },
+            },
+          },
+        },
+        invitedBy: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        invitedAt: 'desc',
+      },
+    });
+  }
+
+  // ─── Member Management ────────────────────────────────────
+
+  async removeMember(
+    groupId: string,
+    removerId: string,
+    memberToRemoveId: string,
+  ) {
+    // Check if remover has permission
+    const removerMembership = await this.requireRole(groupId, removerId, [
+      GroupRole.OWNER,
+      GroupRole.ADMIN,
+    ]);
+
+    // Can't remove yourself if you're the last owner
+    if (removerId === memberToRemoveId) {
+      if (removerMembership.role === GroupRole.OWNER) {
+        const ownerCount = await this.prisma.groupMember.count({
+          where: {
+            groupId,
+            role: GroupRole.OWNER,
+            status: InvitationStatus.ACCEPTED,
+          },
+        });
+        if (ownerCount <= 1) {
+          throw new BadRequestException(
+            'Cannot remove the last owner. Transfer ownership first.',
+          );
+        }
+      }
+    }
+
+    // Check if the member to remove has a higher or equal role
+    const targetMembership = await this.prisma.groupMember.findFirst({
       where: {
         groupId,
         userId: memberToRemoveId,
-        role: GroupRole.ADMIN,
       },
     });
 
-    if (memberToRemove && adminCount <= 1) {
-      throw new BadRequestException(
-        'Cannot remove the last admin from the group',
+    if (!targetMembership) {
+      throw new NotFoundException('Member not found in this group');
+    }
+
+    const roleHierarchy: Record<GroupRole, number> = {
+      [GroupRole.OWNER]: 4,
+      [GroupRole.ADMIN]: 3,
+      [GroupRole.MODERATOR]: 2,
+      [GroupRole.MEMBER]: 1,
+    };
+
+    if (
+      removerId !== memberToRemoveId &&
+      roleHierarchy[targetMembership.role] >= roleHierarchy[removerMembership.role]
+    ) {
+      throw new ForbiddenException(
+        'Cannot remove a member with equal or higher role',
       );
     }
 
@@ -304,27 +510,74 @@ export class GroupsService {
       },
     });
 
+    await this.logActivity(groupId, removerId, 'MEMBER_REMOVED', {
+      removedUserId: memberToRemoveId,
+    });
+
     return { message: 'Member removed successfully' };
   }
+
+  async updateMemberRole(
+    groupId: string,
+    updaterId: string,
+    targetUserId: string,
+    newRole: GroupRole,
+  ) {
+    // Only owner can change roles
+    await this.requireRole(groupId, updaterId, [GroupRole.OWNER]);
+
+    // Can't change owner's own role via this method
+    if (updaterId === targetUserId) {
+      throw new BadRequestException(
+        'Cannot change your own role. Transfer ownership instead.',
+      );
+    }
+
+    const targetMembership = await this.prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId: targetUserId,
+        status: InvitationStatus.ACCEPTED,
+      },
+    });
+
+    if (!targetMembership) {
+      throw new NotFoundException('Active member not found in this group');
+    }
+
+    const updated = await this.prisma.groupMember.update({
+      where: { id: targetMembership.id },
+      data: { role: newRole },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    await this.logActivity(groupId, updaterId, 'ROLE_CHANGED', {
+      targetUserId,
+      oldRole: targetMembership.role,
+      newRole,
+    });
+
+    return updated;
+  }
+
+  // ─── Group Itinerary Management ───────────────────────────
 
   async addItineraryToGroup(
     groupId: string,
     userId: string,
     itineraryId: string,
   ) {
-    // Check if user is member of the group
-    const membership = await this.prisma.groupMember.findFirst({
-      where: {
-        groupId,
-        userId,
-      },
-    });
-
-    if (!membership) {
-      throw new ForbiddenException(
-        'You must be a member of the group to add itineraries',
-      );
-    }
+    // Any accepted member can add itineraries
+    await this.requireAcceptedMember(groupId, userId);
 
     // Check if itinerary exists and user owns it
     const itinerary = await this.prisma.itinerary.findFirst({
@@ -354,6 +607,7 @@ export class GroupsService {
       data: {
         groupId,
         itineraryId,
+        addedById: userId,
       },
       include: {
         itinerary: {
@@ -363,6 +617,7 @@ export class GroupsService {
             startDate: true,
             endDate: true,
             travelType: true,
+            totalDays: true,
             createdAt: true,
             user: {
               select: {
@@ -376,26 +631,24 @@ export class GroupsService {
       },
     });
 
+    await this.logActivity(groupId, userId, 'ITINERARY_ADDED', {
+      itineraryId,
+      destination: itinerary.destination,
+    });
+
     return groupItinerary;
   }
 
-  async voteForAttraction(
+  // ─── Voting ───────────────────────────────────────────────
+
+  async voteForActivity(
     groupId: string,
     groupItineraryId: string,
     userId: string,
-    attractionId: string,
+    activityId: string,
+    voteType: string,
   ) {
-    // Check if user is member of the group
-    const membership = await this.prisma.groupMember.findFirst({
-      where: {
-        groupId,
-        userId,
-      },
-    });
-
-    if (!membership) {
-      throw new ForbiddenException('You must be a member of the group to vote');
-    }
+    await this.requireAcceptedMember(groupId, userId);
 
     // Check if group itinerary exists and belongs to the group
     const groupItinerary = await this.prisma.groupItinerary.findFirst({
@@ -409,20 +662,26 @@ export class GroupsService {
       throw new NotFoundException('Group itinerary not found');
     }
 
-    // Create or update vote
+    // Map vote type
+    const mappedVoteType = voteType === 'DOWNVOTE' ? 'DOWNVOTE' : 'UPVOTE';
+
+    // Upsert vote
     const vote = await this.prisma.vote.upsert({
       where: {
-        groupItineraryId_userId_attractionId: {
+        groupItineraryId_userId_activityId: {
           groupItineraryId,
           userId,
-          attractionId,
+          activityId,
         },
       },
-      update: {},
+      update: {
+        voteType: mappedVoteType,
+      },
       create: {
         groupItineraryId,
         userId,
-        attractionId,
+        activityId,
+        voteType: mappedVoteType,
       },
       include: {
         user: {
@@ -438,25 +697,15 @@ export class GroupsService {
     return vote;
   }
 
+  // ─── Comments ─────────────────────────────────────────────
+
   async addComment(
     groupId: string,
     groupItineraryId: string,
     userId: string,
     addCommentDto: AddCommentDto,
   ) {
-    // Check if user is member of the group
-    const membership = await this.prisma.groupMember.findFirst({
-      where: {
-        groupId,
-        userId,
-      },
-    });
-
-    if (!membership) {
-      throw new ForbiddenException(
-        'You must be a member of the group to comment',
-      );
-    }
+    await this.requireAcceptedMember(groupId, userId);
 
     // Check if group itinerary exists and belongs to the group
     const groupItinerary = await this.prisma.groupItinerary.findFirst({
@@ -470,11 +719,26 @@ export class GroupsService {
       throw new NotFoundException('Group itinerary not found');
     }
 
+    // Validate parent comment if provided
+    if (addCommentDto.parentId) {
+      const parentComment = await this.prisma.comment.findFirst({
+        where: {
+          id: addCommentDto.parentId,
+          groupItineraryId,
+        },
+      });
+
+      if (!parentComment) {
+        throw new NotFoundException('Parent comment not found');
+      }
+    }
+
     const comment = await this.prisma.comment.create({
       data: {
         groupItineraryId,
         userId,
         content: addCommentDto.content,
+        parentId: addCommentDto.parentId ?? null,
       },
       include: {
         user: {
@@ -484,9 +748,115 @@ export class GroupsService {
             avatarUrl: true,
           },
         },
+        replies: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
       },
+    });
+
+    await this.logActivity(groupId, userId, 'COMMENT_ADDED', {
+      groupItineraryId,
+      commentId: comment.id,
     });
 
     return comment;
   }
+
+  // ─── Activity Log ─────────────────────────────────────────
+
+  async getGroupActivityLog(groupId: string, userId: string, limit = 50) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    return this.prisma.activityLog.findMany({
+      where: { groupId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    });
+  }
+
+  // ─── Private Helpers ──────────────────────────────────────
+
+  private async requireAcceptedMember(groupId: string, userId: string) {
+    const membership = await this.prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId,
+        status: InvitationStatus.ACCEPTED,
+      },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException(
+        'You must be an active member of this group',
+      );
+    }
+
+    return membership;
+  }
+
+  private async requireRole(
+    groupId: string,
+    userId: string,
+    requiredRoles: GroupRole[],
+  ) {
+    const membership = await this.prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId,
+        status: InvitationStatus.ACCEPTED,
+        role: { in: requiredRoles },
+      },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException(
+        `This action requires one of the following roles: ${requiredRoles.join(', ')}`,
+      );
+    }
+
+    return membership;
+  }
+
+  private async logActivity(
+    groupId: string,
+    userId: string,
+    action: string,
+    details?: Record<string, unknown>,
+  ) {
+    try {
+      await this.prisma.activityLog.create({
+        data: {
+          groupId,
+          userId,
+          action,
+          details: details ? JSON.parse(JSON.stringify(details)) as object : undefined,
+        },
+      });
+    } catch (error) {
+      // Activity logging should never break the main flow
+      this.logger.warn(
+        `Failed to log activity: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
 }
+

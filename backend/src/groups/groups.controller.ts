@@ -2,9 +2,11 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -15,6 +17,7 @@ import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { AddItineraryToGroupDto } from './dto/add-itinerary-to-group.dto';
 import { VoteForAttractionDto } from './dto/vote-for-attraction.dto';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { JwtPayload } from '../common/types/jwt-payload.type';
 
 @Controller('groups')
@@ -27,9 +30,27 @@ export class GroupsController {
     return this.groupsService.getUserGroups(user.sub);
   }
 
+  @Get('invitations')
+  async getPendingInvitations(@CurrentUser() user: JwtPayload) {
+    return this.groupsService.getPendingInvitations(user.sub);
+  }
+
   @Get(':id')
-  async getGroupById(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+  async getGroupById(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     return this.groupsService.getGroupById(id, user.sub);
+  }
+
+  @Get(':id/activity-log')
+  async getGroupActivityLog(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Query('limit') limit?: string,
+  ) {
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    return this.groupsService.getGroupActivityLog(id, user.sub, limitNum);
   }
 
   @Post()
@@ -41,9 +62,14 @@ export class GroupsController {
   }
 
   @Delete(':id')
-  async deleteGroup(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+  async deleteGroup(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     return this.groupsService.deleteGroup(id, user.sub);
   }
+
+  // ─── Invitation Workflow ──────────────────────────────────
 
   @Post(':id/invite')
   async inviteMember(
@@ -54,6 +80,24 @@ export class GroupsController {
     return this.groupsService.inviteMember(id, user.sub, inviteMemberDto);
   }
 
+  @Post(':id/accept')
+  async acceptInvitation(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.acceptInvitation(id, user.sub);
+  }
+
+  @Post(':id/decline')
+  async declineInvitation(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.declineInvitation(id, user.sub);
+  }
+
+  // ─── Member Management ────────────────────────────────────
+
   @Delete(':id/members/:memberId')
   async removeMember(
     @Param('id') id: string,
@@ -62,6 +106,23 @@ export class GroupsController {
   ) {
     return this.groupsService.removeMember(id, user.sub, memberId);
   }
+
+  @Patch(':id/members/:memberId/role')
+  async updateMemberRole(
+    @Param('id') id: string,
+    @Param('memberId') memberId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() updateMemberRoleDto: UpdateMemberRoleDto,
+  ) {
+    return this.groupsService.updateMemberRole(
+      id,
+      user.sub,
+      memberId,
+      updateMemberRoleDto.role,
+    );
+  }
+
+  // ─── Group Itineraries ───────────────────────────────────
 
   @Post(':id/itineraries')
   async addItineraryToGroup(
@@ -76,18 +137,21 @@ export class GroupsController {
     );
   }
 
+  // ─── Voting & Comments ───────────────────────────────────
+
   @Post(':groupId/itineraries/:groupItineraryId/vote')
-  async voteForAttraction(
+  async voteForActivity(
     @Param('groupId') groupId: string,
     @Param('groupItineraryId') groupItineraryId: string,
     @CurrentUser() user: JwtPayload,
     @Body() voteForAttractionDto: VoteForAttractionDto,
   ) {
-    return this.groupsService.voteForAttraction(
+    return this.groupsService.voteForActivity(
       groupId,
       groupItineraryId,
       user.sub,
-      voteForAttractionDto.attractionId,
+      voteForAttractionDto.activityId,
+      voteForAttractionDto.voteType ?? 'UPVOTE',
     );
   }
 

@@ -34,6 +34,8 @@ export class PrismaService
         const modelsWithSoftDelete = [
           'User',
           'Itinerary',
+          'ItineraryDay',
+          'ItineraryActivity',
           'Group',
           'GroupMember',
           'GroupItinerary',

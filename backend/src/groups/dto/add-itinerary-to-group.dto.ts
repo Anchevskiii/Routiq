@@ -1,7 +1,8 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
 
 export class AddItineraryToGroupDto {
   @IsString()
   @IsNotEmpty()
-  itineraryId: string;
+  @IsUUID()
+  itineraryId!: string;
 }

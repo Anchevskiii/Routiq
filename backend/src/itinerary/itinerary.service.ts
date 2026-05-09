@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { ActivityType } from '@prisma/client';
 import { AttractionsService } from '../attractions/attractions.service';
 import { GeminiService } from '../gemini/gemini.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,9 +11,17 @@ import { WeatherService } from '../weather/weather.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
 import { buildItineraryPrompt } from './prompts/generate-itinerary.prompt';
+import {
+  GeneratedDay,
+  GeneratedItinerary,
+  GeneratedActivity,
+  GeneratedMeal,
+} from './types';
 
 @Injectable()
 export class ItineraryService {
+  private readonly logger = new Logger(ItineraryService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly geminiService: GeminiService,
@@ -22,6 +35,8 @@ export class ItineraryService {
   ) {
     const { destination, startDate, endDate, days, travelType } =
       createItineraryDto;
+
+    const generationStart = Date.now();
 
     // Get weather forecast
     const weatherData = await this.weatherService.getForecast(
@@ -48,22 +63,169 @@ export class ItineraryService {
     });
 
     // Generate itinerary using AI
-    const generatedItinerary = await this.geminiService.streamGenerate(prompt);
+    const generated = (await this.geminiService.streamGenerate(
+      prompt,
+    )) as GeneratedItinerary;
 
-    // Save the generated itinerary
-    const itinerary = await this.prisma.itinerary.create({
+    const generationTimeMs = Date.now() - generationStart;
+
+    // Save the generated itinerary in a transaction (normalized)
+    const itinerary = await this.prisma.$transaction(async (tx) => {
+      // 1. Create itinerary master record
+      const itineraryRecord = await tx.itinerary.create({
+        data: {
+          userId,
+          destination,
+          startDate,
+          endDate,
+          travelType,
+          totalDays: days,
+          aiModel: 'gemini-2.0-flash-exp',
+          aiPromptHash: this.hashString(prompt),
+          generatedAt: new Date(),
+          generationTimeMs,
+          bestSeason: generated.summary?.bestSeason ?? null,
+          estimatedBudget: generated.summary?.estimatedBudget ?? null,
+        },
+      });
+
+      // 2. Create days with activities and weather snapshots
+      if (generated.days && Array.isArray(generated.days)) {
+        for (const day of generated.days) {
+          await this.createDayWithActivities(
+            tx,
+            itineraryRecord.id,
+            day,
+            startDate,
+            weatherData,
+          );
+        }
+      }
+
+      // 3. Create general tips
+      if (generated.generalTips && Array.isArray(generated.generalTips)) {
+        for (let i = 0; i < generated.generalTips.length; i++) {
+          await tx.itineraryTip.create({
+            data: {
+              itineraryId: itineraryRecord.id,
+              sortOrder: i,
+              content: generated.generalTips[i],
+            },
+          });
+        }
+      }
+
+      return itineraryRecord;
+    });
+
+    // Return the full itinerary with all relations
+    return this.getItineraryById(itinerary.id, userId);
+  }
+
+  private async createDayWithActivities(
+    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    itineraryId: string,
+    day: GeneratedDay,
+    tripStartDate: Date,
+    weatherData: { forecast: Array<{ date: string; temperature: { min: number; max: number }; condition: string; humidity: number; windSpeed: number; precipitation: number }> },
+  ) {
+    const dayDate = new Date(tripStartDate);
+    dayDate.setDate(dayDate.getDate() + (day.day - 1));
+
+    const dayRecord = await tx.itineraryDay.create({
       data: {
-        userId,
-        destination,
-        startDate: startDate,
-        endDate: endDate,
-        travelType,
-        weatherData,
-        days: generatedItinerary,
+        itineraryId,
+        dayNumber: day.day,
+        date: dayDate,
+        theme: day.theme ?? null,
       },
     });
 
-    return itinerary;
+    // Create activities
+    let sortOrder = 0;
+
+    if (day.activities && Array.isArray(day.activities)) {
+      for (const activity of day.activities) {
+        await tx.itineraryActivity.create({
+          data: {
+            dayId: dayRecord.id,
+            activityType: ActivityType.ATTRACTION,
+            sortOrder: sortOrder++,
+            title: activity.title,
+            description: activity.description ?? null,
+            location: activity.location ?? null,
+            startTime: activity.time ?? null,
+            durationMinutes: this.parseDuration(activity.duration),
+            cost: activity.cost ?? null,
+            tips: activity.tips ?? null,
+            latitude: activity.coordinates?.lat ?? null,
+            longitude: activity.coordinates?.lng ?? null,
+          },
+        });
+      }
+    }
+
+    // Create meal entries
+    if (day.meals && Array.isArray(day.meals)) {
+      for (const meal of day.meals) {
+        await tx.itineraryActivity.create({
+          data: {
+            dayId: dayRecord.id,
+            activityType: ActivityType.MEAL,
+            sortOrder: sortOrder++,
+            title: meal.recommendation || `${meal.type} recommendation`,
+            description: null,
+            location: meal.location ?? null,
+            mealType: meal.type ?? null,
+            priceRange: meal.priceRange ?? null,
+          },
+        });
+      }
+    }
+
+    // Create transport entry
+    if (day.transportation) {
+      await tx.itineraryActivity.create({
+        data: {
+          dayId: dayRecord.id,
+          activityType: ActivityType.TRANSPORT,
+          sortOrder: sortOrder++,
+          title: `Daily transport: ${day.transportation.method ?? 'various'}`,
+          transportMethod: day.transportation.method ?? null,
+          transportCost: day.transportation.estimatedCost ?? null,
+          transportNotes: day.transportation.notes ?? null,
+        },
+      });
+    }
+
+    // Create weather snapshot
+    const dayDateStr = dayDate.toISOString().split('T')[0];
+    const forecastDay = weatherData.forecast.find(
+      (f) => f.date === dayDateStr,
+    );
+
+    if (forecastDay) {
+      await tx.itineraryWeatherSnapshot.create({
+        data: {
+          dayId: dayRecord.id,
+          condition: forecastDay.condition,
+          tempMin: forecastDay.temperature.min,
+          tempMax: forecastDay.temperature.max,
+          humidity: forecastDay.humidity,
+          windSpeed: forecastDay.windSpeed,
+          precipitation: forecastDay.precipitation,
+          recommendation: day.weather?.recommendations ?? null,
+        },
+      });
+    } else if (day.weather) {
+      await tx.itineraryWeatherSnapshot.create({
+        data: {
+          dayId: dayRecord.id,
+          condition: day.weather.condition,
+          recommendation: day.weather.recommendations ?? null,
+        },
+      });
+    }
   }
 
   async getUserItineraries(userId: string, page = 1, limit = 10) {
@@ -81,9 +243,18 @@ export class ItineraryService {
           startDate: true,
           endDate: true,
           travelType: true,
+          totalDays: true,
+          isPublic: true,
+          shareToken: true,
+          bestSeason: true,
+          estimatedBudget: true,
           createdAt: true,
           updatedAt: true,
-          shareToken: true,
+          _count: {
+            select: {
+              days: true,
+            },
+          },
         },
       }),
       this.prisma.itinerary.count({
@@ -108,6 +279,27 @@ export class ItineraryService {
         id,
         ...(userId && { userId }),
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+        days: {
+          orderBy: { dayNumber: 'asc' },
+          include: {
+            activities: {
+              orderBy: { sortOrder: 'asc' },
+            },
+            weather: true,
+          },
+        },
+        generalTips: {
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
     });
 
     if (!itinerary) {
@@ -118,24 +310,27 @@ export class ItineraryService {
   }
 
   async getItineraryByShareToken(shareToken: string) {
-    const itinerary = await this.prisma.itinerary.findUnique({
+    const itinerary = await this.prisma.itinerary.findFirst({
       where: { shareToken },
-      select: {
-        id: true,
-        destination: true,
-        startDate: true,
-        endDate: true,
-        travelType: true,
-        weatherData: true,
-        days: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
         user: {
           select: {
             id: true,
             name: true,
             avatarUrl: true,
           },
+        },
+        days: {
+          orderBy: { dayNumber: 'asc' },
+          include: {
+            activities: {
+              orderBy: { sortOrder: 'asc' },
+            },
+            weather: true,
+          },
+        },
+        generalTips: {
+          orderBy: { sortOrder: 'asc' },
         },
       },
     });
@@ -162,7 +357,11 @@ export class ItineraryService {
 
     const updatedItinerary = await this.prisma.itinerary.update({
       where: { id },
-      data: updateItineraryDto,
+      data: {
+        destination: updateItineraryDto.destination,
+        startDate: updateItineraryDto.startDate,
+        endDate: updateItineraryDto.endDate,
+      },
     });
 
     return updatedItinerary;
@@ -212,5 +411,28 @@ export class ItineraryService {
       Math.random().toString(36).substring(2, 15) +
       Math.random().toString(36).substring(2, 15)
     );
+  }
+
+  private hashString(input: string): string {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      const char = input.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+  }
+
+  private parseDuration(duration: unknown): number | null {
+    if (typeof duration === 'number') {
+      return Math.round(duration * 60);
+    }
+    if (typeof duration === 'string') {
+      const parsed = parseFloat(duration);
+      if (!isNaN(parsed)) {
+        return Math.round(parsed * 60);
+      }
+    }
+    return null;
   }
 }

@@ -1,22 +1,20 @@
+const path = require('path');
+
+// Load environment variables before anything else
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
 const { defineConfig } = require('@prisma/config');
 
 /**
- * Prisma configuration.
- * Native JavaScript version for maximum compatibility with the CLI.
+ * Prisma 7 configuration.
+ *
+ * - `url`: Used by Prisma CLI for migrations. Points to the DIRECT connection
+ *   (port 5432) to avoid PgBouncer issues with DDL statements.
+ * - Runtime uses PrismaPg adapter configured in PrismaService.
  */
-const prismaConfig = defineConfig({
+module.exports = defineConfig({
   datasource: {
-    url: process.env.DATABASE_URL,
+    // For migrations, prefer DIRECT_URL (bypasses PgBouncer)
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL,
   },
 });
-
-// Adding directUrl safely
-if (prismaConfig.datasource && process.env.DIRECT_URL) {
-  prismaConfig.datasource.directUrl = process.env.DIRECT_URL;
-}
-
-// Named export for internal use (if needed)
-module.exports.prismaConfig = prismaConfig;
-
-// Default export for Prisma CLI
-module.exports = prismaConfig;

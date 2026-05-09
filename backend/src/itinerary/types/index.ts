@@ -1,7 +1,7 @@
 /**
- * Activity within a day of the itinerary
+ * Activity within a day of the itinerary (from AI response)
  */
-export interface DayActivity {
+export interface GeneratedActivity {
   time: string;
   title: string;
   description: string;
@@ -16,9 +16,9 @@ export interface DayActivity {
 }
 
 /**
- * Meal recommendation within a day
+ * Meal recommendation within a day (from AI response)
  */
-export interface DayMeal {
+export interface GeneratedMeal {
   type: string;
   recommendation: string;
   location: string;
@@ -26,40 +26,40 @@ export interface DayMeal {
 }
 
 /**
- * Transportation details for a day
+ * Transportation details for a day (from AI response)
  */
-export interface DayTransportation {
+export interface GeneratedTransportation {
   method: string;
   estimatedCost: string;
   notes: string;
 }
 
 /**
- * Weather information for a day
+ * Weather information for a day (from AI response)
  */
-export interface DayWeather {
+export interface GeneratedDayWeather {
   condition: string;
   temperature: string;
   recommendations: string;
 }
 
 /**
- * A single day within an itinerary
+ * A single day within a generated itinerary (from AI response)
  */
-export interface ItineraryDay {
+export interface GeneratedDay {
   day: number;
   date: string;
   theme: string;
-  weather: DayWeather;
-  activities: DayActivity[];
-  meals: DayMeal[];
-  transportation: DayTransportation;
+  weather: GeneratedDayWeather;
+  activities: GeneratedActivity[];
+  meals: GeneratedMeal[];
+  transportation: GeneratedTransportation;
 }
 
 /**
- * Summary information for an itinerary
+ * Summary information for a generated itinerary (from AI response)
  */
-export interface ItinerarySummary {
+export interface GeneratedSummary {
   destination: string;
   totalDays: number;
   travelType: string;
@@ -68,10 +68,16 @@ export interface ItinerarySummary {
 }
 
 /**
- * Complete generated itinerary structure from AI
+ * Complete AI-generated itinerary structure
  */
 export interface GeneratedItinerary {
-  summary: ItinerarySummary;
-  days: ItineraryDay[];
+  summary: GeneratedSummary;
+  days: GeneratedDay[];
   generalTips: string[];
 }
+
+/**
+ * Legacy type alias for backward compatibility
+ * @deprecated Use GeneratedDay instead
+ */
+export type ItineraryDay = GeneratedDay;

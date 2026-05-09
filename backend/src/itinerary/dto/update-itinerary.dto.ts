@@ -1,10 +1,10 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsObject, IsOptional, IsString } from 'class-validator';
-import { ItineraryDay } from '../types';
+import { IsDate, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class UpdateItineraryDto {
   @IsString()
   @IsOptional()
+  @MinLength(2)
   destination?: string;
 
   @IsDate()
@@ -16,12 +16,4 @@ export class UpdateItineraryDto {
   @IsOptional()
   @Type(() => Date)
   endDate?: Date;
-
-  @IsObject()
-  @IsOptional()
-  days?: ItineraryDay[];
-
-  @IsString()
-  @IsOptional()
-  shareToken?: string;
 }

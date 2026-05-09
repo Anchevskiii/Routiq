@@ -1,7 +1,12 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
 
 export class VoteForAttractionDto {
   @IsString()
   @IsNotEmpty()
-  attractionId: string;
+  activityId!: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['UPVOTE', 'DOWNVOTE'])
+  voteType?: string;
 }
