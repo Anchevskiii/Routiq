@@ -58,37 +58,7 @@ declare module 'express' {
   }
 }
 
-declare module '@prisma/client' {
-  export enum TravelType {
-    CULTURAL = 'CULTURAL',
-    GASTRONOMIC = 'GASTRONOMIC',
-    ADVENTURE = 'ADVENTURE',
-    RELAX = 'RELAX',
-    NIGHTLIFE = 'NIGHTLIFE',
-    MIXED = 'MIXED',
-  }
-
-  export enum GroupRole {
-    ADMIN = 'ADMIN',
-    MEMBER = 'MEMBER',
-  }
-
-  export class PrismaClient {
-    user: any;
-    itinerary: any;
-    group: any;
-    groupMember: any;
-    groupItinerary: any;
-    comment: any;
-    vote: any;
-    refreshToken: any;
-    $connect(): Promise<void>;
-    $disconnect(): Promise<void>;
-    $transaction<T>(fn: (prisma: PrismaClient) => Promise<T>): Promise<T>;
-  }
-}
-
 // Utility types
-type ClassDecorator = <T extends new (...args: any[]) => any>(target: T) => T;
-type MethodDecorator = (target: any, propertyKey: string, descriptor: PropertyDescriptor) => PropertyDescriptor;
-type ParameterDecorator = (target: any, propertyKey: string, parameterIndex: number) => void;
+type ClassDecorator = <T extends new (...args: unknown[]) => unknown>(target: T) => T;
+type MethodDecorator = (target: object, propertyKey: string, descriptor: PropertyDescriptor) => PropertyDescriptor;
+type ParameterDecorator = (target: object, propertyKey: string, parameterIndex: number) => void;

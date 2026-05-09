@@ -27,6 +27,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*", "global.d.ts", "test/**/*.ts"],
+  "include": ["src/**/*", "test/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

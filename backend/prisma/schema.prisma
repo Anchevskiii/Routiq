@@ -7,29 +7,28 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String    @id @db.Uuid
-  email        String    @unique
-  name         String
-  avatarUrl    String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  id        String    @id @db.Uuid
+  email     String    @unique
+  name      String
+  avatarUrl String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  itineraries   Itinerary[]
-  groupMembers  GroupMember[]
-  comments      Comment[]
-  votes         Vote[]
+  itineraries  Itinerary[]
+  groupMembers GroupMember[]
+  comments     Comment[]
+  votes        Vote[]
 
   @@map("users")
 }
 
 model Itinerary {
-  id          String     @id @default(cuid())
-  userId      String
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String     @db.Uuid
   destination String
   startDate   DateTime
   endDate     DateTime
@@ -49,7 +48,7 @@ model Itinerary {
 }
 
 model Group {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid()) @db.Uuid
   name        String
   description String?
   createdAt   DateTime  @default(now())
@@ -63,9 +62,9 @@ model Group {
 }
 
 model GroupMember {
-  id        String    @id @default(cuid())
-  groupId   String
-  userId    String
+  id        String    @id @default(uuid()) @db.Uuid
+  groupId   String    @db.Uuid
+  userId    String    @db.Uuid
   role      GroupRole @default(MEMBER)
   joinedAt  DateTime  @default(now())
   deletedAt DateTime?
@@ -80,9 +79,9 @@ model GroupMember {
 }
 
 model GroupItinerary {
-  id          String    @id @default(cuid())
-  groupId     String
-  itineraryId String
+  id          String    @id @default(uuid()) @db.Uuid
+  groupId     String    @db.Uuid
+  itineraryId String    @db.Uuid
   addedAt     DateTime  @default(now())
   deletedAt   DateTime?
 
@@ -97,9 +96,9 @@ model GroupItinerary {
 }
 
 model Comment {
-  id               String    @id @default(cuid())
-  groupItineraryId String
-  userId           String
+  id               String    @id @default(uuid()) @db.Uuid
+  groupItineraryId String    @db.Uuid
+  userId           String    @db.Uuid
   content          String
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -114,9 +113,9 @@ model Comment {
 }
 
 model Vote {
-  id               String    @id @default(cuid())
-  groupItineraryId String
-  userId           String
+  id               String    @id @default(uuid()) @db.Uuid
+  groupItineraryId String    @db.Uuid
+  userId           String    @db.Uuid
   attractionId     String
   createdAt        DateTime  @default(now())
   deletedAt        DateTime?
@@ -129,8 +128,6 @@ model Vote {
   @@index([userId])
   @@map("votes")
 }
-
-
 
 enum TravelType {
   CULTURAL
