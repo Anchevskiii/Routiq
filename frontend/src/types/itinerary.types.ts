@@ -89,8 +89,8 @@ export interface CreateItineraryDto {
 
 export interface UpdateItineraryDto {
   destination?: string
-  days?: Day[]
-  shareToken?: string
+  startDate?: string
+  endDate?: string
 }
 
 export interface ItinerarySummary {

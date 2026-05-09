@@ -1,7 +1,8 @@
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@/api/supabase'
 import type { LoginDto, RegisterDto, User } from '@/types/auth.types'
 
-const mapSupabaseUser = (user: any): User => ({
+const mapSupabaseUser = (user: SupabaseUser): User => ({
   id: user.id,
   email: user.email!,
   name: user.user_metadata?.name || '',

@@ -27,16 +27,16 @@ export const groupsApi = {
     await apiClient.delete(`/groups/${groupId}/members/${userId}`)
   },
 
-  async vote(groupId: string, itineraryId: string, attractionId: string, voteType: 'up' | 'down'): Promise<Vote> {
-    const response = await apiClient.post<ApiResponse<Vote>>(`/groups/${groupId}/vote`, {
-      itineraryId, attractionId, voteType
+  async vote(groupId: string, groupItineraryId: string, activityId: string, voteType: 'UPVOTE' | 'DOWNVOTE'): Promise<Vote> {
+    const response = await apiClient.post<ApiResponse<Vote>>(`/groups/${groupId}/itineraries/${groupItineraryId}/vote`, {
+      activityId, voteType
     })
     return response.data.data
   },
 
-  async addComment(groupId: string, itineraryId: string, content: string): Promise<Comment> {
-    const response = await apiClient.post<ApiResponse<Comment>>(`/groups/${groupId}/comments`, {
-      itineraryId, content
+  async addComment(groupId: string, groupItineraryId: string, content: string): Promise<Comment> {
+    const response = await apiClient.post<ApiResponse<Comment>>(`/groups/${groupId}/itineraries/${groupItineraryId}/comments`, {
+      content
     })
     return response.data.data
   },
