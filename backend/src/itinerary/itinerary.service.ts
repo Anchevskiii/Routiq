@@ -6,7 +6,7 @@ import {
 import { ActivityType } from '@prisma/client';
 import { AttractionsService } from '../attractions/attractions.service';
 import { GeminiService } from '../gemini/gemini.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService, TransactionClient } from '../prisma/prisma.service';
 import { WeatherService } from '../weather/weather.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
@@ -123,7 +123,7 @@ export class ItineraryService {
   }
 
   private async createDayWithActivities(
-    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    tx: TransactionClient,
     itineraryId: string,
     day: GeneratedDay,
     tripStartDate: Date,
