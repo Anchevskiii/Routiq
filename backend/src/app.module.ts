@@ -14,6 +14,7 @@ import { ItineraryModule } from './itinerary/itinerary.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { WeatherModule } from './weather/weather.module';
+import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { WeatherModule } from './weather/weather.module';
 
     // Database
     PrismaModule,
+    SupabaseModule,
 
     // Rate limiting
     ThrottlerModule.forRoot([

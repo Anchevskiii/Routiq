@@ -166,7 +166,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get groupItinerary() { return this.extendedClient.groupItinerary; }
   get comment() { return this.extendedClient.comment; }
   get vote() { return this.extendedClient.vote; }
-  get refreshToken() { return this.extendedClient.refreshToken; }
+
   get activityLog() { return this.extendedClient.activityLog; }
   get calendarExport() { return this.extendedClient.calendarExport; }
 

@@ -17,6 +17,14 @@ export class ConfigService {
     return this.get<string>('SUPABASE_JWT_SECRET')!;
   }
 
+  getSupabaseUrl(): string {
+    return this.get<string>('SUPABASE_URL')!;
+  }
+
+  getSupabaseServiceRoleKey(): string {
+    return this.get<string>('SUPABASE_SERVICE_ROLE_KEY')!;
+  }
+
   getGeminiApiKey(): string {
     return this.get<string>('GEMINI_API_KEY') ?? '';
   }
