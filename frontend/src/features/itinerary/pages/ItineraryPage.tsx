@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { itineraryApi } from '@/api/itinerary.api'
 import { getTravelTypeByValue } from '@/constants/travelTypes'
+import { Day, Activity } from '@/types/itinerary.types'
 import { format } from 'date-fns'
 import { Calendar, MapPin, Clock, Info, ChevronRight, Share2, Printer, Edit3 } from 'lucide-react'
 
@@ -93,7 +94,7 @@ export const ItineraryPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content: Days */}
         <div className="lg:col-span-2 space-y-8">
-          {itinerary.days?.map((day: any) => (
+          {itinerary.days?.map((day: Day) => (
             <div key={day.day} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                 <div>
@@ -107,7 +108,7 @@ export const ItineraryPage: React.FC = () => {
                 </div>
               </div>
               <div className="p-8 space-y-8">
-                {day.activities?.map((activity: any, idx: number) => (
+                {day.activities?.map((activity: Activity, idx: number) => (
                   <div key={idx} className="relative pl-8 before:absolute before:left-0 before:top-2 before:bottom-0 before:w-0.5 before:bg-gray-100 last:before:hidden">
                     <div className="absolute left-[-4px] top-2 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-primary/10" />
                     <div className="flex flex-col md:flex-row gap-6">

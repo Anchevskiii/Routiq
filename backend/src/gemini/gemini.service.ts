@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import axios from 'axios';
+import { Observable, Subject } from 'rxjs';
 import { ConfigService } from '../config/config.service';
 
 @Injectable()
@@ -199,5 +200,66 @@ export class GeminiService {
         'Failed to generate text. Please try again.',
       );
     }
+  }
+
+  /**
+   * Generates content as an Observable stream for SSE.
+   */
+  streamGenerateObservable(prompt: string): Observable<any> {
+    const subject = new Subject<any>();
+    const url = `${this.baseUrl}?key=${this.getApiKeyOrThrow()}`;
+
+    const requestBody = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
+      },
+    };
+
+    axios
+      .post(url, requestBody, {
+        headers: { 'Content-Type': 'application/json' },
+        responseType: 'stream',
+        timeout: 20000,
+      })
+      .then((response) => {
+        let fullResponse = '';
+        response.data.on('data', (chunk: Buffer) => {
+          const lines = chunk.toString().split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonData = JSON.parse(line.slice(6));
+                if (jsonData.candidates?.[0]?.content?.parts?.[0]?.text) {
+                  const text = jsonData.candidates[0].content.parts[0].text;
+                  fullResponse += text;
+                  subject.next({ type: 'chunk', content: text });
+                }
+              } catch {
+                // Ignore partial parse errors
+              }
+            }
+          }
+        });
+
+        response.data.on('end', () => {
+          try {
+            const itineraryData = JSON.parse(fullResponse);
+            subject.next({ type: 'complete', data: itineraryData });
+            subject.complete();
+          } catch {
+            subject.error(new Error('Failed to parse AI response'));
+          }
+        });
+
+        response.data.on('error', (err: any) => subject.error(err));
+      })
+      .catch((err) => subject.error(err));
+
+    return subject.asObservable();
   }
 }

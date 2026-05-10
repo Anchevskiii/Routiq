@@ -74,7 +74,7 @@ export interface Vote {
   }
 }
 
-export type GroupRole = 'ADMIN' | 'MEMBER'
+export type GroupRole = 'ADMIN' | 'MEMBER' | 'OWNER' | 'MODERATOR'
 
 export interface CreateGroupDto {
   name: string

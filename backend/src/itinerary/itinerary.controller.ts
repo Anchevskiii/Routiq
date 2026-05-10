@@ -10,10 +10,13 @@ import {
   Post,
   Query,
   Res,
+  Sse,
+  MessageEvent,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
+import { Observable, map } from 'rxjs';
 import type { ServerResponse } from 'http';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -29,44 +32,16 @@ export class ItineraryController {
   constructor(private readonly itineraryService: ItineraryService) {}
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Sse('generate')
   @Post('generate')
   @HttpCode(HttpStatus.OK)
-  async generateItinerary(
+  generateItinerary(
     @CurrentUser() user: JwtPayload,
     @Body() createItineraryDto: CreateItineraryDto,
-    @Res() response: Response & ServerResponse,
-  ) {
-    response.setHeader('Content-Type', 'text/event-stream');
-    response.setHeader('Cache-Control', 'no-cache');
-    response.setHeader('Connection', 'keep-alive');
-    response.setHeader('Access-Control-Allow-Origin', '*');
-
-    try {
-      const itinerary = await this.itineraryService.generateItinerary(
-        user.sub,
-        createItineraryDto,
-      );
-
-      // Send the final itinerary ID in the last event
-      response.write(
-        `data: ${JSON.stringify({
-          type: 'complete',
-          itineraryId: itinerary.id,
-        })}\n\n`,
-      );
-
-      response.end();
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      response.write(
-        `data: ${JSON.stringify({
-          type: 'error',
-          error: errorMessage,
-        })}\n\n`,
-      );
-      response.end();
-    }
+  ): Observable<MessageEvent> {
+    return this.itineraryService.generateStream(user.sub, createItineraryDto).pipe(
+      map((data) => ({ data } as MessageEvent)),
+    );
   }
 
   @Get()

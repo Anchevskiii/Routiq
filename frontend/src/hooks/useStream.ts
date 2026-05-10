@@ -1,17 +1,17 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/api/supabase'
 
-export interface StreamOptions<T> {
+export interface StreamOptions<T, P = unknown> {
   onSuccess?: (data: T) => void
   onError?: (error: string) => void
-  onProgress?: (data: unknown) => void
+  onProgress?: (data: P) => void
 }
 
-export const useStream = <T = unknown>() => {
+export const useStream = <T = unknown, P = unknown>() => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const stream = useCallback(async (url: string, body: unknown, options?: StreamOptions<T>) => {
+  const stream = useCallback(async (url: string, body: unknown, options?: StreamOptions<T, P>) => {
     setIsLoading(true)
     setError(null)
 
@@ -59,7 +59,7 @@ export const useStream = <T = unknown>() => {
               if (data.type === 'complete') {
                 options?.onSuccess?.(data as T)
               } else {
-                options?.onProgress?.(data)
+                options?.onProgress?.(data as P)
               }
             } catch (e) {
               console.error('Error parsing SSE data:', e)

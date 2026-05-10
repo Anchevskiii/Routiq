@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { groupsApi } from '@/api/groups.api'
 import { ROUTES } from '@/constants/routes'
+import { Group, GroupMember } from '@/types/group.types'
 import { Users, Plus, ArrowRight, Shield } from 'lucide-react'
 
 export const GroupsPage: React.FC = () => {
@@ -62,9 +63,9 @@ export const GroupsPage: React.FC = () => {
   )
 }
 
-const GroupCard: React.FC<{ group: any }> = ({ group }) => {
+const GroupCard: React.FC<{ group: Group }> = ({ group }) => {
   const memberCount = group.members?.length || 0
-  const owner = group.members?.find((m: any) => m.role === 'OWNER')?.user
+  const owner = group.members?.find((m: GroupMember) => m.role === 'OWNER')?.user
 
   return (
     <Link
@@ -76,7 +77,7 @@ const GroupCard: React.FC<{ group: any }> = ({ group }) => {
           <Users className="w-6 h-6" />
         </div>
         <div className="flex -space-x-2">
-          {group.members?.slice(0, 3).map((member: any, i: number) => (
+          {group.members?.slice(0, 3).map((member: GroupMember, i: number) => (
             <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
               {member.user.avatarUrl ? (
                 <img src={member.user.avatarUrl} alt={member.user.name} className="w-full h-full object-cover" />

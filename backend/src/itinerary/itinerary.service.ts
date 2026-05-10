@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ActivityType } from '@prisma/client';
+import { Observable, from, map, switchMap, catchError, of } from 'rxjs';
 import { AttractionsService } from '../attractions/attractions.service';
 import { GeminiService } from '../gemini/gemini.service';
 import { PrismaService, TransactionClient } from '../prisma/prisma.service';
@@ -434,5 +435,93 @@ export class ItineraryService {
       }
     }
     return null;
+  }
+
+  /**
+   * Generates an itinerary and streams progress/result via SSE.
+   * This keeps the controller "routing only" by returning an Observable.
+   */
+  generateStream(userId: string, createItineraryDto: CreateItineraryDto): Observable<any> {
+    const { destination, startDate, days, travelType } = createItineraryDto;
+    
+    return from(this.weatherService.getForecast(
+      destination,
+      startDate.toISOString().split('T')[0],
+      days
+    )).pipe(
+      switchMap(weatherData => 
+        from(this.attractionsService.getAttractions(destination, travelType)).pipe(
+          map(attractions => ({ weatherData, attractions }))
+        )
+      ),
+      switchMap(({ weatherData, attractions }) => {
+        const prompt = buildItineraryPrompt({
+          destination,
+          startDate: startDate.toISOString(),
+          endDate: createItineraryDto.endDate.toISOString(),
+          days,
+          travelType,
+          weatherData,
+          attractions,
+        });
+
+        const generationStart = Date.now();
+
+        return this.geminiService.streamGenerateObservable(prompt).pipe(
+          switchMap(async (event) => {
+            if (event.type === 'complete') {
+              const generated = event.data as GeneratedItinerary;
+              const generationTimeMs = Date.now() - generationStart;
+
+              const itinerary = await this.prisma.$transaction(async (tx) => {
+                const itineraryRecord = await tx.itinerary.create({
+                  data: {
+                    userId,
+                    destination,
+                    startDate,
+                    endDate: createItineraryDto.endDate,
+                    travelType,
+                    totalDays: days,
+                    aiModel: 'gemini-2.0-flash-exp',
+                    aiPromptHash: this.hashString(prompt),
+                    generatedAt: new Date(),
+                    generationTimeMs,
+                    bestSeason: generated.summary?.bestSeason ?? null,
+                    estimatedBudget: generated.summary?.estimatedBudget ?? null,
+                  },
+                });
+
+                if (generated.days && Array.isArray(generated.days)) {
+                  for (const day of generated.days) {
+                    await this.createDayWithActivities(tx, itineraryRecord.id, day, startDate, weatherData);
+                  }
+                }
+
+                if (generated.generalTips && Array.isArray(generated.generalTips)) {
+                  for (let i = 0; i < generated.generalTips.length; i++) {
+                    await tx.itineraryTip.create({
+                      data: {
+                        itineraryId: itineraryRecord.id,
+                        sortOrder: i,
+                        content: generated.generalTips[i],
+                      },
+                    });
+                  }
+                }
+
+                return itineraryRecord;
+              });
+
+              return { type: 'complete', itineraryId: itinerary.id };
+            }
+            return { type: 'progress', message: event.content || 'Generating...' };
+          })
+        );
+      }),
+      catchError(err => {
+        this.logger.error(`Generation failed: ${err.message}`, err.stack);
+        return of({ type: 'error', error: err.message });
+      })
+    );
   }
 }

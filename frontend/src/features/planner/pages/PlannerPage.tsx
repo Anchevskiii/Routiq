@@ -7,11 +7,11 @@ import toast from 'react-hot-toast'
 import { useStream } from '@/hooks/useStream'
 import { getTravelTypeOptions } from '@/constants/travelTypes'
 import { ROUTES } from '@/constants/routes'
-import { plannerSchema, type PlannerFormValues } from '../schemas/plannerSchema'
+import { plannerSchema, type PlannerFormValues } from '@/features/planner/schemas/plannerSchema'
 
 export const PlannerPage: React.FC = () => {
   const navigate = useNavigate()
-  const { stream, isLoading } = useStream<{ itineraryId: string }>()
+  const { stream, isLoading } = useStream<{ itineraryId: string }, { message: string }>()
   const [progress, setProgress] = useState<string>('')
 
   const {
@@ -43,7 +43,7 @@ export const PlannerPage: React.FC = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
     
     stream(`${apiUrl}/itinerary/generate`, payload, {
-      onProgress: (data: any) => {
+      onProgress: (data: { message: string }) => {
         if (data.message) setProgress(data.message)
       },
       onSuccess: (data) => {
