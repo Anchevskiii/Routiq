@@ -5,7 +5,11 @@ import {
 } from '@nestjs/common';
 import axios from 'axios';
 import { Observable, Subject } from 'rxjs';
-import { ConfigService } from '../config/config.service';
+import { AppConfigService } from '../config/config.service';
+
+export type GeminiStreamEvent =
+  | { type: 'chunk'; content: string }
+  | { type: 'complete'; data: unknown };
 
 @Injectable()
 export class GeminiService {
@@ -14,7 +18,7 @@ export class GeminiService {
   private readonly baseUrl =
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:streamGenerateContent';
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGeminiApiKey();
   }
 
@@ -205,8 +209,8 @@ export class GeminiService {
   /**
    * Generates content as an Observable stream for SSE.
    */
-  streamGenerateObservable(prompt: string): Observable<any> {
-    const subject = new Subject<any>();
+  streamGenerateObservable(prompt: string): Observable<GeminiStreamEvent> {
+    const subject = new Subject<GeminiStreamEvent>();
     const url = `${this.baseUrl}?key=${this.getApiKeyOrThrow()}`;
 
     const requestBody = {
@@ -256,7 +260,7 @@ export class GeminiService {
           }
         });
 
-        response.data.on('error', (err: any) => subject.error(err));
+        response.data.on('error', (err: unknown) => subject.error(err));
       })
       .catch((err) => subject.error(err));
 

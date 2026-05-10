@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { AppConfigService } from './config/config.service';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import {
@@ -13,11 +15,13 @@ import {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Enable shutdown hooks for graceful termination
   app.enableShutdownHooks();
 
-  const configService = app.get(ConfigService);
+  const configService = app.get(AppConfigService);
+  const origins = configService.getAllowedOrigins();
+  Logger.log(`Allowed CORS origins: ${JSON.stringify(origins)}`, 'Bootstrap');
 
   // Cookie parser for refresh token handling
   app.use(cookieParser());
@@ -55,10 +59,40 @@ async function bootstrap() {
     new LoggingInterceptor(),
   );
 
-  // CORS
+  // CORS: env-configured origins plus common Vite dev ports (5173+ if busy)
+  const viteLocalDefaults = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+  ];
+  const allowedOrigins = [...new Set([...origins, ...viteLocalDefaults])];
+
+  // Manual CORS Middleware as a fallback
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    );
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, X-Requested-With',
+    );
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
+      return;
+    }
+    next();
+  });
+
   app.enableCors({
-    origin:
-      configService.get<string>('FRONTEND_URL') || 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
   });
 

@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -23,7 +28,9 @@ const SOFT_DELETE_MODELS: ReadonlySet<string> = new Set([
 // union of all possible model arg types. TypeScript cannot verify that every
 // union member has a `deletedAt` field — we guard with `SOFT_DELETE_MODELS`
 // at runtime instead.
-function withNotDeleted<T extends { where?: Record<string, unknown> }>(args: T): T {
+function withNotDeleted<T extends { where?: Record<string, unknown> }>(
+  args: T,
+): T {
   return { ...args, where: { ...args.where, deletedAt: null } };
 }
 
@@ -42,28 +49,44 @@ function createExtendedClient(pool: Pool) {
         async findFirst({ model, args, query }) {
           if (SOFT_DELETE_MODELS.has(model)) {
             // Cast is safe: model is confirmed to have `deletedAt`
-            return query(withNotDeleted(args as unknown as { where?: Record<string, unknown> }) as typeof args);
+            return query(
+              withNotDeleted(
+                args as unknown as { where?: Record<string, unknown> },
+              ) as typeof args,
+            );
           }
           return query(args);
         },
 
         async findMany({ model, args, query }) {
           if (SOFT_DELETE_MODELS.has(model)) {
-            return query(withNotDeleted(args as unknown as { where?: Record<string, unknown> }) as typeof args);
+            return query(
+              withNotDeleted(
+                args as unknown as { where?: Record<string, unknown> },
+              ) as typeof args,
+            );
           }
           return query(args);
         },
 
         async update({ model, args, query }) {
           if (SOFT_DELETE_MODELS.has(model)) {
-            return query(withNotDeleted(args as unknown as { where?: Record<string, unknown> }) as typeof args);
+            return query(
+              withNotDeleted(
+                args as unknown as { where?: Record<string, unknown> },
+              ) as typeof args,
+            );
           }
           return query(args);
         },
 
         async updateMany({ model, args, query }) {
           if (SOFT_DELETE_MODELS.has(model)) {
-            return query(withNotDeleted(args as unknown as { where?: Record<string, unknown> }) as typeof args);
+            return query(
+              withNotDeleted(
+                args as unknown as { where?: Record<string, unknown> },
+              ) as typeof args,
+            );
           }
           return query(args);
         },
@@ -155,20 +178,46 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   // Delegate to the extended client so all queries are intercepted by the
   // soft-delete extension automatically.
 
-  get user() { return this.extendedClient.user; }
-  get itinerary() { return this.extendedClient.itinerary; }
-  get itineraryDay() { return this.extendedClient.itineraryDay; }
-  get itineraryActivity() { return this.extendedClient.itineraryActivity; }
-  get itineraryWeatherSnapshot() { return this.extendedClient.itineraryWeatherSnapshot; }
-  get itineraryTip() { return this.extendedClient.itineraryTip; }
-  get group() { return this.extendedClient.group; }
-  get groupMember() { return this.extendedClient.groupMember; }
-  get groupItinerary() { return this.extendedClient.groupItinerary; }
-  get comment() { return this.extendedClient.comment; }
-  get vote() { return this.extendedClient.vote; }
+  get user() {
+    return this.extendedClient.user;
+  }
+  get itinerary() {
+    return this.extendedClient.itinerary;
+  }
+  get itineraryDay() {
+    return this.extendedClient.itineraryDay;
+  }
+  get itineraryActivity() {
+    return this.extendedClient.itineraryActivity;
+  }
+  get itineraryWeatherSnapshot() {
+    return this.extendedClient.itineraryWeatherSnapshot;
+  }
+  get itineraryTip() {
+    return this.extendedClient.itineraryTip;
+  }
+  get group() {
+    return this.extendedClient.group;
+  }
+  get groupMember() {
+    return this.extendedClient.groupMember;
+  }
+  get groupItinerary() {
+    return this.extendedClient.groupItinerary;
+  }
+  get comment() {
+    return this.extendedClient.comment;
+  }
+  get vote() {
+    return this.extendedClient.vote;
+  }
 
-  get activityLog() { return this.extendedClient.activityLog; }
-  get calendarExport() { return this.extendedClient.calendarExport; }
+  get activityLog() {
+    return this.extendedClient.activityLog;
+  }
+  get calendarExport() {
+    return this.extendedClient.calendarExport;
+  }
 
   // ─── Transaction ────────────────────────────────────────────────────────────
   // Exposes $transaction bound to the extended client. The `tx` client passed

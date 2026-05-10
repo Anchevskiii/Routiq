@@ -59,7 +59,10 @@ export class ExportService {
 
     try {
       const events = this.buildEventsFromDays(itinerary);
-      const icsData = await this.createIcsCalendar(events, itinerary.destination);
+      const icsData = await this.createIcsCalendar(
+        events,
+        itinerary.destination,
+      );
 
       return Buffer.from(icsData);
     } catch {

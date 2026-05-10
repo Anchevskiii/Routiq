@@ -20,6 +20,18 @@ import { JwtPayload } from '../common/types/jwt-payload.type';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  destination?: string;
+  filename?: string;
+  path?: string;
+  buffer?: Buffer;
+}
+
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
@@ -76,7 +88,7 @@ export class UsersController {
         fileIsRequired: true,
       }),
     )
-    file: Express.Multer.File,
+    file: MulterFile,
   ) {
     // TODO: Implement file upload to cloud storage (S3, Cloudinary, etc.)
     // For now, return a mock URL
@@ -84,8 +96,6 @@ export class UsersController {
 
     return this.usersService.uploadAvatar(user.sub, avatarUrl);
   }
-
-
 
   @Delete('account')
   async deleteAccount(@CurrentUser() user: JwtPayload) {

@@ -36,10 +36,7 @@ export class GroupsController {
   }
 
   @Get(':id')
-  async getGroupById(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  async getGroupById(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.groupsService.getGroupById(id, user.sub);
   }
 
@@ -62,10 +59,7 @@ export class GroupsController {
   }
 
   @Delete(':id')
-  async deleteGroup(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  async deleteGroup(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.groupsService.deleteGroup(id, user.sub);
   }
 

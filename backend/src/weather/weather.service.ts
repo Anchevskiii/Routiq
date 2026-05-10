@@ -4,7 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import axios from 'axios';
-import { ConfigService } from '../config/config.service';
+import { AppConfigService } from '../config/config.service';
 import { ForecastDay, WeatherData } from './types';
 
 interface OpenWeatherResponse {
@@ -121,7 +121,7 @@ export class WeatherService {
   private cache = new Map<string, { data: WeatherData; timestamp: number }>();
   private readonly cacheDuration = 60 * 60 * 1000; // 1 hour in milliseconds
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getOpenWeatherApiKey();
   }
 

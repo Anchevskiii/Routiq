@@ -15,13 +15,23 @@ declare namespace Express {
       buffer?: Buffer;
     }
   }
-  
+
   interface Request {
     user?: unknown;
   }
 }
 
 // Utility types for decorators
-type ClassDecorator = <T extends new (...args: unknown[]) => unknown>(target: T) => T;
-type MethodDecorator = (target: object, propertyKey: string, descriptor: PropertyDescriptor) => PropertyDescriptor;
-type ParameterDecorator = (target: object, propertyKey: string, parameterIndex: number) => void;
+type ClassDecorator = <T extends new (...args: unknown[]) => unknown>(
+  target: T,
+) => T;
+type MethodDecorator = (
+  target: object,
+  propertyKey: string,
+  descriptor: PropertyDescriptor,
+) => PropertyDescriptor;
+type ParameterDecorator = (
+  target: object,
+  propertyKey: string,
+  parameterIndex: number,
+) => void;

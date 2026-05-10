@@ -494,7 +494,8 @@ export class GroupsService {
 
     if (
       removerId !== memberToRemoveId &&
-      roleHierarchy[targetMembership.role] >= roleHierarchy[removerMembership.role]
+      roleHierarchy[targetMembership.role] >=
+        roleHierarchy[removerMembership.role]
     ) {
       throw new ForbiddenException(
         'Cannot remove a member with equal or higher role',
@@ -848,7 +849,9 @@ export class GroupsService {
           groupId,
           userId,
           action,
-          details: details ? JSON.parse(JSON.stringify(details)) as object : undefined,
+          details: details
+            ? (JSON.parse(JSON.stringify(details)) as object)
+            : undefined,
         },
       });
     } catch (error) {
@@ -859,4 +862,3 @@ export class GroupsService {
     }
   }
 }
-

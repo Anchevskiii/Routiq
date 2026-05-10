@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ActivityType } from '@prisma/client';
 import { Observable, from, map, switchMap, catchError, of } from 'rxjs';
 import { AttractionsService } from '../attractions/attractions.service';
@@ -12,12 +8,12 @@ import { WeatherService } from '../weather/weather.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
 import { buildItineraryPrompt } from './prompts/generate-itinerary.prompt';
-import {
-  GeneratedDay,
-  GeneratedItinerary,
-  GeneratedActivity,
-  GeneratedMeal,
-} from './types';
+import { GeneratedDay, GeneratedItinerary } from './types';
+
+type ItineraryGenerateStreamEvent =
+  | { type: 'complete'; itineraryId: string }
+  | { type: 'progress'; message: string }
+  | { type: 'error'; error: string };
 
 @Injectable()
 export class ItineraryService {
@@ -128,7 +124,16 @@ export class ItineraryService {
     itineraryId: string,
     day: GeneratedDay,
     tripStartDate: Date,
-    weatherData: { forecast: Array<{ date: string; temperature: { min: number; max: number }; condition: string; humidity: number; windSpeed: number; precipitation: number }> },
+    weatherData: {
+      forecast: Array<{
+        date: string;
+        temperature: { min: number; max: number };
+        condition: string;
+        humidity: number;
+        windSpeed: number;
+        precipitation: number;
+      }>;
+    },
   ) {
     const dayDate = new Date(tripStartDate);
     dayDate.setDate(dayDate.getDate() + (day.day - 1));
@@ -201,9 +206,7 @@ export class ItineraryService {
 
     // Create weather snapshot
     const dayDateStr = dayDate.toISOString().split('T')[0];
-    const forecastDay = weatherData.forecast.find(
-      (f) => f.date === dayDateStr,
-    );
+    const forecastDay = weatherData.forecast.find((f) => f.date === dayDateStr);
 
     if (forecastDay) {
       await tx.itineraryWeatherSnapshot.create({
@@ -441,18 +444,23 @@ export class ItineraryService {
    * Generates an itinerary and streams progress/result via SSE.
    * This keeps the controller "routing only" by returning an Observable.
    */
-  generateStream(userId: string, createItineraryDto: CreateItineraryDto): Observable<any> {
+  generateStream(
+    userId: string,
+    createItineraryDto: CreateItineraryDto,
+  ): Observable<ItineraryGenerateStreamEvent> {
     const { destination, startDate, days, travelType } = createItineraryDto;
-    
-    return from(this.weatherService.getForecast(
-      destination,
-      startDate.toISOString().split('T')[0],
-      days
-    )).pipe(
-      switchMap(weatherData => 
-        from(this.attractionsService.getAttractions(destination, travelType)).pipe(
-          map(attractions => ({ weatherData, attractions }))
-        )
+
+    return from(
+      this.weatherService.getForecast(
+        destination,
+        startDate.toISOString().split('T')[0],
+        days,
+      ),
+    ).pipe(
+      switchMap((weatherData) =>
+        from(
+          this.attractionsService.getAttractions(destination, travelType),
+        ).pipe(map((attractions) => ({ weatherData, attractions }))),
       ),
       switchMap(({ weatherData, attractions }) => {
         const prompt = buildItineraryPrompt({
@@ -493,11 +501,20 @@ export class ItineraryService {
 
                 if (generated.days && Array.isArray(generated.days)) {
                   for (const day of generated.days) {
-                    await this.createDayWithActivities(tx, itineraryRecord.id, day, startDate, weatherData);
+                    await this.createDayWithActivities(
+                      tx,
+                      itineraryRecord.id,
+                      day,
+                      startDate,
+                      weatherData,
+                    );
                   }
                 }
 
-                if (generated.generalTips && Array.isArray(generated.generalTips)) {
+                if (
+                  generated.generalTips &&
+                  Array.isArray(generated.generalTips)
+                ) {
                   for (let i = 0; i < generated.generalTips.length; i++) {
                     await tx.itineraryTip.create({
                       data: {
@@ -512,16 +529,25 @@ export class ItineraryService {
                 return itineraryRecord;
               });
 
-              return { type: 'complete', itineraryId: itinerary.id };
+              return {
+                type: 'complete' as const,
+                itineraryId: itinerary.id,
+              };
             }
-            return { type: 'progress', message: event.content || 'Generating...' };
-          })
+            return {
+              type: 'progress' as const,
+              message: event.content || 'Generating...',
+            };
+          }),
         );
       }),
-      catchError(err => {
-        this.logger.error(`Generation failed: ${err.message}`, err.stack);
-        return of({ type: 'error', error: err.message });
-      })
+      catchError((err: unknown) => {
+        const message =
+          err instanceof Error ? err.message : 'Generation failed.';
+        const stack = err instanceof Error ? err.stack : undefined;
+        this.logger.error(`Generation failed: ${message}`, stack);
+        return of({ type: 'error' as const, error: message });
+      }),
     );
   }
 }

@@ -2,11 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 @Injectable()
-export class ConfigService {
-  constructor(private readonly configService: NestConfigService) {}
+export class AppConfigService {
+  constructor(private readonly configService: NestConfigService) {
+    console.log(
+      'AppConfigService initialized. CORS_ORIGIN:',
+      this.configService.get('CORS_ORIGIN'),
+    );
+  }
 
   get<T = unknown>(key: string): T | undefined {
-    return this.configService.get<T>(key);
+    return this.configService.get<T>(key) ?? (process.env[key] as unknown as T);
   }
 
   getDatabaseUrl(): string {
@@ -51,6 +56,14 @@ export class ConfigService {
 
   getFrontendUrl(): string {
     return this.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+  }
+
+  getAllowedOrigins(): string[] {
+    const corsOrigin = this.get<string>('CORS_ORIGIN');
+    if (corsOrigin) {
+      return corsOrigin.split(',').map((o) => o.trim());
+    }
+    return [this.getFrontendUrl()];
   }
 
   getBackendUrl(): string {

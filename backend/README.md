@@ -91,18 +91,27 @@ backend/
 The API will be available at `http://localhost:3000/api`
 Swagger documentation: `http://localhost:3000/api/docs`
 
+### Port 3000 on Windows (automatic cleanup)
+
+Before several npm scripts run, **`prestart` / `prestart:dev` / `prestart:debug` / `preprisma:generate`** execute **`../scripts/free-port.ps1 -Port 3000`**. That script lists processes **listening on TCP 3000** and **force-stops** them so Nest can always bind to the default port.
+
+- Run npm commands from the **`backend/`** directory so `../scripts/` resolves to the repo root.
+- If something else you care about is using 3000, stop it manually or avoid running these hooks.
+
 ## Available Scripts
 
 ```bash
 # Development
-npm run start:dev        # Start with hot reload
+npm run start:dev        # Frees port 3000, then start with hot reload
+npm run start:debug      # Frees port 3000, then start with debugger + watch
+npm start                # Frees port 3000, then one-shot nest start (no watch)
 
 # Production
 npm run build           # Build application (strict compile check)
 npm run start:prod      # Start production server
 
 # Database
-npm run prisma:generate  # Generate Prisma client
+npm run prisma:generate  # Frees port 3000, then generate Prisma client
 npm run prisma:migrate   # Run migrations
 npm run prisma:studio    # Inspect DB records
 npm run prisma:seed      # Run seed script

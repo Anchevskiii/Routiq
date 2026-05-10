@@ -1,21 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import ws from 'ws';
-import { ConfigService } from '../config/config.service';
+import { AppConfigService } from '../config/config.service';
 
 @Injectable()
 export class SupabaseService {
   private readonly logger = new Logger(SupabaseService.name);
-  private clientInstance: SupabaseClient;
+  private clientInstance?: SupabaseClient;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly configService: AppConfigService) {
     const supabaseUrl = this.configService.getSupabaseUrl();
     const supabaseKey = this.configService.getSupabaseServiceRoleKey();
 
     this.logger.log(`Initializing Supabase client with URL: ${supabaseUrl}`);
 
     if (!supabaseUrl || !supabaseKey) {
-      this.logger.error('Supabase URL or Service Role Key is missing in environment variables');
+      this.logger.error(
+        'Supabase URL or Service Role Key is missing in environment variables',
+      );
       return;
     }
 
@@ -33,7 +35,7 @@ export class SupabaseService {
     } as unknown as Record<string, unknown>);
   }
 
-  getClient(): SupabaseClient {
+  getClient(): SupabaseClient | undefined {
     return this.clientInstance;
   }
 }

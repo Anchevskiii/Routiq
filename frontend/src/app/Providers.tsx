@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { authApi } from '@/api/auth.api'
 import { supabase } from '@/api/supabase'
 import type { LoginDto, RegisterDto, User } from '@/types/auth.types'
@@ -60,34 +67,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [])
 
-  const login = async (credentials: LoginDto) => {
+  const login = useCallback(async (credentials: LoginDto) => {
     setIsLoading(true)
     try {
       await authApi.login(credentials)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const register = async (payload: RegisterDto) => {
+  const register = useCallback(async (payload: RegisterDto) => {
     setIsLoading(true)
     try {
       await authApi.register(payload)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     setIsLoading(true)
     try {
       await authApi.logout()
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const refreshToken = async () => Promise.resolve()
+  const refreshToken = useCallback(async () => Promise.resolve(), [])
 
   const value: AuthContextType = useMemo(
     () => ({
@@ -100,7 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       loginWithGoogle: authApi.loginWithGoogle,
       refreshToken,
     }),
-    [user, isLoading, login, logout, register]
+    [user, isLoading, login, logout, register, refreshToken]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

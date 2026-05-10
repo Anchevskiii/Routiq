@@ -9,15 +9,12 @@ import {
   Patch,
   Post,
   Query,
-  Res,
   Sse,
   MessageEvent,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import type { Response } from 'express';
 import { Observable, map } from 'rxjs';
-import type { ServerResponse } from 'http';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -39,9 +36,9 @@ export class ItineraryController {
     @CurrentUser() user: JwtPayload,
     @Body() createItineraryDto: CreateItineraryDto,
   ): Observable<MessageEvent> {
-    return this.itineraryService.generateStream(user.sub, createItineraryDto).pipe(
-      map((data) => ({ data } as MessageEvent)),
-    );
+    return this.itineraryService
+      .generateStream(user.sub, createItineraryDto)
+      .pipe(map((data) => ({ data }) as MessageEvent));
   }
 
   @Get()

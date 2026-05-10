@@ -46,7 +46,7 @@ export class UsersService {
     avatarUrl?: string;
   }) {
     this.logger.log(`Upserting user: ${data.email} (${data.id})`);
-    
+
     return this.prisma.user.upsert({
       where: { id: data.id },
       update: {
@@ -133,8 +133,8 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Soft delete is handled by Prisma extension if configured, 
-    // otherwise this will be a hard delete. 
+    // Soft delete is handled by Prisma extension if configured,
+    // otherwise this will be a hard delete.
     // In our case, PrismaService has a soft-delete extension.
     await this.prisma.user.delete({
       where: { id: userId },

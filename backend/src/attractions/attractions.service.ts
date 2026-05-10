@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { TravelType } from '@prisma/client';
 import axios from 'axios';
-import { ConfigService } from '../config/config.service';
+import { AppConfigService } from '../config/config.service';
 import { FormattedPlace } from './types';
 
 interface GooglePlace {
@@ -47,7 +47,7 @@ export class AttractionsService {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://maps.googleapis.com/maps/api/place';
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGooglePlacesApiKey();
   }
 

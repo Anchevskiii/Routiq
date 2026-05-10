@@ -38,11 +38,9 @@ export const useStream = <T = unknown, P = unknown>() => {
       const decoder = new TextDecoder()
       let buffer = ''
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
+      let chunk = await reader.read()
+      while (!chunk.done) {
+        buffer += decoder.decode(chunk.value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
 
@@ -66,6 +64,7 @@ export const useStream = <T = unknown, P = unknown>() => {
             }
           }
         }
+        chunk = await reader.read()
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'

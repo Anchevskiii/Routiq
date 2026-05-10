@@ -143,6 +143,24 @@ cd frontend
 npm run dev
 ```
 
+#### Port cleanup (Windows)
+
+Routiq expects the **API on port 3000** and the **Vite dev server on 5173**. On Windows, stray Node processes often leave those ports occupied, which used to push Vite to 5174+ and break CORS expectations.
+
+A shared script at **`scripts/free-port.ps1`** finds every process **listening** on a given TCP port (via `Get-NetTCPConnection`), logs **PID and process name**, and stops those processes so the port is free.
+
+**npm hooks** run that script automatically before common dev commands (only when you invoke npm from `backend/` or `frontend/` so the path `../scripts/free-port.ps1` resolves):
+
+| When you run… | Script runs first | Port freed |
+|---------------|-------------------|------------|
+| `backend`: `npm start`, `npm run start:dev`, `npm run start:debug` | `prestart`, `prestart:dev`, or `prestart:debug` | **3000** |
+| `backend`: `npm run prisma:generate` | `preprisma:generate` | **3000** |
+| `frontend`: `npm run dev` | `predev` | **5173** |
+
+The frontend Vite config uses **`strictPort: true`**, so if 5173 is still blocked after cleanup, the dev server **exits with an error** instead of silently using another port.
+
+**Caution:** Anything legitimately bound to 3000 or 5173 (not another Routiq instance) will be stopped too—avoid running these commands in that situation.
+
 The application will be available at:
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3000
@@ -153,7 +171,7 @@ The application will be available at:
 ### Backend
 
 ```bash
-npm run start:dev    # Start in development mode
+npm run start:dev    # Free port 3000 (Windows), then start in development mode
 npm run build        # Build for production
 npm run start:prod   # Start production build
 npm run test         # Run tests
@@ -161,7 +179,7 @@ npm run lint         # Lint code
 npm run format       # Format code
 
 # Prisma commands
-npm run prisma:generate    # Generate Prisma client
+npm run prisma:generate    # Free port 3000 (Windows), then generate Prisma client
 npm run prisma:migrate     # Run migrations
 npm run prisma:studio      # Open Prisma Studio
 npm run prisma:seed        # Seed database
@@ -170,7 +188,7 @@ npm run prisma:seed        # Seed database
 ### Frontend
 
 ```bash
-npm run dev         # Start development server
+npm run dev         # Free port 5173 (Windows), then start Vite on :5173 (strict)
 npm run build       # Build for production
 npm run preview     # Preview production build
 npm run test        # Run tests
