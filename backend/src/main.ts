@@ -13,6 +13,10 @@ import {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Enable shutdown hooks for graceful termination
+  app.enableShutdownHooks();
+
   const configService = app.get(ConfigService);
 
   // Cookie parser for refresh token handling
