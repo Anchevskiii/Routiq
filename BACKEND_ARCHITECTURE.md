@@ -39,7 +39,7 @@
 | Validacija | class-validator + class-transformer |
 | AI | Google Gemini 2.5 Flash |
 | Atrakcije | Google Places API |
-| Vreme | OpenWeather API |
+| Vreme | Google Weather API |
 | Navigacija | Google Maps Directions API |
 | Playliste | Spotify Web API (opcijsko, iter. 4) |
 | Izvoz | `ics` npm paket |
@@ -180,7 +180,7 @@ backend/
 │   ├── itinerary/            # AI generiranje + CRUD (core feature)
 │   ├── gemini/               # Gemini AI service
 │   ├── attractions/          # Google Places proxy
-│   ├── weather/              # OpenWeather proxy + caching
+│   ├── weather/              # Google Weather API proxy + caching
 │   ├── groups/               # Skupinska potovanja
 │   ├── export/               # .ics izvoz
 │   └── spotify/              # Spotify playlist (opcijsko, iter. 4)
@@ -243,7 +243,7 @@ DELETE /itinerary/:id/day/:day/attractions/:aid → Odstrani atrakcijo
 GET    /weather?destination=&startDate=&days=   → Napoved za destinacijo
 ```
 
-Napoved cachiramo za 1 uro – ne kličemo OpenWeather pri vsakem requestu.
+Napoved cachiramo za 1 uro – ne kličemo Google Weather API pri vsakem requestu.
 
 ### `groups/` – Skupinska potovanja
 
@@ -605,7 +605,7 @@ Frontend nikoli ne kliče Gemini direktno. Vse gre prek backend endpointa:
 ```
 FE → POST /api/itinerary/generate { destination, days, travelType, startDate }
    ↓
-BE → pridobi vremensko napoved (OpenWeather)
+BE → pridobi vremensko napoved (Google Weather API)
 BE → pridobi atrakcije (Google Places)
 BE → sestavi prompt za Gemini
 BE → streama SSE chunke nazaj na FE          ←── FE prikazuje postopno
@@ -638,11 +638,11 @@ const result = await Promise.race([
 
 ## 9. Zunanje integracije
 
-Vse klice na zunanje API-je (Places, OpenWeather, Spotify) dela **backend**. Frontend ne kliče nobene od teh storitev direktno – API ključi morajo ostati na strežniku.
+Vse klice na zunanje API-je (Places, Google Weather, Spotify) dela **backend**. Frontend ne kliče nobene od teh storitev direktno – API ključi morajo ostati na strežniku.
 
 **Google Places API** – pridobi atrakcije, muzeje, restavracije in parke za destinacijo. Rezultati se vključijo v Gemini prompt.
 
-**OpenWeather API** – pridobi vremensko napoved po dnevih. Napoved cachiramo za 1 uro.
+**Google Weather API** – pridobi vremensko napoved po dnevih. Napoved cachiramo za 1 uro.
 
 **Google Maps Directions API** – optimizacija poti med atrakcijami (minimizacija potovanja znotraj dneva).
 
@@ -662,7 +662,7 @@ JWT_REFRESH_SECRET=...
 GEMINI_API_KEY=...
 GOOGLE_PLACES_API_KEY=...
 GOOGLE_MAPS_DIRECTIONS_API_KEY=...
-OPENWEATHER_API_KEY=...
+GOOGLE_WEATHER_API_KEY=...
 SPOTIFY_CLIENT_ID=...
 SPOTIFY_CLIENT_SECRET=...
 FRONTEND_URL=http://localhost:5173
@@ -765,12 +765,12 @@ Rules:
 - Controllers handle ONLY routing. No business logic in controllers.
 - Services handle ONLY business logic. No HTTP-specific code in services.
 - All DB operations go through PrismaService.
-- All API keys stay on the backend. Never expose Gemini, OpenWeather, Places, or Spotify keys.
+- All API keys stay on the backend. Never expose Gemini, Google Weather, Places, or Spotify keys.
 - Global ValidationPipe is set up in main.ts – do not add manual validation in controllers.
 - Rate-limit AI endpoints: max 5 requests/minute per user.
 - All responses follow { success, data } or { success, error } format via TransformInterceptor.
 - AI generation timeout: 20 seconds.
-- Cache OpenWeather responses for 1 hour.
+- Cache Google Weather responses for 1 hour.
 - Never commit .env files.
 
 Project structure (inside backend/src/):
@@ -779,7 +779,7 @@ Project structure (inside backend/src/):
 - itinerary/   → Core: AI generation + CRUD
 - gemini/      → Gemini AI service
 - attractions/ → Google Places proxy
-- weather/     → OpenWeather proxy + caching
+- weather/     → Google Weather API proxy + caching
 - groups/      → Group travel management
 - export/      → .ics file generation
 - spotify/     → Playlist generation (iter. 4)
@@ -885,7 +885,7 @@ Kratki opis.
 |---|---|
 | **Jan** | `/itinerary/generate` SSE endpoint s streaming odzivom. Prompt engineering. |
 | **Klemen** | `attractions/` modul: Google Places proxy. Integracija v prompt. |
-| **Mojca** | `weather/` modul: OpenWeather proxy + 1h caching. Google OAuth v auth. |
+| **Mojca** | `weather/` modul: Google Weather API proxy + 1h caching. Google OAuth v auth. |
 
 ### Iteracija 3 – Export, urejanje, skupin
 

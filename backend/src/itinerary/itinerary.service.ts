@@ -1,18 +1,27 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ActivityType } from '@prisma/client';
-import { Observable, from, map, switchMap, catchError, of } from 'rxjs';
-import { AttractionsService } from '../attractions/attractions.service';
-import { GeminiService } from '../gemini/gemini.service';
-import { PrismaService, TransactionClient } from '../prisma/prisma.service';
-import { WeatherService } from '../weather/weather.service';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { Observable, from } from 'rxjs';
+import {
+  GeminiService,
+  GeneratedItineraryResponse,
+} from '../gemini/gemini.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
-import { buildItineraryPrompt } from './prompts/generate-itinerary.prompt';
-import { GeneratedDay, GeneratedItinerary } from './types';
+import { ItineraryGenerationService } from './itinerary-generation.service';
+import { GeneratedItinerary } from './types';
+
+import { FormattedPlace } from '../attractions/types';
 
 type ItineraryGenerateStreamEvent =
+  | { type: 'status'; message: string }
+  | { type: 'attractions'; data: FormattedPlace[] }
+  | { type: 'chunk'; content: string; message: string }
   | { type: 'complete'; itineraryId: string }
-  | { type: 'progress'; message: string }
   | { type: 'error'; error: string };
 
 @Injectable()
@@ -22,214 +31,31 @@ export class ItineraryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly geminiService: GeminiService,
-    private readonly attractionsService: AttractionsService,
-    private readonly weatherService: WeatherService,
+    private readonly itineraryGenerationService: ItineraryGenerationService,
   ) {}
 
   async generateItinerary(
     userId: string,
     createItineraryDto: CreateItineraryDto,
   ) {
-    const { destination, startDate, endDate, days, travelType } =
-      createItineraryDto;
-
-    const generationStart = Date.now();
-
-    // Get weather forecast
-    const weatherData = await this.weatherService.getForecast(
-      destination,
-      startDate.toISOString().split('T')[0],
-      days,
-    );
-
-    // Get attractions for the destination
-    const attractions = await this.attractionsService.getAttractions(
-      destination,
-      travelType,
-    );
-
-    // Build the prompt for AI
-    const prompt = buildItineraryPrompt({
-      destination,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      days,
-      travelType,
-      weatherData,
-      attractions,
-    });
-
-    // Generate itinerary using AI
-    const generated = (await this.geminiService.streamGenerate(
-      prompt,
-    )) as GeneratedItinerary;
-
-    const generationTimeMs = Date.now() - generationStart;
-
-    // Save the generated itinerary in a transaction (normalized)
-    const itinerary = await this.prisma.$transaction(async (tx) => {
-      // 1. Create itinerary master record
-      const itineraryRecord = await tx.itinerary.create({
-        data: {
-          userId,
-          destination,
-          startDate,
-          endDate,
-          travelType,
-          totalDays: days,
-          aiModel: 'gemini-2.0-flash-exp',
-          aiPromptHash: this.hashString(prompt),
-          generatedAt: new Date(),
-          generationTimeMs,
-          bestSeason: generated.summary?.bestSeason ?? null,
-          estimatedBudget: generated.summary?.estimatedBudget ?? null,
-        },
+    const prepared =
+      await this.itineraryGenerationService.prepareGenerationData(
+        createItineraryDto,
+      );
+    const generated = await this.geminiService.streamGenerate(prepared.prompt);
+    const itinerary =
+      await this.itineraryGenerationService.persistGeneratedItinerary({
+        userId,
+        createItineraryDto,
+        generated: this.mapToGeneratedItinerary(generated),
+        generationStart: prepared.generationStart,
+        weatherData: prepared.weatherData,
+        attractions: prepared.attractions,
+        prompt: prepared.prompt,
+        promptHash: this.hashString(prepared.prompt),
       });
 
-      // 2. Create days with activities and weather snapshots
-      if (generated.days && Array.isArray(generated.days)) {
-        for (const day of generated.days) {
-          await this.createDayWithActivities(
-            tx,
-            itineraryRecord.id,
-            day,
-            startDate,
-            weatherData,
-          );
-        }
-      }
-
-      // 3. Create general tips
-      if (generated.generalTips && Array.isArray(generated.generalTips)) {
-        for (let i = 0; i < generated.generalTips.length; i++) {
-          await tx.itineraryTip.create({
-            data: {
-              itineraryId: itineraryRecord.id,
-              sortOrder: i,
-              content: generated.generalTips[i],
-            },
-          });
-        }
-      }
-
-      return itineraryRecord;
-    });
-
-    // Return the full itinerary with all relations
     return this.getItineraryById(itinerary.id, userId);
-  }
-
-  private async createDayWithActivities(
-    tx: TransactionClient,
-    itineraryId: string,
-    day: GeneratedDay,
-    tripStartDate: Date,
-    weatherData: {
-      forecast: Array<{
-        date: string;
-        temperature: { min: number; max: number };
-        condition: string;
-        humidity: number;
-        windSpeed: number;
-        precipitation: number;
-      }>;
-    },
-  ) {
-    const dayDate = new Date(tripStartDate);
-    dayDate.setDate(dayDate.getDate() + (day.day - 1));
-
-    const dayRecord = await tx.itineraryDay.create({
-      data: {
-        itineraryId,
-        dayNumber: day.day,
-        date: dayDate,
-        theme: day.theme ?? null,
-      },
-    });
-
-    // Create activities
-    let sortOrder = 0;
-
-    if (day.activities && Array.isArray(day.activities)) {
-      for (const activity of day.activities) {
-        await tx.itineraryActivity.create({
-          data: {
-            dayId: dayRecord.id,
-            activityType: ActivityType.ATTRACTION,
-            sortOrder: sortOrder++,
-            title: activity.title,
-            description: activity.description ?? null,
-            location: activity.location ?? null,
-            startTime: activity.time ?? null,
-            durationMinutes: this.parseDuration(activity.duration),
-            cost: activity.cost ?? null,
-            tips: activity.tips ?? null,
-            latitude: activity.coordinates?.lat ?? null,
-            longitude: activity.coordinates?.lng ?? null,
-          },
-        });
-      }
-    }
-
-    // Create meal entries
-    if (day.meals && Array.isArray(day.meals)) {
-      for (const meal of day.meals) {
-        await tx.itineraryActivity.create({
-          data: {
-            dayId: dayRecord.id,
-            activityType: ActivityType.MEAL,
-            sortOrder: sortOrder++,
-            title: meal.recommendation || `${meal.type} recommendation`,
-            description: null,
-            location: meal.location ?? null,
-            mealType: meal.type ?? null,
-            priceRange: meal.priceRange ?? null,
-          },
-        });
-      }
-    }
-
-    // Create transport entry
-    if (day.transportation) {
-      await tx.itineraryActivity.create({
-        data: {
-          dayId: dayRecord.id,
-          activityType: ActivityType.TRANSPORT,
-          sortOrder: sortOrder++,
-          title: `Daily transport: ${day.transportation.method ?? 'various'}`,
-          transportMethod: day.transportation.method ?? null,
-          transportCost: day.transportation.estimatedCost ?? null,
-          transportNotes: day.transportation.notes ?? null,
-        },
-      });
-    }
-
-    // Create weather snapshot
-    const dayDateStr = dayDate.toISOString().split('T')[0];
-    const forecastDay = weatherData.forecast.find((f) => f.date === dayDateStr);
-
-    if (forecastDay) {
-      await tx.itineraryWeatherSnapshot.create({
-        data: {
-          dayId: dayRecord.id,
-          condition: forecastDay.condition,
-          tempMin: forecastDay.temperature.min,
-          tempMax: forecastDay.temperature.max,
-          humidity: forecastDay.humidity,
-          windSpeed: forecastDay.windSpeed,
-          precipitation: forecastDay.precipitation,
-          recommendation: day.weather?.recommendations ?? null,
-        },
-      });
-    } else if (day.weather) {
-      await tx.itineraryWeatherSnapshot.create({
-        data: {
-          dayId: dayRecord.id,
-          condition: day.weather.condition,
-          recommendation: day.weather.recommendations ?? null,
-        },
-      });
-    }
   }
 
   async getUserItineraries(userId: string, page = 1, limit = 10) {
@@ -427,19 +253,6 @@ export class ItineraryService {
     return hash.toString(36);
   }
 
-  private parseDuration(duration: unknown): number | null {
-    if (typeof duration === 'number') {
-      return Math.round(duration * 60);
-    }
-    if (typeof duration === 'string') {
-      const parsed = parseFloat(duration);
-      if (!isNaN(parsed)) {
-        return Math.round(parsed * 60);
-      }
-    }
-    return null;
-  }
-
   /**
    * Generates an itinerary and streams progress/result via SSE.
    * This keeps the controller "routing only" by returning an Observable.
@@ -448,106 +261,159 @@ export class ItineraryService {
     userId: string,
     createItineraryDto: CreateItineraryDto,
   ): Observable<ItineraryGenerateStreamEvent> {
-    const { destination, startDate, days, travelType } = createItineraryDto;
+    return new Observable<ItineraryGenerateStreamEvent>((subscriber) => {
+      void (async () => {
+        try {
+          subscriber.next({
+            type: 'status',
+            message: 'Discovering the best spots for you...',
+          });
 
-    return from(
-      this.weatherService.getForecast(
-        destination,
-        startDate.toISOString().split('T')[0],
-        days,
-      ),
-    ).pipe(
-      switchMap((weatherData) =>
-        from(
-          this.attractionsService.getAttractions(destination, travelType),
-        ).pipe(map((attractions) => ({ weatherData, attractions }))),
-      ),
-      switchMap(({ weatherData, attractions }) => {
-        const prompt = buildItineraryPrompt({
-          destination,
-          startDate: startDate.toISOString(),
-          endDate: createItineraryDto.endDate.toISOString(),
-          days,
-          travelType,
-          weatherData,
-          attractions,
-        });
+          const prepared =
+            await this.itineraryGenerationService.prepareGenerationData(
+              createItineraryDto,
+            );
 
-        const generationStart = Date.now();
+          // Send attractions early so frontend can show them
+          subscriber.next({
+            type: 'attractions',
+            data: prepared.attractions,
+          });
 
-        return this.geminiService.streamGenerateObservable(prompt).pipe(
-          switchMap(async (event) => {
-            if (event.type === 'complete') {
-              const generated = event.data as GeneratedItinerary;
-              const generationTimeMs = Date.now() - generationStart;
+          subscriber.next({
+            type: 'status',
+            message: 'Our AI is now crafting your perfect route...',
+          });
 
-              const itinerary = await this.prisma.$transaction(async (tx) => {
-                const itineraryRecord = await tx.itinerary.create({
-                  data: {
-                    userId,
-                    destination,
-                    startDate,
-                    endDate: createItineraryDto.endDate,
-                    travelType,
-                    totalDays: days,
-                    aiModel: 'gemini-2.0-flash-exp',
-                    aiPromptHash: this.hashString(prompt),
-                    generatedAt: new Date(),
-                    generationTimeMs,
-                    bestSeason: generated.summary?.bestSeason ?? null,
-                    estimatedBudget: generated.summary?.estimatedBudget ?? null,
-                  },
+          const chunks: string[] = [];
+
+          this.geminiService
+            .streamGenerateObservable(prepared.prompt)
+            .subscribe({
+              next: (event) => {
+                if (event.type === 'chunk') {
+                  chunks.push(event.content);
+                  subscriber.next({
+                    type: 'chunk',
+                    content: event.content,
+                    message: 'Receiving itinerary details...',
+                  });
+                  return;
+                }
+
+                // When Gemini finishes, we have the full data
+                const generated = this.parseGeneratedItinerary(
+                  event.data,
+                  chunks.join(''),
+                );
+
+                subscriber.next({
+                  type: 'status',
+                  message: 'Finalizing and saving your adventure...',
                 });
 
-                if (generated.days && Array.isArray(generated.days)) {
-                  for (const day of generated.days) {
-                    await this.createDayWithActivities(
-                      tx,
-                      itineraryRecord.id,
-                      day,
-                      startDate,
-                      weatherData,
-                    );
-                  }
-                }
-
-                if (
-                  generated.generalTips &&
-                  Array.isArray(generated.generalTips)
-                ) {
-                  for (let i = 0; i < generated.generalTips.length; i++) {
-                    await tx.itineraryTip.create({
-                      data: {
-                        itineraryId: itineraryRecord.id,
-                        sortOrder: i,
-                        content: generated.generalTips[i],
-                      },
+                from(
+                  this.itineraryGenerationService.persistGeneratedItinerary({
+                    userId,
+                    createItineraryDto,
+                    generated,
+                    generationStart: prepared.generationStart,
+                    weatherData: prepared.weatherData,
+                    attractions: prepared.attractions,
+                    prompt: prepared.prompt,
+                    promptHash: this.hashString(prepared.prompt),
+                  }),
+                ).subscribe({
+                  next: (saved) => {
+                    subscriber.next({
+                      type: 'complete',
+                      itineraryId: saved.id,
                     });
-                  }
-                }
+                    subscriber.complete();
+                  },
+                  error: (error: unknown) => {
+                    subscriber.next({
+                      type: 'error',
+                      error: this.toUserFriendlyError(error),
+                    });
+                    subscriber.complete();
+                  },
+                });
+              },
+              error: (error: unknown) => {
+                subscriber.next({
+                  type: 'error',
+                  error: this.toUserFriendlyError(error),
+                });
+                subscriber.complete();
+              },
+            });
+        } catch (error) {
+          subscriber.next({
+            type: 'error',
+            error: this.toUserFriendlyError(error),
+          });
+          subscriber.complete();
+        }
+      })();
+    });
+  }
 
-                return itineraryRecord;
-              });
+  private toUserFriendlyError(error: unknown): string {
+    if (error instanceof ServiceUnavailableException) {
+      return error.message;
+    }
+    if (error instanceof Error) {
+      if (error.message.toLowerCase().includes('timeout')) {
+        return 'Generation timed out. Please try again.';
+      }
+      if (error.message.toLowerCase().includes('parse')) {
+        return 'AI response format was invalid. Please retry generation.';
+      }
+      return error.message;
+    }
+    return 'Failed to generate itinerary. Please try again.';
+  }
 
-              return {
-                type: 'complete' as const,
-                itineraryId: itinerary.id,
-              };
-            }
-            return {
-              type: 'progress' as const,
-              message: event.content || 'Generating...',
-            };
-          }),
-        );
-      }),
-      catchError((err: unknown) => {
-        const message =
-          err instanceof Error ? err.message : 'Generation failed.';
-        const stack = err instanceof Error ? err.stack : undefined;
-        this.logger.error(`Generation failed: ${message}`, stack);
-        return of({ type: 'error' as const, error: message });
-      }),
+  private parseGeneratedItinerary(
+    parsedData: unknown,
+    rawJsonFallback: string,
+  ): GeneratedItinerary {
+    const data =
+      parsedData || (rawJsonFallback ? JSON.parse(rawJsonFallback) : null);
+
+    if (!data) {
+      throw new ServiceUnavailableException('AI response was empty');
+    }
+
+    // If data is an array (our new minimalist schema), wrap it in a GeneratedItinerary object
+    if (Array.isArray(data)) {
+      return {
+        days: data,
+        summary: {},
+        generalTips: [],
+      };
+    }
+
+    if (
+      typeof data === 'object' &&
+      Array.isArray((data as { days?: unknown }).days)
+    ) {
+      return this.mapToGeneratedItinerary(data as GeneratedItineraryResponse);
+    }
+
+    throw new ServiceUnavailableException(
+      'AI response format was invalid. Please retry generation.',
     );
+  }
+
+  private mapToGeneratedItinerary(
+    response: GeneratedItineraryResponse,
+  ): GeneratedItinerary {
+    return {
+      summary: response.summary || {},
+      days: response.days || [],
+      generalTips: response.generalTips || [],
+    };
   }
 }

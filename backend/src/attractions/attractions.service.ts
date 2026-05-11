@@ -11,7 +11,8 @@ import { FormattedPlace } from './types';
 interface GooglePlace {
   place_id: string;
   name: string;
-  formatted_address: string;
+  formatted_address?: string;
+  vicinity?: string;
   geometry: {
     location: {
       lat: number;
@@ -87,6 +88,54 @@ export class AttractionsService {
     const uniqueAttractions = this.removeDuplicates(allAttractions);
 
     return uniqueAttractions.map((attraction) => this.formatPlace(attraction));
+  }
+
+  async getCuratedPlaces(
+    destination: string,
+    travelType: TravelType,
+    days: number,
+  ): Promise<FormattedPlace[]> {
+    const attractionLimit = Math.min(days * 4, 30); // Cap at 30 to avoid huge context
+    const restaurantLimit = Math.min(days * 2, 15);
+
+    this.logger.log(
+      `Fetching curated places for ${destination} (${days} days)`,
+    );
+
+    // Fetch both in parallel
+    const [attractions, restaurants] = await Promise.all([
+      this.getAttractions(destination, travelType),
+      this.searchPlacesByType(destination, 'restaurant'),
+    ]);
+
+    // Sort by "score" (rating * log(user_ratings_total + 1))
+    const scorePlace = (p: { rating?: number; user_ratings_total?: number }) =>
+      (p.rating || 0) * Math.log10((p.user_ratings_total || 0) + 1);
+
+    const curatedAttractions = attractions
+      .sort((a, b) => scorePlace(b) - scorePlace(a))
+      .slice(0, attractionLimit);
+
+    const curatedRestaurants = restaurants
+      .map((r) => this.formatPlace(r))
+      .sort((a, b) => scorePlace(b) - scorePlace(a))
+      .slice(0, restaurantLimit);
+
+    const merged = [...curatedAttractions, ...curatedRestaurants];
+
+    // Deduplicate by place ID
+    const seen = new Set<string>();
+    const result = merged.filter((place) => {
+      if (seen.has(place.id)) return false;
+      seen.add(place.id);
+      return true;
+    });
+
+    this.logger.log(
+      `Curated ${result.length} unique places (from ${merged.length} total)`,
+    );
+
+    return result;
   }
 
   async searchAttractions(
@@ -225,13 +274,16 @@ export class AttractionsService {
     destination: string,
   ): Promise<{ lat: number; lng: number } | null> {
     try {
-      const response = await axios.get(`${this.baseUrl}/geocode/json`, {
-        params: {
-          address: destination,
-          key: this.getApiKeyOrThrow(),
+      const response = await axios.get(
+        'https://maps.googleapis.com/maps/api/geocode/json',
+        {
+          params: {
+            address: destination,
+            key: this.getApiKeyOrThrow(),
+          },
+          timeout: 10000,
         },
-        timeout: 10000,
-      });
+      );
 
       if (response.data.status === 'OK' && response.data.results.length > 0) {
         return response.data.results[0].geometry.location;
@@ -308,7 +360,8 @@ export class AttractionsService {
         lat: place.geometry.location.lat,
         lng: place.geometry.location.lng,
       },
-      address: place.formatted_address,
+      address:
+        place.formatted_address || place.vicinity || 'Address unavailable',
       type: this.categorizeAttraction(place.types),
       rating: place.rating || 0,
       userRatingsTotal: place.user_ratings_total || 0,
@@ -317,8 +370,11 @@ export class AttractionsService {
   }
 
   private generateDescription(place: GooglePlace): string {
-    const types = place.types.join(', ').replace(/_/g, ' ');
-    return `${place.name} is a ${types} located at ${place.formatted_address}.`;
+    const types =
+      (place.types || []).join(', ').replace(/_/g, ' ') || 'establishment';
+    const address =
+      place.formatted_address || place.vicinity || 'address unavailable';
+    return `${place.name} is a ${types} located at ${address}.`;
   }
 
   private categorizeAttraction(types: string[]): string {

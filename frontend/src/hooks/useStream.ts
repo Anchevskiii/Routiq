@@ -48,10 +48,18 @@ export const useStream = <T = unknown, P = unknown>() => {
           if (line.startsWith('data: ')) {
             const jsonString = line.replace('data: ', '')
             try {
-              const data = JSON.parse(jsonString)
+              const data = JSON.parse(jsonString) as {
+                type?: string
+                error?: string
+              }
               
               if (data.type === 'error') {
-                throw new Error(data.error)
+                const message = data.error || 'Unknown stream error'
+                setError(message)
+                options?.onError?.(message)
+                setIsLoading(false)
+                reader.cancel().catch(() => undefined)
+                return
               }
               
               if (data.type === 'complete') {
