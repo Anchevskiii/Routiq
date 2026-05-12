@@ -176,6 +176,7 @@ export class WeatherService {
     // Ensure we have weather for ALL trip days
     // We use the provided startDateStr as the absolute reference point
     const tripStart = new Date(startDateStr);
+    tripStart.setUTCHours(0, 0, 0, 0);
     
     for (let i = 0; i < days; i++) {
       const targetDate = new Date(tripStart);
@@ -186,11 +187,13 @@ export class WeatherService {
       if (!exists) {
         // Find closest existing day or use defaults
         const lastKnown = mappedForecast[mappedForecast.length - 1];
+        // Add some variation for predicted days so they don't look identical
+        const variance = Math.sin(i) * 2;
         mappedForecast.push({
           date: targetDateStr,
           temperature: {
-            min: lastKnown?.temperature.min ?? 15,
-            max: lastKnown?.temperature.max ?? 25,
+            min: Math.round((lastKnown?.temperature.min ?? 15) + variance),
+            max: Math.round((lastKnown?.temperature.max ?? 25) + variance),
           },
           condition: lastKnown?.condition ?? 'Clear',
           humidity: lastKnown?.humidity ?? 50,
@@ -220,29 +223,39 @@ export class WeatherService {
     const start = new Date(startDate);
     const forecast: ForecastDay[] = [];
 
+    // Bases for weather variation
+    const conditions = ['Sunny', 'Partly cloudy', 'Cloudy', 'Light rain', 'Clear'];
+    const baseTemp = 18 + Math.floor(Math.random() * 7); // 18-25 range
+
     for (let i = 0; i < days; i++) {
       const date = new Date(start);
       date.setUTCDate(date.getUTCDate() + i);
+      
+      // Add some deterministic-ish variance based on the day index
+      const dayVariation = Math.sin(i * 0.5) * 3;
+      const min = Math.round(baseTemp - 5 + dayVariation + (Math.random() * 2));
+      const max = Math.round(baseTemp + 2 + dayVariation + (Math.random() * 4));
+      
       forecast.push({
         date: date.toISOString().split('T')[0],
         temperature: {
-          min: 15 + Math.floor(Math.random() * 5),
-          max: 22 + Math.floor(Math.random() * 5),
+          min,
+          max,
         },
-        condition: i % 3 === 0 ? 'Partly cloudy' : 'Sunny',
-        humidity: 50 + Math.floor(Math.random() * 20),
-        windSpeed: 5 + Math.floor(Math.random() * 10),
-        precipitation: Math.random() < 0.2 ? 15 : 0,
+        condition: conditions[(i + Math.floor(Math.random() * conditions.length)) % conditions.length],
+        humidity: 40 + Math.floor(Math.random() * 30),
+        windSpeed: 4 + Math.floor(Math.random() * 12),
+        precipitation: Math.random() < 0.3 ? Math.floor(Math.random() * 20) : 0,
       });
     }
 
     return {
       location: destination,
       current: {
-        temperature: 20,
-        condition: 'Sunny',
-        humidity: 60,
-        windSpeed: 8,
+        temperature: Math.round((forecast[0].temperature.min + forecast[0].temperature.max) / 2),
+        condition: forecast[0].condition,
+        humidity: forecast[0].humidity,
+        windSpeed: forecast[0].windSpeed,
       },
       forecast,
     };

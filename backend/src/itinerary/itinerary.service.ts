@@ -13,14 +13,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
 import { ItineraryGenerationService } from './itinerary-generation.service';
-import { GeneratedItinerary } from './types';
+import { GeneratedDay, GeneratedItinerary } from './types';
 
+import { Prisma } from '@prisma/client';
 import { FormattedPlace } from '../attractions/types';
 
 type ItineraryGenerateStreamEvent =
   | { type: 'status'; message: string }
   | { type: 'attractions'; data: FormattedPlace[] }
-  | { type: 'chunk'; content: string; message: string }
+  | { type: 'day'; data: Prisma.ItineraryDayCreateWithoutItineraryInput }
   | { type: 'complete'; itineraryId: string }
   | { type: 'error'; error: string };
 
@@ -32,7 +33,7 @@ export class ItineraryService {
     private readonly prisma: PrismaService,
     private readonly geminiService: GeminiService,
     private readonly itineraryGenerationService: ItineraryGenerationService,
-  ) {}
+  ) { }
 
   async generateItinerary(
     userId: string,
@@ -261,6 +262,8 @@ export class ItineraryService {
     userId: string,
     createItineraryDto: CreateItineraryDto,
   ): Observable<ItineraryGenerateStreamEvent> {
+    const requestStart = Date.now();
+    this.logger.log(`[PERF] generateStream request received at ${new Date(requestStart).toISOString()}`);
     return new Observable<ItineraryGenerateStreamEvent>((subscriber) => {
       void (async () => {
         try {
@@ -285,38 +288,115 @@ export class ItineraryService {
             message: 'Our AI is now crafting your perfect route...',
           });
 
-          const chunks: string[] = [];
+          const fullDays: GeneratedDay[] = [];
+          let currentBuffer = '';
+          let lastEmittedDay = 0;
 
           this.geminiService
             .streamGenerateObservable(prepared.prompt)
             .subscribe({
               next: (event) => {
                 if (event.type === 'chunk') {
-                  chunks.push(event.content);
-                  subscriber.next({
-                    type: 'chunk',
-                    content: event.content,
-                    message: 'Receiving itinerary details...',
-                  });
+                  currentBuffer += event.content;
+
+                  // Find potential JSON objects in the buffer
+                  // We look for objects starting with { and having a "day" property
+                  let startIndex = currentBuffer.indexOf('{');
+                  while (startIndex !== -1) {
+                    let braceCount = 0;
+                    let endIndex = -1;
+                    let inString = false;
+                    let escapeNext = false;
+
+                    for (let i = startIndex; i < currentBuffer.length; i++) {
+                      const char = currentBuffer[i];
+
+                      if (escapeNext) {
+                        escapeNext = false;
+                        continue;
+                      }
+
+                      if (char === '\\') {
+                        escapeNext = true;
+                        continue;
+                      }
+
+                      if (char === '"') {
+                        inString = !inString;
+                        continue;
+                      }
+
+                      if (!inString) {
+                        if (char === '{') braceCount++;
+                        else if (char === '}') braceCount--;
+
+                        if (braceCount === 0) {
+                          endIndex = i;
+                          break;
+                        }
+                      }
+                    }
+
+                    if (endIndex !== -1) {
+                      const potentialJson = currentBuffer.slice(
+                        startIndex,
+                        endIndex + 1,
+                      );
+                      try {
+                        const dayJson = JSON.parse(potentialJson);
+                        if (dayJson && typeof dayJson.day === 'number') {
+                          if (dayJson.day > lastEmittedDay) {
+                            const dayStart = Date.now();
+                            const enrichedDay =
+                              this.itineraryGenerationService.mapSingleDay(
+                                dayJson,
+                                createItineraryDto.startDate,
+                                prepared.weatherData,
+                                prepared.attractions,
+                              );
+                            this.logger.log(`[PERF] Day ${dayJson.day} processed and emitted after ${Date.now() - requestStart}ms (enrichment took ${Date.now() - dayStart}ms)`);
+
+                            subscriber.next({
+                              type: 'day',
+                              data: enrichedDay,
+                            });
+
+                            fullDays.push(dayJson);
+                            lastEmittedDay = dayJson.day;
+                          }
+                        }
+                      } catch (e) {
+                        // Not a complete day object yet or invalid JSON
+                      }
+                      // Move past this object and continue searching
+                      currentBuffer = currentBuffer.slice(endIndex + 1);
+                      startIndex = currentBuffer.indexOf('{');
+                    } else {
+                      // No closing brace found for the current object, wait for more chunks
+                      break;
+                    }
+                  }
                   return;
                 }
 
-                // When Gemini finishes, we have the full data
-                const generated = this.parseGeneratedItinerary(
-                  event.data,
-                  chunks.join(''),
-                );
-
+                // Final save
                 subscriber.next({
                   type: 'status',
                   message: 'Finalizing and saving your adventure...',
                 });
 
+                const finalGenerated: GeneratedItinerary = {
+                  days: fullDays,
+                  summary: {},
+                  generalTips: [],
+                };
+
+                const persistStart = Date.now();
                 from(
                   this.itineraryGenerationService.persistGeneratedItinerary({
                     userId,
                     createItineraryDto,
-                    generated,
+                    generated: finalGenerated,
                     generationStart: prepared.generationStart,
                     weatherData: prepared.weatherData,
                     attractions: prepared.attractions,
@@ -325,6 +405,7 @@ export class ItineraryService {
                   }),
                 ).subscribe({
                   next: (saved) => {
+                    this.logger.log(`[PERF] Itinerary persisted in ${Date.now() - persistStart}ms. Total generation time: ${Date.now() - requestStart}ms`);
                     subscriber.next({
                       type: 'complete',
                       itineraryId: saved.id,

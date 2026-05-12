@@ -45,16 +45,15 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({ activity, isFirs
               </div>
               
               {activity.placeId && (
-                <a 
-                  href={`https://www.google.com/maps/search/?api=1&query=google_place_id:${activity.placeId}`}
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : ''}&query_place_id=${activity.placeId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-primary transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </a>
-              )}
-            </div>
+              )}            </div>
             
             {activity.description && (
               <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-2">

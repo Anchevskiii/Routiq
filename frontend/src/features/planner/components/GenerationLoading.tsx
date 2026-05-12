@@ -6,7 +6,7 @@ import type { FormattedPlace } from '@/types/attractions.types'
 interface GenerationLoadingProps {
   progress: string
   attractions: FormattedPlace[]
-  streamingText: string
+  generatedDays: any[]
   elapsedTime: number
 }
 
@@ -32,7 +32,7 @@ const QUESTIONS = [
 export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
   progress,
   attractions,
-  streamingText,
+  generatedDays,
   elapsedTime,
 }) => {
   const [factIndex, setFactIndex] = useState(0)
@@ -64,7 +64,7 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Left Column: Distractions */}
+        {/* Left Column: Distractions & Preview */}
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-primary/5 to-secondary/5 rounded-2xl p-6 border border-gray-100 h-48 flex flex-col justify-center relative overflow-hidden">
             <div className="absolute top-4 left-4 text-primary/20">
@@ -91,17 +91,48 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
             </AnimatePresence>
           </div>
 
-          {/* Real-time Streaming Preview */}
-          <div className="bg-gray-900 rounded-2xl p-6 shadow-inner h-64 overflow-hidden relative">
-            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-gray-900 to-transparent z-10" />
-            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-900 to-transparent z-10" />
-            <div className="flex items-center gap-2 mb-4 text-primary">
-              <Sparkles className="w-4 h-4" />
-              <span className="text-xs font-mono uppercase tracking-widest">AI Thought Stream</span>
+          {/* Real-time Itinerary Preview */}
+          <div className="bg-gray-900 rounded-2xl p-6 shadow-inner h-64 overflow-hidden relative flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-primary">
+                <Sparkles className="w-4 h-4" />
+                <span className="text-xs font-mono uppercase tracking-widest">Itinerary Preview</span>
+              </div>
+              <span className="text-[10px] font-mono text-primary/50">
+                {generatedDays.length} days generated
+              </span>
             </div>
-            <div className="font-mono text-sm text-primary/70 leading-relaxed overflow-y-auto h-full pr-2 scrollbar-hide">
-              {streamingText || 'Waiting for AI response...'}
-              <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse" />
+            
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+              <AnimatePresence initial={false}>
+                {generatedDays.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-primary/30 space-y-3">
+                    <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                    <p className="text-xs font-mono animate-pulse">Waiting for AI to structure the route...</p>
+                  </div>
+                ) : (
+                  generatedDays.map((day, idx) => (
+                    <motion.div
+                      key={day.dayNumber || idx}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="border-l-2 border-primary/20 pl-4 py-1"
+                    >
+                      <h4 className="text-primary font-mono text-sm mb-2">
+                        Day {day.dayNumber}: {day.theme}
+                      </h4>
+                      <div className="space-y-1.5">
+                        {day.activities?.create?.map((activity: any, aIdx: number) => (
+                          <div key={aIdx} className="flex items-center gap-2 text-[10px] text-primary/70 font-mono">
+                            <span className="text-primary/40">{activity.startTime || '--:--'}</span>
+                            <span className="truncate">{activity.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

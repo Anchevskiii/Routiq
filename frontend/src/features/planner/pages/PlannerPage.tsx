@@ -14,7 +14,7 @@ import { PlannerForm } from '../components/PlannerForm'
 type ItineraryStreamEvent =
   | { type: 'status'; message: string }
   | { type: 'attractions'; data: FormattedPlace[] }
-  | { type: 'chunk'; content: string; message: string }
+  | { type: 'day'; data: any }
   | { type: 'complete'; itineraryId: string }
   | { type: 'error'; error: string }
 
@@ -24,7 +24,7 @@ export const PlannerPage: React.FC = () => {
 
   const [progress, setProgress] = useState<string>('')
   const [attractions, setAttractions] = useState<FormattedPlace[]>([])
-  const [streamingText, setStreamingText] = useState<string>('')
+  const [generatedDays, setGeneratedDays] = useState<any[]>([])
   const [elapsedTime, setElapsedTime] = useState<number>(0)
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export const PlannerPage: React.FC = () => {
     // Reset states for new generation
     setProgress('')
     setAttractions([])
-    setStreamingText('')
+    setGeneratedDays([])
 
     stream(ITINERARY_ENDPOINTS.GENERATE, payload, {
       onProgress: (data) => {
@@ -65,9 +65,9 @@ export const PlannerPage: React.FC = () => {
           setProgress(data.message)
         } else if (data.type === 'attractions' && data.data) {
           setAttractions(data.data)
-        } else if (data.type === 'chunk' && data.content) {
-          setStreamingText((prev) => prev + data.content)
-          if (data.message) setProgress(data.message)
+        } else if (data.type === 'day' && data.data) {
+          setGeneratedDays((prev) => [...prev, data.data])
+          setProgress(`Generated Day ${data.data.dayNumber}...`)
         }
       },
       onSuccess: (data) => {
@@ -96,7 +96,7 @@ export const PlannerPage: React.FC = () => {
             <GenerationLoading
               progress={progress}
               attractions={attractions}
-              streamingText={streamingText}
+              generatedDays={generatedDays}
               elapsedTime={elapsedTime}
             />
           ) : (

@@ -32,18 +32,21 @@ export class ItineraryGenerationService {
     const { destination, startDate, endDate, days, travelType } =
       createItineraryDto;
     const generationStart = Date.now();
-    const weatherData = await this.weatherService.getForecast(
-      destination,
-      startDate.toISOString(),
-      days,
-    );
+    console.log(`[PERF] prepareGenerationData started at ${new Date(generationStart).toISOString()}`);
 
-    // Use curated fetching for speed and precision
-    const attractions = await this.attractionsService.getCuratedPlaces(
-      destination,
-      travelType,
-      days,
-    );
+    const [weatherData, attractions] = await Promise.all([
+      this.weatherService.getForecast(
+        destination,
+        startDate.toISOString(),
+        days,
+      ),
+      this.attractionsService.getCuratedPlaces(
+        destination,
+        travelType,
+        days,
+      )
+    ]);
+    console.log(`[PERF] Data fetching (parallel) took ${Date.now() - generationStart}ms`);
 
     const prompt = buildItineraryPrompt({
       destination,
@@ -55,6 +58,8 @@ export class ItineraryGenerationService {
       attractions,
       travelTimeContext: '', // Not needed for minimalist prompt
     });
+
+    console.log(`[PERF] prepareGenerationData total took ${Date.now() - generationStart}ms`);
 
     return {
       generationStart,
@@ -130,96 +135,103 @@ export class ItineraryGenerationService {
     });
   }
 
-  private mapDaysForNestedWrite(
+  mapDaysForNestedWrite(
     days: GeneratedDay[],
     tripStartDate: Date,
     weatherData: WeatherData,
     attractions: FormattedPlace[],
   ): Prisma.ItineraryDayCreateWithoutItineraryInput[] {
-    return days.map((day) => {
-      const dayDate = new Date(tripStartDate);
-      dayDate.setUTCDate(dayDate.getUTCDate() + (day.day - 1));
-      const dayDateStr = dayDate.toISOString().split('T')[0];
-      const forecastDay = weatherData.forecast.find(
-        (f) => f.date === dayDateStr,
-      );
+    return days.map((day) =>
+      this.mapSingleDay(day, tripStartDate, weatherData, attractions),
+    );
+  }
 
-      // AI might return activities in a flat list or split between activities/meals
-      const allAiActivities = [
-        ...(day.activities ?? []),
-        ...(day.meals ?? []).map((m) => ({
-          title: m.recommendation || 'Meal',
-          location: m.location,
-          type: 'restaurant',
-          ...m,
-        })),
-      ];
+  mapSingleDay(
+    day: GeneratedDay,
+    tripStartDate: Date,
+    weatherData: WeatherData,
+    attractions: FormattedPlace[],
+  ): Prisma.ItineraryDayCreateWithoutItineraryInput {
+    const dayDate = new Date(tripStartDate);
+    dayDate.setUTCDate(dayDate.getUTCDate() + (day.day - 1));
+    const dayDateStr = dayDate.toISOString().split('T')[0];
+    const forecastDay = weatherData.forecast.find((f) => f.date === dayDateStr);
 
-      let sortOrder = 0;
-      const activityCreates: Prisma.ItineraryActivityCreateWithoutDayInput[] =
-        allAiActivities.map((activity: GeneratedActivity) => {
-          const matchedAttraction = this.findAttractionForActivity(
-            activity.placeId,
-            activity.shortName || activity.title,
-            activity.location,
-            attractions,
-          );
+    // AI might return activities in a flat list or split between activities/meals
+    const allAiActivities = [
+      ...(day.activities ?? []),
+      ...(day.meals ?? []).map((m) => ({
+        title: m.recommendation || 'Meal',
+        location: m.location,
+        type: 'restaurant',
+        ...m,
+      })),
+    ];
 
-          const type =
-            activity.type === 'restaurant' || activity.mealType
-              ? ActivityType.MEAL
-              : ActivityType.ATTRACTION;
+    let sortOrder = 0;
+    const activityCreates: Prisma.ItineraryActivityCreateWithoutDayInput[] =
+      allAiActivities.map((activity: GeneratedActivity) => {
+        const matchedAttraction = this.findAttractionForActivity(
+          activity.placeId,
+          activity.shortName || activity.title,
+          activity.location,
+          attractions,
+        );
 
-          return {
-            activityType: type,
-            sortOrder: sortOrder++,
-            title:
-              activity.shortName ||
-              activity.title ||
-              matchedAttraction?.name ||
-              'Spot',
-            description:
-              activity.description || matchedAttraction?.description || null,
-            location: activity.location || matchedAttraction?.name || null,
-            address: matchedAttraction?.address || null,
-            startTime: activity.time || null,
-            durationMinutes: this.parseDuration(activity.duration) || 90,
-            cost: activity.cost || null,
-            tips: activity.tips || null,
-            latitude:
-              activity.coordinates?.lat ||
-              matchedAttraction?.location.lat ||
-              null,
-            longitude:
-              activity.coordinates?.lng ||
-              matchedAttraction?.location.lng ||
-              null,
-            placeId: activity.placeId || matchedAttraction?.id || null,
-            mealType:
-              activity.mealType ||
-              (type === ActivityType.MEAL ? activity.type : null),
-          };
-        });
+        const type =
+          activity.type === 'restaurant' || activity.mealType
+            ? ActivityType.MEAL
+            : ActivityType.ATTRACTION;
 
-      return {
-        dayNumber: day.day,
-        date: dayDate,
-        theme: day.theme || `Day ${day.day}: Exploration`,
-        activities: { create: activityCreates },
-        weather: {
-          create: {
-            condition:
-              forecastDay?.condition ?? day.weather?.condition ?? 'clear',
-            tempMin: forecastDay?.temperature.min ?? null,
-            tempMax: forecastDay?.temperature.max ?? null,
-            humidity: forecastDay?.humidity ?? null,
-            windSpeed: forecastDay?.windSpeed ?? null,
-            precipitation: forecastDay?.precipitation ?? null,
-            recommendation: day.weather?.recommendations ?? null,
-          },
+        return {
+          activityType: type,
+          sortOrder: sortOrder++,
+          title:
+            activity.shortName ||
+            activity.title ||
+            matchedAttraction?.name ||
+            'Spot',
+          description:
+            activity.description || matchedAttraction?.description || null,
+          location: activity.location || matchedAttraction?.name || null,
+          address: matchedAttraction?.address || null,
+          startTime: activity.time || null,
+          durationMinutes: this.parseDuration(activity.duration) || 90,
+          cost: activity.cost || null,
+          tips: activity.tips || null,
+          latitude:
+            activity.coordinates?.lat ||
+            matchedAttraction?.location.lat ||
+            null,
+          longitude:
+            activity.coordinates?.lng ||
+            matchedAttraction?.location.lng ||
+            null,
+          placeId: activity.placeId || matchedAttraction?.id || null,
+          mealType:
+            activity.mealType ||
+            (type === ActivityType.MEAL ? activity.type : null),
+        };
+      });
+
+    return {
+      dayNumber: day.day,
+      date: dayDate,
+      theme: day.theme || `Day ${day.day}: Exploration`,
+      activities: { create: activityCreates },
+      weather: {
+        create: {
+          condition:
+            forecastDay?.condition ?? day.weather?.condition ?? 'clear',
+          tempMin: forecastDay?.temperature.min ?? null,
+          tempMax: forecastDay?.temperature.max ?? null,
+          humidity: forecastDay?.humidity ?? null,
+          windSpeed: forecastDay?.windSpeed ?? null,
+          precipitation: forecastDay?.precipitation ?? null,
+          recommendation: day.weather?.recommendations ?? null,
         },
-      };
-    });
+      },
+    };
   }
 
   private findAttractionForActivity(
