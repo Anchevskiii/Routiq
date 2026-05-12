@@ -1,5 +1,6 @@
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@/api/supabase'
+import { apiClient } from '@/api/axios'
 import type { LoginDto, RegisterDto, User } from '@/types/auth.types'
 
 const mapSupabaseUser = (user: SupabaseUser): User => ({
@@ -36,10 +37,8 @@ export const authApi = {
   },
 
   async getMe(): Promise<User> {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    if (error) throw error
-    if (!user) throw new Error('No user found')
-    return mapSupabaseUser(user)
+    const response = await apiClient.get<{ data: User }>('/users/profile')
+    return response.data.data
   },
 
   loginWithGoogle(): void {
