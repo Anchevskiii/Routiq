@@ -31,18 +31,6 @@ ${serializedAttractions}
 
 INSTRUCTIONS:
 1. Use ONLY the provided place IDs.
-2. Output STRICT JSON format.
-3. NO descriptions, NO tips, NO markdown code fences, NO prose.
-4. Each day must have 3-5 activities (including 1-2 meals).
-
-OUTPUT SCHEMA (JSON array of objects):
-[
-  { 
-    "day": 1, 
-    "theme": "Exploring the Heart of the City", 
-    "activities": [
-      { "placeId": "string", "time": "HH:MM", "type": "attraction|restaurant" }
-    ] 
-  }
-]`;
+2. NO descriptions, NO tips, NO markdown code fences, NO prose.
+3. Each day must have 3-5 activities (including 1-2 meals).`;
 }

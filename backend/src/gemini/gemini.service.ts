@@ -16,7 +16,7 @@ export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private readonly apiKey: string;
   private readonly baseUrl =
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent';
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent';
   private static readonly STREAM_TIMEOUT_MS = 180_000;
 
   constructor(private readonly configService: AppConfigService) {
@@ -41,6 +41,7 @@ export class GeminiService {
         topP: 0.95,
         maxOutputTokens: 4096,
         responseMimeType: 'application/json',
+        responseSchema: this.getItinerarySchema(),
       },
     };
 
@@ -152,6 +153,7 @@ export class GeminiService {
         topP: 0.95,
         maxOutputTokens: 16384,
         responseMimeType: 'application/json',
+        responseSchema: this.getItinerarySchema(),
       },
     };
 
