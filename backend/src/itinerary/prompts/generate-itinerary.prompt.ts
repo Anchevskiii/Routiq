@@ -32,5 +32,6 @@ ${serializedAttractions}
 INSTRUCTIONS:
 1. Use ONLY the provided place IDs.
 2. NO descriptions, NO tips, NO markdown code fences, NO prose.
-3. Each day must have 3-5 activities (including 1-2 meals).`;
+3. Each day must have at least 3 activities, and at least 1 meal.
+4. Activities should be grouped together based on their location so that travel time between activities is minimized.`;
 }
