@@ -133,6 +133,24 @@ export class GroupsController {
 
   // ─── Voting & Comments ───────────────────────────────────
 
+  @Get(':groupId/itineraries/:groupItineraryId/comments')
+  async getComments(
+    @Param('groupId') groupId: string,
+    @Param('groupItineraryId') groupItineraryId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.getComments(groupId, groupItineraryId, user.sub);
+  }
+
+  @Get(':groupId/itineraries/:groupItineraryId/votes')
+  async getVotes(
+    @Param('groupId') groupId: string,
+    @Param('groupItineraryId') groupItineraryId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.getVotes(groupId, groupItineraryId, user.sub);
+  }
+
   @Post(':groupId/itineraries/:groupItineraryId/vote')
   async voteForActivity(
     @Param('groupId') groupId: string,
