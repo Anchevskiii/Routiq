@@ -19,7 +19,7 @@ export function buildItineraryPrompt(params: PromptParams): string {
   const serializedAttractions = attractions
     .map(
       (attr) =>
-        `- ID: ${attr.id} | Name: ${attr.name} | Type: ${attr.type}`,
+        `- ID: ${attr.id} | Name: ${attr.name} | Type: ${attr.type} | Source: ${attr.sourceType || 'unknown'} | Lat: ${attr.location.lat}, Lng: ${attr.location.lng}`,
     )
     .join('\n');
 
@@ -32,6 +32,10 @@ ${serializedAttractions}
 INSTRUCTIONS:
 1. Use ONLY the provided place IDs.
 2. NO descriptions, NO tips, NO markdown code fences, NO prose.
-3. Each day must have at least 3 activities, and at least 1 meal.
-4. Activities should be grouped together based on their location so that travel time between activities is minimized.`;
+3. For each day, you MUST select EXACTLY 5 places:
+   - 2 places MUST be "mainstream" attractions (source: mainstream).
+   - 2 places MUST be "niche" activities specific to the travel type (source: niche).
+   - Exactly 1 of these 5 places MUST be a highly popular meal/restaurant recommendation (source: dining).
+4. You MUST cluster activities per day based on their geographic location (Lat/Lng) to minimize travel time.
+5. OUTPUT FORMAT: A raw JSON array of day objects. Each day object must have: "day" (number), "theme" (string), and "activities" (array of objects with "placeId", "title", "time", "type").`;
 }

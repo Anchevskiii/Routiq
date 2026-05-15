@@ -15,4 +15,5 @@ export interface FormattedPlace {
   rating: number;
   userRatingsTotal: number;
   photos: string[];
+  sourceType?: 'mainstream' | 'niche' | 'dining';
 }

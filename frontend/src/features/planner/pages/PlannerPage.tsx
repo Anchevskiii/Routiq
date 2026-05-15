@@ -7,6 +7,7 @@ import { ITINERARY_ENDPOINTS } from '@/api/itinerary.api'
 import { ROUTES } from '@/constants/routes'
 import { useStream } from '@/hooks/useStream'
 import type { FormattedPlace } from '@/types/attractions.types'
+import type { StreamingDay } from '@/types/itinerary.types'
 import type { PlannerFormValues } from '../schemas/plannerSchema'
 import { GenerationLoading } from '../components/GenerationLoading'
 import { PlannerForm } from '../components/PlannerForm'
@@ -14,7 +15,7 @@ import { PlannerForm } from '../components/PlannerForm'
 type ItineraryStreamEvent =
   | { type: 'status'; message: string }
   | { type: 'attractions'; data: FormattedPlace[] }
-  | { type: 'day'; data: any }
+  | { type: 'day'; data: StreamingDay }
   | { type: 'complete'; itineraryId: string }
   | { type: 'error'; error: string }
 
@@ -24,7 +25,7 @@ export const PlannerPage: React.FC = () => {
 
   const [progress, setProgress] = useState<string>('')
   const [attractions, setAttractions] = useState<FormattedPlace[]>([])
-  const [generatedDays, setGeneratedDays] = useState<any[]>([])
+  const [generatedDays, setGeneratedDays] = useState<StreamingDay[]>([])
   const [elapsedTime, setElapsedTime] = useState<number>(0)
 
   useEffect(() => {

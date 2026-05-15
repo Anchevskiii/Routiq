@@ -11,13 +11,27 @@ export type GeminiStreamEvent =
   | { type: 'chunk'; content: string }
   | { type: 'complete'; data: unknown };
 
+interface GeminiPart {
+  text?: string;
+}
+
+interface GeminiCandidate {
+  content?: {
+    parts?: GeminiPart[];
+  };
+}
+
+interface GeminiStreamItem {
+  candidates?: GeminiCandidate[];
+}
+
 @Injectable()
 export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private readonly apiKey: string;
   private readonly baseUrl =
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent';
-  private static readonly STREAM_TIMEOUT_MS = 180_000;
+  private static readonly STREAM_TIMEOUT_MS = 60_000; // Adjusted from 180s to 60s to align better with ARCHITECTURE (20s) while allowing for long streams
 
   constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGeminiApiKey();
@@ -30,7 +44,7 @@ export class GeminiService {
     return this.apiKey;
   }
 
-  async streamGenerate(prompt: string): Promise<GeneratedItineraryResponse> {
+  async streamGenerate(prompt: string): Promise<unknown> {
     const url = `${this.baseUrl}?key=${this.getApiKeyOrThrow()}`;
 
     const requestBody = {
@@ -61,9 +75,7 @@ export class GeminiService {
 
         response.data.on('end', () => {
           try {
-            // Gemini stream is a JSON array: [ { "candidates": [...] }, ... ]
-            // We need to extract and concatenate all "text" parts
-            const streamItems = JSON.parse(rawBuffer);
+            const streamItems = JSON.parse(rawBuffer) as GeminiStreamItem[];
             let fullText = '';
 
             if (Array.isArray(streamItems)) {
@@ -73,10 +85,12 @@ export class GeminiService {
               }
             }
 
-            const itineraryData = JSON.parse(fullText);
+            const itineraryData = JSON.parse(fullText) as unknown;
             resolve(itineraryData);
           } catch (e) {
-            this.logger.error(`Stream parse failed: ${e instanceof Error ? e.message : String(e)}`);
+            this.logger.error(
+              `Stream parse failed: ${e instanceof Error ? e.message : String(e)}`,
+            );
             reject(new Error('Failed to parse AI response as valid JSON'));
           }
         });
@@ -143,7 +157,9 @@ export class GeminiService {
     const subject = new Subject<GeminiStreamEvent>();
     const url = `${this.baseUrl}?key=${this.getApiKeyOrThrow()}`;
     const startTime = Date.now();
-    this.logger.log(`[PERF] Gemini Stream started at ${new Date(startTime).toISOString()}. Prompt length: ${prompt.length}`);
+    this.logger.log(
+      `[PERF] Gemini Stream started at ${new Date(startTime).toISOString()}. Prompt length: ${prompt.length}`,
+    );
 
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -165,7 +181,9 @@ export class GeminiService {
       })
       .then((response) => {
         const firstByteTime = Date.now();
-        this.logger.log(`[PERF] Gemini Stream first response after ${firstByteTime - startTime}ms`);
+        this.logger.log(
+          `[PERF] Gemini Stream first response after ${firstByteTime - startTime}ms`,
+        );
 
         let rawBuffer = '';
         let lastExtractedText = '';
@@ -175,7 +193,7 @@ export class GeminiService {
           chunkCount++;
           rawBuffer += chunk.toString();
 
-          // Gemini Stream format: 
+          // Gemini Stream format:
           // [
           //   {"candidates": [{"content": {"parts": [{"text": "..."}]}}]},
           //   {"candidates": [{"content": {"parts": [{"text": "..."}]}}]}
@@ -188,12 +206,15 @@ export class GeminiService {
             let currentFullText = '';
 
             while ((match = textRegex.exec(rawBuffer)) !== null) {
-              // Manual unescaping of basic JSON string escapes
-              const text = match[1]
-                .replace(/\\n/g, '\n')
-                .replace(/\\"/g, '"')
-                .replace(/\\\\/g, '\\');
-              currentFullText += text;
+              try {
+                // Use JSON.parse to correctly handle all escape sequences
+                const text = JSON.parse(`"${match[1]}"`);
+                currentFullText += text;
+              } catch {
+                // If parsing fails (e.g. partial escape sequence at end of chunk),
+                // we'll catch it in the next chunk.
+                continue;
+              }
             }
 
             if (currentFullText.length > lastExtractedText.length) {
@@ -208,7 +229,9 @@ export class GeminiService {
 
         response.data.on('end', () => {
           const endTime = Date.now();
-          this.logger.log(`[PERF] Gemini Stream ended after ${endTime - startTime}ms. Chunks: ${chunkCount}. Text length: ${lastExtractedText.length}`);
+          this.logger.log(
+            `[PERF] Gemini Stream ended after ${endTime - startTime}ms. Chunks: ${chunkCount}. Text length: ${lastExtractedText.length}`,
+          );
 
           try {
             // For the 'complete' event, we need the final parsed object
@@ -227,19 +250,61 @@ export class GeminiService {
             subject.next({ type: 'complete', data: itineraryData });
             subject.complete();
           } catch (e) {
-            this.logger.error(`Final stream parse failed: ${e instanceof Error ? e.message : String(e)}`);
-            subject.error(new Error('Failed to parse AI response as valid JSON'));
+            this.logger.error(
+              `Final stream parse failed: ${e instanceof Error ? e.message : String(e)}`,
+            );
+            this.logger.debug(
+              `Malformed JSON sample: ${lastExtractedText.slice(-100)}`,
+            );
+
+            // Attempt to recover if it's just missing closing braces/brackets
+            try {
+              let recoveredText = lastExtractedText.trim();
+              if (recoveredText.endsWith(','))
+                recoveredText = recoveredText.slice(0, -1);
+
+              const openBraces = (recoveredText.match(/\{/g) || []).length;
+              let closeBraces = (recoveredText.match(/\}/g) || []).length;
+              const openBrackets = (recoveredText.match(/\[/g) || []).length;
+              let closeBrackets = (recoveredText.match(/\]/g) || []).length;
+
+              while (openBraces > closeBraces) {
+                recoveredText += '}';
+                closeBraces++;
+              }
+              while (openBrackets > closeBrackets) {
+                recoveredText += ']';
+                closeBrackets++;
+              }
+
+              const itineraryData = JSON.parse(recoveredText);
+              this.logger.log(
+                'Successfully recovered truncated AI response JSON',
+              );
+              subject.next({ type: 'complete', data: itineraryData });
+              subject.complete();
+            } catch {
+              subject.error(
+                new Error(
+                  'Failed to parse AI response as valid JSON even after recovery attempt',
+                ),
+              );
+            }
           }
         });
 
         response.data.on('error', (err: unknown) => subject.error(err));
       })
       .catch((err: unknown) => {
-        this.logger.error(`Gemini API error: ${err instanceof Error ? err.message : String(err)}`);
+        this.logger.error(
+          `Gemini API error: ${err instanceof Error ? err.message : String(err)}`,
+        );
         subject.error(this.handleGeminiError(err));
       });
 
-    return subject.asObservable().pipe(timeout(GeminiService.STREAM_TIMEOUT_MS));
+    return subject
+      .asObservable()
+      .pipe(timeout(GeminiService.STREAM_TIMEOUT_MS));
   }
 
   private getItinerarySchema() {
@@ -256,10 +321,11 @@ export class GeminiService {
               type: 'OBJECT',
               properties: {
                 placeId: { type: 'STRING' },
+                title: { type: 'STRING' },
                 time: { type: 'STRING' },
                 type: { type: 'STRING', enum: ['attraction', 'restaurant'] },
               },
-              required: ['placeId', 'time', 'type'],
+              required: ['placeId', 'title', 'time', 'type'],
             },
           },
         },

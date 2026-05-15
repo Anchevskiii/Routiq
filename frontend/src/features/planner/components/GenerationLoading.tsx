@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, MapPin, Sparkles, MessageCircle, Info } from 'lucide-react'
 import type { FormattedPlace } from '@/types/attractions.types'
+import type { StreamingDay, StreamingActivity } from '@/types/itinerary.types'
 
 interface GenerationLoadingProps {
   progress: string
   attractions: FormattedPlace[]
-  generatedDays: any[]
+  generatedDays: StreamingDay[]
   elapsedTime: number
 }
 
@@ -122,7 +123,7 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
                         Day {day.dayNumber}: {day.theme}
                       </h4>
                       <div className="space-y-1.5">
-                        {day.activities?.create?.map((activity: any, aIdx: number) => (
+                        {day.activities?.create?.map((activity: StreamingActivity, aIdx: number) => (
                           <div key={aIdx} className="flex items-center gap-2 text-[10px] text-primary/70 font-mono">
                             <span className="text-primary/40">{activity.startTime || '--:--'}</span>
                             <span className="truncate">{activity.title}</span>

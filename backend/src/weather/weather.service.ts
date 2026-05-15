@@ -55,8 +55,9 @@ export class WeatherService {
             destination,
             startDate,
             days,
-          ).catch((err) => {
-            this.logger.warn(`Google Weather API failed: ${err.message}`);
+          ).catch((err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.warn(`Google Weather API failed: ${message}`);
             return null;
           });
         } else {
@@ -154,36 +155,37 @@ export class WeatherService {
     const current = currentRes.data;
     const forecast = forecastRes.data;
 
-    const mappedForecast = ((forecast.forecastDays as GoogleForecastDay[]) || []).map(
-      (d: GoogleForecastDay) => ({
-        date: `${d.displayDate.year}-${String(d.displayDate.month).padStart(
-          2,
-          '0',
-        )}-${String(d.displayDate.day).padStart(2, '0')}`,
-        temperature: {
-          min: d.minTemperature?.degrees ?? 15,
-          max: d.maxTemperature?.degrees ?? 25,
-        },
-        condition:
-          d.daytimeForecast?.weatherCondition?.description?.text ?? 'Clear',
-        humidity: d.daytimeForecast?.relativeHumidity ?? 50,
-        windSpeed: d.daytimeForecast?.wind?.speed?.value ?? 0,
-        precipitation:
-          d.daytimeForecast?.precipitation?.probability?.percent ?? 0,
-      }),
-    );
+    const mappedForecast = (
+      (forecast.forecastDays as GoogleForecastDay[]) || []
+    ).map((d: GoogleForecastDay) => ({
+      date: `${d.displayDate.year}-${String(d.displayDate.month).padStart(
+        2,
+        '0',
+      )}-${String(d.displayDate.day).padStart(2, '0')}`,
+      temperature: {
+        min: Math.round(d.minTemperature?.degrees ?? 15),
+        max: Math.round(d.maxTemperature?.degrees ?? 25),
+      },
+      condition:
+        d.daytimeForecast?.weatherCondition?.description?.text ?? 'Clear',
+      humidity: d.daytimeForecast?.relativeHumidity ?? 50,
+      windSpeed: Math.round(d.daytimeForecast?.wind?.speed?.value ?? 0),
+      precipitation: Math.round(
+        d.daytimeForecast?.precipitation?.probability?.percent ?? 0,
+      ),
+    }));
 
     // Ensure we have weather for ALL trip days
     // We use the provided startDateStr as the absolute reference point
     const tripStart = new Date(startDateStr);
     tripStart.setUTCHours(0, 0, 0, 0);
-    
+
     for (let i = 0; i < days; i++) {
       const targetDate = new Date(tripStart);
       targetDate.setUTCDate(targetDate.getUTCDate() + i);
       const targetDateStr = targetDate.toISOString().split('T')[0];
-      
-      const exists = mappedForecast.some(f => f.date === targetDateStr);
+
+      const exists = mappedForecast.some((f) => f.date === targetDateStr);
       if (!exists) {
         // Find closest existing day or use defaults
         const lastKnown = mappedForecast[mappedForecast.length - 1];
@@ -209,7 +211,7 @@ export class WeatherService {
         temperature: Math.round(current.temperature?.degrees ?? 20),
         condition: current.weatherCondition?.description?.text ?? 'Clear',
         humidity: current.relativeHumidity ?? 50,
-        windSpeed: current.wind?.speed?.value ?? 0,
+        windSpeed: Math.round(current.wind?.speed?.value ?? 0),
       },
       forecast: mappedForecast,
     };
@@ -224,25 +226,35 @@ export class WeatherService {
     const forecast: ForecastDay[] = [];
 
     // Bases for weather variation
-    const conditions = ['Sunny', 'Partly cloudy', 'Cloudy', 'Light rain', 'Clear'];
+    const conditions = [
+      'Sunny',
+      'Partly cloudy',
+      'Cloudy',
+      'Light rain',
+      'Clear',
+    ];
     const baseTemp = 18 + Math.floor(Math.random() * 7); // 18-25 range
 
     for (let i = 0; i < days; i++) {
       const date = new Date(start);
       date.setUTCDate(date.getUTCDate() + i);
-      
+
       // Add some deterministic-ish variance based on the day index
       const dayVariation = Math.sin(i * 0.5) * 3;
-      const min = Math.round(baseTemp - 5 + dayVariation + (Math.random() * 2));
-      const max = Math.round(baseTemp + 2 + dayVariation + (Math.random() * 4));
-      
+      const min = Math.round(baseTemp - 5 + dayVariation + Math.random() * 2);
+      const max = Math.round(baseTemp + 2 + dayVariation + Math.random() * 4);
+
       forecast.push({
         date: date.toISOString().split('T')[0],
         temperature: {
           min,
           max,
         },
-        condition: conditions[(i + Math.floor(Math.random() * conditions.length)) % conditions.length],
+        condition:
+          conditions[
+            (i + Math.floor(Math.random() * conditions.length)) %
+              conditions.length
+          ],
         humidity: 40 + Math.floor(Math.random() * 30),
         windSpeed: 4 + Math.floor(Math.random() * 12),
         precipitation: Math.random() < 0.3 ? Math.floor(Math.random() * 20) : 0,
@@ -252,7 +264,9 @@ export class WeatherService {
     return {
       location: destination,
       current: {
-        temperature: Math.round((forecast[0].temperature.min + forecast[0].temperature.max) / 2),
+        temperature: Math.round(
+          (forecast[0].temperature.min + forecast[0].temperature.max) / 2,
+        ),
         condition: forecast[0].condition,
         humidity: forecast[0].humidity,
         windSpeed: forecast[0].windSpeed,

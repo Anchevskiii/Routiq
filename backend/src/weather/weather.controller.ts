@@ -1,5 +1,4 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { WeatherService } from './weather.service';
 import { WeatherData } from './types';

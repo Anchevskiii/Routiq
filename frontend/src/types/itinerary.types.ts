@@ -61,6 +61,21 @@ export interface Activity {
   priceRange?: string
 }
 
+export interface StreamingActivity {
+  title: string
+  startTime?: string
+  activityType?: ActivityType
+  [key: string]: unknown // Allow for other fields during streaming
+}
+
+export interface StreamingDay {
+  dayNumber: number
+  theme: string
+  activities?: {
+    create: StreamingActivity[]
+  }
+}
+
 export interface WeatherData {
   location: string
   current: {
