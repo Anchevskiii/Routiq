@@ -10,7 +10,7 @@ Routiq is a modern travel planning application that helps users create personali
 - **Backend**: NestJS + TypeScript + Prisma + PostgreSQL (Supabase)
 - **AI**: Google Gemini 2.5 Flash for itinerary generation
 - **Maps**: Google Maps JavaScript SDK + Places API
-- **Weather**: OpenWeather API
+- **Weather**: Google Weather API
 - **Auth**: JWT + Google OAuth
 
 ## 📁 Project Structure
@@ -91,9 +91,9 @@ DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432
 JWT_SECRET="your-super-secret-jwt-key"
 JWT_REFRESH_SECRET="your-super-secret-refresh-key"
 GEMINI_API_KEY="your-gemini-api-key"
-GOOGLE_PLACES_API_KEY="your-google-places-api-key"
-GOOGLE_MAPS_DIRECTIONS_API_KEY="your-google-maps-directions-api-key"
-OPENWEATHER_API_KEY="your-openweather-api-key"
+GOOGLE_PLACES_API_KEY="your-google-api-key"
+GOOGLE_MAPS_DIRECTIONS_API_KEY="your-google-api-key"
+GOOGLE_WEATHER_API_KEY="your-google-api-key"
 GOOGLE_CLIENT_ID="your-google-oauth-client-id"
 GOOGLE_CLIENT_SECRET="your-google-oauth-client-secret"
 FRONTEND_URL="http://localhost:5173"
@@ -215,16 +215,13 @@ npm run type-check  # Type checking
    - Places API
    - Maps JavaScript API
    - Directions API
+   - Weather API (Google Cloud)
 3. Create API keys with appropriate restrictions
-4. Add keys to environment files
+4. Add keys to environment files (same key can be used for all)
 
 #### Gemini AI
 1. Get API key from [Google AI Studio](https://aistudio.google.com)
 2. Add to `backend/.env`
-
-#### OpenWeather
-1. Create account at [OpenWeather](https://openweathermap.org/api)
-2. Get API key and add to `backend/.env`
 
 ## 🧪 Testing
 
