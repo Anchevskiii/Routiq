@@ -15,7 +15,7 @@ The Routiq backend is a RESTful API built with NestJS, providing travel planning
 - **Authentication**: JWT-based auth with refresh tokens, Google OAuth integration
 - **AI Itinerary Generation**: Gemini-powered travel planning with real-time SSE streaming
 - **Travel Management**: CRUD operations for itineraries, groups, and user profiles
-- **External Integrations**: Google Places, OpenWeather, Spotify (optional)
+- **External Integrations**: Google Places, Google Weather API, Spotify (optional)
 - **Export**: ICS calendar file generation
 
 ## Project Structure & Ownership

@@ -3,12 +3,18 @@ import { supabase } from '@/api/supabase'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { Itinerary, CreateItineraryDto } from '@/types/itinerary.types'
 
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+
+export const ITINERARY_ENDPOINTS = {
+  GENERATE: `${BASE_URL}/itinerary/generate`,
+}
+
 export const itineraryApi = {
   async generateItinerary(payload: CreateItineraryDto): Promise<Response> {
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
 
-    return fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/itinerary/generate`, {
+    return fetch(ITINERARY_ENDPOINTS.GENERATE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

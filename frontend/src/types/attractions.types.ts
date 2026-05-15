@@ -1,7 +1,3 @@
-/**
- * Represents a formatted place/attraction from Google Places API
- * This type is exported for use in other modules that depend on attractions data
- */
 export interface FormattedPlace {
   id: string;
   name: string;
@@ -15,5 +11,4 @@ export interface FormattedPlace {
   rating: number;
   userRatingsTotal: number;
   photos: string[];
-  sourceType?: 'mainstream' | 'niche' | 'dining';
 }

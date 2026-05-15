@@ -1,26 +1,21 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerModule } from '@nestjs/throttler';
 import { AttractionsModule } from '../attractions/attractions.module';
+import { ConfigModule as AppConfigModule } from '../config/config.module';
 import { GeminiModule } from '../gemini/gemini.module';
 import { WeatherModule } from '../weather/weather.module';
 import { ItineraryController } from './itinerary.controller';
+import { ItineraryGenerationService } from './itinerary-generation.service';
+import { ItineraryThrottlerGuard } from './guards/itinerary-throttler.guard';
 import { ItineraryService } from './itinerary.service';
 
 @Module({
-  imports: [
-    GeminiModule,
-    AttractionsModule,
-    WeatherModule,
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000, // 1 minute
-        limit: 5, // 5 requests per minute per user for AI generation
-        name: 'itinerary-generate',
-      },
-    ]),
-  ],
+  imports: [GeminiModule, AttractionsModule, AppConfigModule, WeatherModule],
   controllers: [ItineraryController],
-  providers: [ItineraryService],
+  providers: [
+    ItineraryService,
+    ItineraryGenerationService,
+    ItineraryThrottlerGuard,
+  ],
   exports: [ItineraryService],
 })
 export class ItineraryModule {}
