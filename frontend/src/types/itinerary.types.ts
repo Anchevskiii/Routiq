@@ -1,5 +1,11 @@
 import { TravelTypeValue } from '@/constants/travelTypes'
 
+export enum ActivityType {
+  ATTRACTION = 'ATTRACTION',
+  MEAL = 'MEAL',
+  TRANSPORT = 'TRANSPORT',
+}
+
 export interface Itinerary {
   id: string
   userId: string
@@ -7,8 +13,11 @@ export interface Itinerary {
   startDate: string
   endDate: string
   travelType: TravelTypeValue
-  weatherData?: WeatherData
+  totalDays: number
+  bestSeason?: string
+  estimatedBudget?: string
   days: Day[]
+  generalTips?: Array<{ id: string; content: string; sortOrder: number }>
   shareToken?: string
   createdAt: string
   updatedAt: string
@@ -20,42 +29,51 @@ export interface Itinerary {
 }
 
 export interface Day {
-  day: number
+  id: string
+  dayNumber: number
   date: string
-  theme: string
-  weather: {
+  theme?: string
+  weather?: {
     condition: string
-    temperature: string
-    recommendations: string
+    tempMin?: number
+    tempMax?: number
+    recommendation?: string
   }
   activities: Activity[]
-  meals: Meal[]
-  transportation: {
-    method: string
-    estimatedCost: string
-    notes: string
-  }
 }
 
 export interface Activity {
-  time: string
+  id: string
+  activityType: ActivityType
+  sortOrder: number
   title: string
-  description: string
-  location: string
-  duration: string
-  cost: string
-  tips: string
-  coordinates: {
-    lat: number
-    lng: number
-  }
+  description?: string
+  location?: string
+  address?: string
+  startTime?: string
+  durationMinutes?: number
+  cost?: string
+  tips?: string
+  latitude?: number
+  longitude?: number
+  placeId?: string
+  mealType?: string
+  priceRange?: string
 }
 
-export interface Meal {
-  type: 'breakfast' | 'lunch' | 'dinner'
-  recommendation: string
-  location: string
-  priceRange: string
+export interface StreamingActivity {
+  title: string
+  startTime?: string
+  activityType?: ActivityType
+  [key: string]: unknown // Allow for other fields during streaming
+}
+
+export interface StreamingDay {
+  dayNumber: number
+  theme: string
+  activities?: {
+    create: StreamingActivity[]
+  }
 }
 
 export interface WeatherData {

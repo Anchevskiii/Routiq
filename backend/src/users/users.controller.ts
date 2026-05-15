@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { JwtPayload } from '../common/types/jwt-payload.type';
 
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { UsersService } from './users.service';
 
 interface MulterFile {
@@ -42,6 +43,19 @@ export class UsersController {
     return this.usersService.findById(user.sub);
   }
 
+  @Get('settings')
+  async getSettings(@CurrentUser() user: JwtPayload) {
+    return this.usersService.getSettings(user.sub);
+  }
+
+  @Patch('settings')
+  async updateSettings(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateSettingsDto,
+  ) {
+    return this.usersService.updateSettings(user.sub, dto);
+  }
+
   @Patch('profile')
   async updateProfile(
     @CurrentUser() user: JwtPayload,
@@ -56,7 +70,7 @@ export class UsersController {
       limits: {
         fileSize: 5 * 1024 * 1024, // 5MB max
       },
-      fileFilter: (req, file, callback) => {
+      fileFilter: (_req, file, callback) => {
         const allowedTypes = [
           'image/jpeg',
           'image/png',
@@ -90,11 +104,11 @@ export class UsersController {
     )
     file: MulterFile,
   ) {
-    // TODO: Implement file upload to cloud storage (S3, Cloudinary, etc.)
-    // For now, return a mock URL
-    const avatarUrl = `https://example.com/avatars/${file.filename}`;
-
-    return this.usersService.uploadAvatar(user.sub, avatarUrl);
+    return this.usersService.uploadAvatarFile(
+      user.sub,
+      file.buffer!,
+      file.mimetype,
+    );
   }
 
   @Delete('account')

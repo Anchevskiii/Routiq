@@ -19,6 +19,7 @@ interface AuthContextType {
   logout: () => Promise<void>
   loginWithGoogle: () => void
   refreshToken: () => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -96,6 +97,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshToken = useCallback(async () => Promise.resolve(), [])
 
+  const refreshUser = useCallback(async () => {
+    const updatedUser = await authApi.getMe().catch(() => null)
+    setUser(updatedUser)
+  }, [])
+
   const value: AuthContextType = useMemo(
     () => ({
       user,
@@ -106,6 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logout,
       loginWithGoogle: authApi.loginWithGoogle,
       refreshToken,
+      refreshUser,
     }),
     [user, isLoading, login, logout, register, refreshToken]
   )

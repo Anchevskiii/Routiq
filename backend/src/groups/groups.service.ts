@@ -771,6 +771,44 @@ export class GroupsService {
     return comment;
   }
 
+  async getComments(groupId: string, groupItineraryId: string, userId: string) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    return this.prisma.comment.findMany({
+      where: {
+        groupItineraryId,
+        parentId: null,
+        deletedAt: null,
+      },
+      include: {
+        user: { select: { id: true, name: true, avatarUrl: true } },
+        replies: {
+          where: { deletedAt: null },
+          include: {
+            user: { select: { id: true, name: true, avatarUrl: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async getVotes(groupId: string, groupItineraryId: string, userId: string) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    return this.prisma.vote.findMany({
+      where: {
+        groupItineraryId,
+        deletedAt: null,
+      },
+      include: {
+        user: { select: { id: true, name: true, avatarUrl: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   // ─── Activity Log ─────────────────────────────────────────
 
   async getGroupActivityLog(groupId: string, userId: string, limit = 50) {

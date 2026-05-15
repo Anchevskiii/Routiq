@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppConfigService {
+  private readonly logger = new Logger(AppConfigService.name);
+
   constructor(private readonly configService: NestConfigService) {
-    console.log(
-      'AppConfigService initialized. CORS_ORIGIN:',
-      this.configService.get('CORS_ORIGIN'),
+    this.logger.log(
+      `AppConfigService initialized. CORS_ORIGIN: ${this.configService.get('CORS_ORIGIN')}`,
     );
   }
 
@@ -42,8 +43,8 @@ export class AppConfigService {
     return this.get<string>('GOOGLE_MAPS_DIRECTIONS_API_KEY') ?? '';
   }
 
-  getOpenWeatherApiKey(): string {
-    return this.get<string>('OPENWEATHER_API_KEY') ?? '';
+  getGoogleWeatherApiKey(): string {
+    return this.get<string>('GOOGLE_WEATHER_API_KEY') ?? '';
   }
 
   getSpotifyClientId(): string {

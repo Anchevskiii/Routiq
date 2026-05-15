@@ -213,7 +213,7 @@ VITE_API_URL=http://localhost:3000/api
 VITE_GOOGLE_MAPS_API_KEY=your_key_here
 ```
 
-> ⚠️ `VITE_GOOGLE_MAPS_API_KEY` je edini API ključ ki gre na frontend (Maps JS SDK zahteva client-side ključ). Vse ostale ključe (Gemini, OpenWeather, Places, Spotify) **nikoli** ne izpostavljamo na klientu – gredo izključno na backend.
+> ⚠️ `VITE_GOOGLE_MAPS_API_KEY` je edini API ključ ki gre na frontend (Maps JS SDK zahteva client-side ključ). Vse ostale ključe (Gemini, Google Weather, Places, Spotify) **nikoli** ne izpostavljamo na klientu – gredo izključno na backend.
 
 ---
 
@@ -438,7 +438,7 @@ Rules:
 - Tailwind CSS only for styling – no inline styles, no CSS modules.
 - Keep components under ~150 lines. Split if longer.
 - Do not install new packages without team approval.
-- Never expose API keys (Gemini, OpenWeather, Spotify, Places) on the client.
+- Never expose API keys (Gemini, Google Weather, Spotify, Places) on the client.
   Only VITE_GOOGLE_MAPS_API_KEY is allowed on frontend.
 - AI generation uses SSE streaming from backend – never call Gemini directly from FE.
 

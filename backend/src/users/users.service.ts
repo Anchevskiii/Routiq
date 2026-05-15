@@ -2,16 +2,32 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
+
+const DEFAULT_SETTINGS = {
+  groupInvitations: true,
+  comments: true,
+  votes: true,
+  tripReminders: true,
+  publicProfile: true,
+  sharedItineraries: true,
+  activityStatus: true,
+};
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly supabase: SupabaseService,
+  ) {}
 
   async findById(id: string) {
     return this.prisma.user.findUnique({
@@ -51,8 +67,6 @@ export class UsersService {
       where: { id: data.id },
       update: {
         email: data.email,
-        name: data.name || undefined,
-        avatarUrl: data.avatarUrl || undefined,
         lastLoginAt: new Date(),
       },
       create: {
@@ -101,6 +115,60 @@ export class UsersService {
     return updatedUser;
   }
 
+  async getSettings(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { metadata: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    const meta = (user.metadata as Record<string, unknown>) ?? {};
+    return { ...DEFAULT_SETTINGS, ...meta };
+  }
+
+  async updateSettings(userId: string, dto: UpdateSettingsDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { metadata: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    const current = (user.metadata as Record<string, unknown>) ?? {};
+    const updated = { ...current, ...dto };
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { metadata: updated },
+    });
+    return { ...DEFAULT_SETTINGS, ...updated };
+  }
+
+  async uploadAvatarFile(userId: string, buffer: Buffer, mimetype: string): Promise<{ avatarUrl: string }> {
+    const client = this.supabase.getClient();
+    if (!client) {
+      throw new InternalServerErrorException('Storage service unavailable');
+    }
+
+    const ext = mimetype.split('/')[1] ?? 'jpg';
+    const path = `${userId}/avatar.${ext}`;
+
+    const { error } = await client.storage
+      .from('avatars')
+      .upload(path, buffer, { contentType: mimetype, upsert: true });
+
+    if (error) {
+      this.logger.error(`Avatar upload failed: ${error.message}`);
+      throw new InternalServerErrorException('Failed to upload avatar');
+    }
+
+    const { data } = client.storage.from('avatars').getPublicUrl(path);
+    const avatarUrl = data.publicUrl;
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+    });
+
+    return { avatarUrl };
+  }
+
   async uploadAvatar(userId: string, avatarUrl: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -133,12 +201,18 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Soft delete is handled by Prisma extension if configured,
-    // otherwise this will be a hard delete.
-    // In our case, PrismaService has a soft-delete extension.
-    await this.prisma.user.delete({
+    await this.prisma.user.update({
       where: { id: userId },
+      data: {
+        deletedAt: new Date(),
+        email: `deleted_${userId}@deleted.local`,
+      },
     });
+
+    const client = this.supabase.getClient();
+    if (client) {
+      await client.auth.admin.deleteUser(userId);
+    }
 
     return { message: 'Account deleted successfully' };
   }

@@ -16,5 +16,7 @@ node_modules/
 .idea/
 .DS_Store
 
+# agents + rules
 .agents
+
 GEMINI.md

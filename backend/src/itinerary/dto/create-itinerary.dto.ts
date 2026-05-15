@@ -9,7 +9,41 @@ import {
   Max,
   Min,
   MinLength,
+  ValidationArguments,
+  ValidationOptions,
+  registerDecorator,
 } from 'class-validator';
+
+function IsAfterProperty(
+  propertyName: keyof CreateItineraryDto,
+  validationOptions?: ValidationOptions,
+) {
+  return (object: object, property: string) => {
+    registerDecorator({
+      name: 'isAfterProperty',
+      target: object.constructor,
+      propertyName: property,
+      constraints: [propertyName],
+      options: validationOptions,
+      validator: {
+        validate(value: unknown, args: ValidationArguments) {
+          const [relatedPropertyName] = args.constraints as [
+            keyof CreateItineraryDto,
+          ];
+          const relatedValue = (args.object as Record<string, unknown>)[
+            relatedPropertyName as string
+          ];
+
+          if (!(value instanceof Date) || !(relatedValue instanceof Date)) {
+            return false;
+          }
+
+          return value.getTime() > relatedValue.getTime();
+        },
+      },
+    });
+  };
+}
 
 export class CreateItineraryDto {
   @ApiProperty({
@@ -39,6 +73,9 @@ export class CreateItineraryDto {
   })
   @IsDate()
   @Type(() => Date)
+  @IsAfterProperty('startDate', {
+    message: 'endDate must be after startDate',
+  })
   endDate!: Date;
 
   @ApiProperty({

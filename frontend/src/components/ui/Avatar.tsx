@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 interface AvatarProps {
   src?: string
@@ -7,12 +7,14 @@ interface AvatarProps {
   className?: string
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ 
-  src, 
-  alt, 
-  size = 'md', 
-  className = '' 
+export const Avatar: React.FC<AvatarProps> = ({
+  src,
+  alt,
+  size = 'md',
+  className = '',
 }) => {
+  const [imgError, setImgError] = useState(false)
+
   const sizeClasses = {
     xs: 'h-6 w-6 text-xs',
     sm: 'h-8 w-8 text-sm',
@@ -21,21 +23,16 @@ export const Avatar: React.FC<AvatarProps> = ({
     xl: 'h-16 w-16 text-xl',
   }
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
+  const getInitials = (name: string) =>
+    name.split(' ').map(w => w.charAt(0)).join('').toUpperCase().slice(0, 2)
 
-  if (src) {
+  if (src && !imgError) {
     return (
       <img
         src={src}
         alt={alt || 'Avatar'}
         className={`${sizeClasses[size]} rounded-full object-cover ${className}`}
+        onError={() => setImgError(true)}
       />
     )
   }
@@ -50,11 +47,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 }
 
 const UserIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    className={className}
-    fill="currentColor"
-    viewBox="0 0 20 20"
-  >
+  <svg className={className} fill="currentColor" viewBox="0 0 20 20">
     <path
       fillRule="evenodd"
       d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
