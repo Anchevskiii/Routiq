@@ -60,18 +60,18 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
           <Clock className="w-5 h-5 animate-pulse" />
           <span>{elapsedTime}s</span>
         </div>
-        <h3 className="text-2xl font-bold text-gray-900">Crafting Your Adventure</h3>
-        <p className="text-gray-600 animate-pulse">{progress || 'Preparing your itinerary...'}</p>
+        <h3 className="text-2xl font-bold text-ink">Crafting Your Adventure</h3>
+        <p className="text-ink-dim animate-pulse">{progress || 'Preparing your itinerary...'}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left Column: Distractions & Preview */}
         <div className="space-y-6">
-          <div className="bg-gradient-to-br from-primary/5 to-secondary/5 rounded-2xl p-6 border border-gray-100 h-48 flex flex-col justify-center relative overflow-hidden">
+          <div className="bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-2xl p-6 border border-line h-48 flex flex-col justify-center relative overflow-hidden">
             <div className="absolute top-4 left-4 text-primary/20">
               {factIndex % 2 === 0 ? <Info className="w-8 h-8" /> : <MessageCircle className="w-8 h-8" />}
             </div>
-            
+
             <AnimatePresence mode="wait">
               {showFact && (
                 <motion.div
@@ -84,7 +84,7 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
                   <span className="text-xs font-bold uppercase tracking-wider text-primary mb-2 block">
                     {factIndex % 2 === 0 ? 'Travel Fun Fact' : 'A Question For You'}
                   </span>
-                  <p className="text-gray-800 text-lg font-medium leading-relaxed">
+                  <p className="text-ink text-lg font-medium leading-relaxed">
                     {factIndex % 2 === 0 ? FUN_FACTS[factIndex] : QUESTIONS[questionIndex]}
                   </p>
                 </motion.div>
@@ -103,7 +103,7 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
                 {generatedDays.length} days generated
               </span>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
               <AnimatePresence initial={false}>
                 {generatedDays.length === 0 ? (
@@ -139,21 +139,21 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
         </div>
 
         {/* Right Column: Attractions Discovered */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-50 flex items-center justify-between">
-            <div className="flex items-center gap-2 font-semibold text-gray-900">
+        <div className="bg-white dark:bg-[#1e1b38] rounded-2xl border border-line shadow-sm overflow-hidden flex flex-col">
+          <div className="p-4 border-b border-line flex items-center justify-between">
+            <div className="flex items-center gap-2 font-semibold text-ink">
               <MapPin className="w-5 h-5 text-red-500" />
               <span>Spots Discovered</span>
             </div>
-            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
+            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-ink-dim text-xs px-2 py-1 rounded-full">
               {attractions.length} found
             </span>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto max-h-[420px] p-4 space-y-3 custom-scrollbar">
             <AnimatePresence initial={false}>
               {attractions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2 opacity-50">
+                <div className="flex flex-col items-center justify-center h-full text-ink-faint space-y-2 opacity-50">
                   <MapPin className="w-12 h-12" />
                   <p className="text-sm italic">Scanning local highlights...</p>
                 </div>
@@ -163,22 +163,22 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
                     key={place.id || idx}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-primary/20 transition-colors"
+                    className="flex gap-3 p-3 bg-gray-50 dark:bg-[#16142e] rounded-xl border border-line hover:border-primary/20 transition-colors"
                   >
                     {place.photos?.[0] ? (
                       <img
                         src={place.photos[0]}
                         alt={place.name}
-                        className="w-16 h-16 rounded-lg object-cover bg-gray-200"
+                        className="w-16 h-16 rounded-lg object-cover bg-gray-200 dark:bg-[#2a2650]"
                       />
                     ) : (
-                      <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400">
+                      <div className="w-16 h-16 rounded-lg bg-gray-200 dark:bg-[#2a2650] flex items-center justify-center text-ink-faint">
                         <MapPin className="w-6 h-6" />
                       </div>
                     )}
                     <div className="min-w-0">
-                      <h4 className="font-semibold text-gray-900 text-sm truncate">{place.name}</h4>
-                      <p className="text-xs text-gray-500 line-clamp-2">{place.description || place.address}</p>
+                      <h4 className="font-semibold text-ink text-sm truncate">{place.name}</h4>
+                      <p className="text-xs text-ink-dim line-clamp-2">{place.description || place.address}</p>
                     </div>
                   </motion.div>
                 ))

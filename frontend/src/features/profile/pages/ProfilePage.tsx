@@ -6,8 +6,9 @@ import { itineraryApi } from '@/api/itinerary.api'
 import { groupsApi } from '@/api/groups.api'
 import { supabase } from '@/api/supabase'
 import toast from 'react-hot-toast'
+import { MapPin, Users } from 'lucide-react'
+import { Avatar } from '@/components/ui/Avatar'
 
-import { ProfileStats } from '../components/ProfileStats'
 import { ProfileNav, type Section } from '../components/ProfileNav'
 import { GeneralSection, type ProfileFormValues } from '../components/GeneralSection'
 import { SecuritySection, type PasswordFormValues } from '../components/SecuritySection'
@@ -80,22 +81,50 @@ export const ProfilePage: React.FC = () => {
 
   if (!user) return null
 
+  const itineraryCount = itinerariesData?.meta?.total ?? 0
+  const groupCount = Array.isArray(groupsData?.data) ? groupsData.data.length : 0
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-10">
-        <h1 className="text-3xl font-extrabold text-gray-900">Account Settings</h1>
-        <p className="text-gray-500 mt-2">Manage your profile, preferences and security settings.</p>
+
+      {/* Hero header */}
+      <div className="relative rounded-[22px] overflow-hidden mb-8 border border-line shadow-card">
+        <div className="h-24 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600" />
+        <div className="bg-white dark:bg-[#1e1b38] px-6 pb-5">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-10">
+            <div className="flex items-end gap-4">
+              <div className="w-20 h-20 rounded-[18px] overflow-hidden border-4 border-white dark:border-[#1e1b38] shadow-lg shrink-0">
+                <Avatar src={user.avatarUrl} alt={user.name} size="xl" className="w-full h-full" />
+              </div>
+              <div className="pb-1">
+                <h1 className="text-xl font-semibold tracking-tight text-ink leading-tight">{user.name}</h1>
+                <p className="text-sm text-ink-faint font-mono">{user.email}</p>
+              </div>
+            </div>
+            <div className="flex gap-4 pb-1">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500">
+                  <MapPin className="w-3.5 h-3.5" />
+                </span>
+                <span className="font-semibold text-ink">{itineraryCount}</span>
+                <span className="text-ink-faint text-xs">trips</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/30 text-violet-500">
+                  <Users className="w-3.5 h-3.5" />
+                </span>
+                <span className="font-semibold text-ink">{groupCount}</span>
+                <span className="text-ink-faint text-xs">groups</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <ProfileStats
-        itineraryCount={itinerariesData?.meta?.total ?? 0}
-        groupCount={Array.isArray(groupsData?.data) ? groupsData.data.length : 0}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
         <ProfileNav active={activeSection} onSelect={setActiveSection} onLogout={logout} />
 
-        <div className="md:col-span-2 space-y-8">
+        <div className="space-y-5">
           {activeSection === 'general' && (
             <GeneralSection
               user={user}

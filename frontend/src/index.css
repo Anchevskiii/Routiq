@@ -24,11 +24,23 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    /* surface tokens */
+    --surface:    #ffffff;
+    --surface-2:  #f8f7ff;
+    /* ink tokens */
+    --ink:        #14122b;
+    --ink-dim:    #6b6892;
+    --ink-faint:  #9b98be;
+    /* line tokens */
+    --line:        rgba(20,22,50,0.07);
+    --line-strong: rgba(20,22,50,0.12);
+    /* accent glow */
+    --accent-glow: rgba(99,102,241,0.35);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 240 18% 8%;
+    --foreground: 240 10% 94%;
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
@@ -89,6 +101,25 @@
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
+  }
+
+  /* Aurora dark-mode surface tokens */
+  .dark {
+    --surface:         #16142e;
+    --surface-2:       #1e1b38;
+    --aurora-surface:  #16142e;
+    --aurora-surface2: #1e1b38;
+    --aurora-bg:       #0c0b1a;
+    --aurora-ink:      #e8e6ff;
+    --aurora-ink-dim:  #a8a4d8;
+    --aurora-ink-mute: #6e6a9e;
+    --aurora-border:   rgba(139,92,246,0.22);
+    --line:            rgba(139,92,246,0.18);
+    --line-strong:     rgba(139,92,246,0.30);
+    --ink:             #e8e6ff;
+    --ink-dim:         #a8a4d8;
+    --ink-faint:       #6e6a9e;
+    --accent-glow:     rgba(139,92,246,0.45);
   }
 
   /* Loading animations */
@@ -170,5 +201,33 @@
 
   .alert-destructive {
     @apply border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive;
+  }
+}
+
+@layer utilities {
+  /* dark-mode token overrides */
+  .dark .text-ink       { color: #e8e6ff; }
+  .dark .text-ink-dim   { color: #a8a4d8; }
+  .dark .text-ink-faint { color: #6e6a9e; }
+  .dark .border-line        { border-color: rgba(139,92,246,0.18); }
+  .dark .border-line-strong { border-color: rgba(139,92,246,0.30); }
+  .dark input[type="date"] { color-scheme: dark; color: #e8e6ff; }
+
+  /* aurora gradient utilities — replaces inline style={{ background }} */
+  .gradient-aurora      { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+  .gradient-aurora-v    { background: linear-gradient(180deg, #6366f1, #8b5cf6); }
+  .gradient-aurora-soft { background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(139,92,246,0.10)); }
+  .gradient-aurora-text {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  /* TripPreview sky hero — 3-layer gradient too complex for Tailwind arbitrary */
+  .trip-hero-bg {
+    background:
+      radial-gradient(ellipse 80% 100% at 100% 100%, rgba(186,230,255,0.45), transparent 60%),
+      radial-gradient(ellipse 70% 80% at 20% 0%,    rgba(125,211,252,0.40), transparent 60%),
+      linear-gradient(135deg, #7dd3fc 0%, #38bdf8 45%, #0ea5e9 100%);
   }
 }

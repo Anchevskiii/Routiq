@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { App } from '@/app/App'
+import { ThemeProvider } from '@/hooks/useTheme'
 import './index.css'
+import './styles/planner.css'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -22,6 +24,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
       <App />
       <Toaster
         position="top-right"
@@ -47,6 +50,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           },
         }}
       />
+      </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 )

@@ -16,7 +16,7 @@ export const GroupsPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Travel Groups</h1>
           <p className="text-gray-600 mt-1">
@@ -95,14 +95,14 @@ const GroupCard: React.FC<{ group: Group }> = ({ group }) => {
           )}
         </div>
       </div>
-      
+
       <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors mb-2">
         {group.name}
       </h3>
       <p className="text-gray-500 text-sm mb-6 line-clamp-2">
         {group.description || 'No description provided for this group.'}
       </p>
-      
+
       <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
         <div className="flex items-center text-xs text-gray-400 font-medium">
           <Shield className="w-3.5 h-3.5 mr-1" />
@@ -115,4 +115,3 @@ const GroupCard: React.FC<{ group: Group }> = ({ group }) => {
     </Link>
   )
 }
-

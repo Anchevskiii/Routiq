@@ -9,6 +9,7 @@ import { Day } from '@/types/itinerary.types'
 import { DayCard } from '../components/DayCard'
 import { ItineraryHeader } from '../components/ItineraryHeader'
 import { TripIntelligenceSidebar } from '../components/TripIntelligenceSidebar'
+import { ItineraryMap } from '../components/ItineraryMap'
 
 export const ItineraryPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -23,15 +24,15 @@ export const ItineraryPage: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="animate-pulse space-y-8">
-          <div className="h-48 bg-gray-100 rounded-[2rem]" />
+          <div className="h-48 bg-gray-100 dark:bg-slate-800 rounded-[2rem]" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-40 bg-gray-50 rounded-3xl" />
+                <div key={i} className="h-40 bg-gray-50 dark:bg-slate-800/50 rounded-3xl" />
               ))}
             </div>
             <div className="space-y-6">
-              <div className="h-96 bg-gray-50 rounded-3xl" />
+              <div className="h-96 bg-gray-50 dark:bg-slate-800/50 rounded-3xl" />
             </div>
           </div>
         </div>
@@ -64,7 +65,7 @@ export const ItineraryPage: React.FC = () => {
         {/* Main Content: Days */}
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+            <h2 className="text-2xl font-black text-gray-900 dark:text-indigo-100 tracking-tight flex items-center gap-3">
               <Compass className="w-7 h-7 text-primary" />
               Daily Route
             </h2>
@@ -84,8 +85,11 @@ export const ItineraryPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Sidebar: Summary & Info */}
-        <TripIntelligenceSidebar itinerary={itinerary} />
+        {/* Sidebar: Map + Summary */}
+        <div className="flex flex-col gap-6">
+          <ItineraryMap days={itinerary.days ?? []} destination={itinerary.destination} />
+          <TripIntelligenceSidebar itinerary={itinerary} />
+        </div>
       </div>
     </div>
   )

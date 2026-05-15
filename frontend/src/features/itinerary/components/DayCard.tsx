@@ -24,23 +24,23 @@ export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = fal
   };
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6 transition-all">
+    <div className="bg-white dark:bg-[#16142e] rounded-3xl shadow-sm border border-gray-100 dark:border-indigo-500/10 overflow-hidden mb-6 transition-all">
       {/* Header */}
-      <button 
+      <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-8 py-6 flex items-center justify-between bg-gray-50/30 hover:bg-gray-50/60 transition-colors border-b border-gray-100"
+        className="w-full px-8 py-6 flex items-center justify-between bg-gray-50/30 dark:bg-slate-800/20 hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors border-b border-gray-100 dark:border-indigo-500/10"
       >
         <div className="flex items-center gap-6">
-          <div className="w-14 h-14 rounded-2xl bg-white border border-gray-100 shadow-sm flex flex-col items-center justify-center">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Day</span>
+          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-[#1e1b38] border border-gray-100 dark:border-indigo-500/20 shadow-sm flex flex-col items-center justify-center">
+            <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-tighter">Day</span>
             <span className="text-xl font-black text-primary leading-none">{day.dayNumber}</span>
           </div>
-          
+
           <div className="text-left">
-            <h3 className="text-lg font-bold text-gray-900 leading-tight">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-indigo-100 leading-tight">
               {day.theme || `Day ${day.dayNumber}: Exploration`}
             </h3>
-            <p className="text-sm text-gray-500 font-medium">
+            <p className="text-sm text-gray-500 dark:text-slate-500 font-medium">
               {format(new Date(day.date), 'EEEE, MMMM do')}
             </p>
           </div>
@@ -48,16 +48,16 @@ export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = fal
 
         <div className="flex items-center gap-4">
           {day.weather && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-gray-100 shadow-xs">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#1e1b38] border border-gray-100 dark:border-indigo-500/20 shadow-xs">
               {getWeatherIcon(day.weather.condition)}
-              <span className="text-xs font-bold text-gray-700">
-                {day.weather.tempMax !== null && day.weather.tempMax !== undefined 
-                  ? `${day.weather.tempMax}°C` 
+              <span className="text-xs font-bold text-gray-700 dark:text-slate-300">
+                {day.weather.tempMax !== null && day.weather.tempMax !== undefined
+                  ? `${day.weather.tempMax}°C`
                   : '--°C'}
               </span>
             </div>
           )}
-          <div className="p-2 rounded-full bg-gray-100/50 text-gray-400">
+          <div className="p-2 rounded-full bg-gray-100/50 dark:bg-slate-700/30 text-gray-400 dark:text-slate-500">
             {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </div>
         </div>
@@ -68,15 +68,15 @@ export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = fal
         <div className="p-8 space-y-2">
           {day.activities && day.activities.length > 0 ? (
             day.activities.map((activity: Activity, index: number) => (
-              <AttractionCard 
-                key={`${activity.id || index}-${index}`} 
-                activity={activity} 
-                isFirst={index === 0} 
+              <AttractionCard
+                key={`${activity.id || index}-${index}`}
+                activity={activity}
+                isFirst={index === 0}
               />
             ))
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-              <p className="text-gray-400 text-sm font-medium">No activities planned for this day.</p>
+            <div className="text-center py-12 bg-gray-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
+              <p className="text-gray-400 dark:text-slate-500 text-sm font-medium">No activities planned for this day.</p>
             </div>
           )}
         </div>
