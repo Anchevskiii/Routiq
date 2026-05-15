@@ -8,7 +8,7 @@ interface TripIntelligenceSidebarProps {
 
 export const TripIntelligenceSidebar: React.FC<TripIntelligenceSidebarProps> = ({ itinerary }) => {
   return (
-    <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 p-8 sticky top-8">
+    <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
       <h3 className="text-xl font-black text-gray-900 mb-8 tracking-tight">Trip Intelligence</h3>
       
       <div className="space-y-8">

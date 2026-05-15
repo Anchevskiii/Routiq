@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Info, Compass } from 'lucide-react'
@@ -9,6 +9,7 @@ import { Day } from '@/types/itinerary.types'
 import { DayCard } from '../components/DayCard'
 import { ItineraryHeader } from '../components/ItineraryHeader'
 import { TripIntelligenceSidebar } from '../components/TripIntelligenceSidebar'
+import { ItineraryMap } from '../components/ItineraryMap'
 
 export const ItineraryPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -18,6 +19,24 @@ export const ItineraryPage: React.FC = () => {
     queryFn: () => itineraryApi.getItinerary(id!),
     enabled: !!id,
   })
+
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null)
+
+  // Initialize selectedDayId to the first day if not set or if itinerary changes
+  React.useEffect(() => {
+    if (itinerary?.days && itinerary.days.length > 0) {
+      const hasSelectedDay = itinerary.days.some((d: Day) => d.id === selectedDayId);
+      if (!hasSelectedDay) {
+        setSelectedDayId(itinerary.days[0].id);
+      }
+    }
+  }, [itinerary, selectedDayId]);
+
+  const mapActivities = useMemo(() => {
+    if (!itinerary?.days || !selectedDayId) return [];
+    const day = itinerary.days.find((d: Day) => d.id === selectedDayId);
+    return day?.activities || [];
+  }, [itinerary, selectedDayId]);
 
   if (isLoading) {
     return (
@@ -79,13 +98,20 @@ export const ItineraryPage: React.FC = () => {
                 key={day.id} 
                 day={day} 
                 isInitiallyExpanded={index === 0} 
+                isActive={selectedDayId === day.id}
+                onSelect={(dayId) => setSelectedDayId(dayId)}
               />
             ))}
           </div>
         </div>
 
-        {/* Sidebar: Summary & Info */}
-        <TripIntelligenceSidebar itinerary={itinerary} />
+        {/* Sidebar: Map & Summary */}
+        <div className="lg:sticky lg:top-8 space-y-8 h-fit self-start">
+          <div className="h-[400px] z-10">
+            <ItineraryMap activities={mapActivities} />
+          </div>
+          <TripIntelligenceSidebar itinerary={itinerary} />
+        </div>
       </div>
     </div>
   )

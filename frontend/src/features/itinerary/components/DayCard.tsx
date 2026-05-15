@@ -7,9 +7,11 @@ import { AttractionCard } from './AttractionCard';
 interface DayCardProps {
   day: Day;
   isInitiallyExpanded?: boolean;
+  isActive?: boolean;
+  onSelect?: (dayId: string) => void;
 }
 
-export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = false }) => {
+export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = false, isActive = false, onSelect }) => {
   const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded);
 
   const getWeatherIcon = (condition: string) => {
@@ -24,10 +26,13 @@ export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = fal
   };
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6 transition-all">
+    <div className={`bg-white rounded-3xl shadow-sm border overflow-hidden mb-6 transition-all ${isActive ? 'border-primary ring-2 ring-primary/20' : 'border-gray-100'}`}>
       {/* Header */}
       <button 
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => {
+          setIsExpanded(!isExpanded);
+          if (!isExpanded && onSelect) onSelect(day.id);
+        }}
         className="w-full px-8 py-6 flex items-center justify-between bg-gray-50/30 hover:bg-gray-50/60 transition-colors border-b border-gray-100"
       >
         <div className="flex items-center gap-6">
