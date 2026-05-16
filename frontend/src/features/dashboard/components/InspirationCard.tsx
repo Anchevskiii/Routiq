@@ -3,9 +3,9 @@ import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 
 const CARDS = [
-  { city: 'Santorini', tag: 'Romantično', palette: ['#f59e0b', '#ec4899'], price: 'od 450 €' },
-  { city: 'Dubrovnik', tag: 'Obala',      palette: ['#0ea5e9', '#6366f1'], price: 'od 280 €' },
-  { city: 'Praga',     tag: 'Kulturno',   palette: ['#10b981', '#0ea5e9'], price: 'od 190 €' },
+  { city: 'Santorini', tag: 'Romantic', palette: ['#f59e0b', '#ec4899'], price: 'from €450' },
+  { city: 'Dubrovnik', tag: 'Coastal',      palette: ['#0ea5e9', '#6366f1'], price: 'from €280' },
+  { city: 'Prague',     tag: 'Cultural',   palette: ['#10b981', '#0ea5e9'], price: 'from €190' },
 ]
 
 export const InspirationCard: React.FC = () => {

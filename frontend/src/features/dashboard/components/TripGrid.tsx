@@ -10,10 +10,10 @@ import type { Itinerary } from '@/types/itinerary.types'
 type Tab = 'all' | 'planning' | 'confirmed' | 'past'
 
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'all',       label: 'Vse'         },
-  { value: 'planning',  label: 'Načrtovanje' },
-  { value: 'confirmed', label: 'Potrjeno'    },
-  { value: 'past',      label: 'Pretekla'    },
+  { value: 'all',       label: 'All'         },
+  { value: 'planning',  label: 'Planning' },
+  { value: 'confirmed', label: 'Confirmed'    },
+  { value: 'past',      label: 'Past'    },
 ]
 
 interface Props {
@@ -37,7 +37,7 @@ export const TripGrid: React.FC<Props> = ({ itineraries, isLoading }) => {
   return (
     <motion.section>
       <div className="flex items-center justify-between mb-3.5">
-        <h2 className="text-base font-bold text-indigo-950 dark:text-indigo-100">Tvoja potovanja</h2>
+        <h2 className="text-base font-bold text-indigo-950 dark:text-indigo-100">Your trips</h2>
         <div className="flex items-center gap-1">
           {TABS.map(t => (
             <button
@@ -94,8 +94,8 @@ const EmptyTrips: React.FC = () => (
       >
         ✈️
       </motion.div>
-      <p className="font-bold text-sm mb-1 text-indigo-950 dark:text-indigo-100">Ni potovanj</p>
-      <p className="text-xs text-slate-400 dark:text-slate-500">Klikni za planiranje prve poti</p>
+      <p className="font-bold text-sm mb-1 text-indigo-950 dark:text-indigo-100">No trips yet</p>
+      <p className="text-xs text-slate-400 dark:text-slate-500">Click to plan your first trip</p>
     </motion.div>
   </Link>
 )

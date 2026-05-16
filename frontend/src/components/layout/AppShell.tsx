@@ -17,17 +17,16 @@ export const AppShell: React.FC = () => {
   useEffect(() => {
     if (!isInitialAnim.current) return
     sessionStorage.removeItem('routiq_google_login')
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-slate-100 via-indigo-50 to-sky-50 dark:from-[#0c0b1a] dark:via-[#0f0e22] dark:to-[#0c0b1a]">
+    <div className="h-screen overflow-hidden flex bg-gradient-to-br from-slate-100 via-indigo-50 to-sky-50 dark:from-[#0c0b1a] dark:via-[#0f0e22] dark:to-[#0c0b1a]">
       <div className="hidden lg:flex flex-shrink-0">
         <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       </div>
       <div className="flex-1 min-w-0 pb-20 lg:pb-0 flex flex-col overflow-y-auto">
         <DashboardTopbar />
-        <div className="flex-1">
+        <div className="flex-1 min-h-0">
           <Outlet />
         </div>
       </div>

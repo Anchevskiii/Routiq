@@ -58,7 +58,7 @@ export function DateField({ id, num, label, focused, filled, onFocus, onBlur, re
           {...reg}
           onFocus={onFocus}
           onBlur={onBlur}
-          className="w-full bg-transparent border-none outline-none text-ink text-[15px] font-mono font-medium py-[18px] pl-[50px] pr-5 tracking-wide"
+          className="w-full bg-transparent border-none outline-none text-ink text-[15px] font-mono font-medium py-[18px] pl-[50px] pr-5 tracking-wide cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-4 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:h-5 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
         />
       </FieldShell>
     </div>

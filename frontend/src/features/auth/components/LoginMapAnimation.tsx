@@ -60,7 +60,7 @@ export const LoginMapAnimation: React.FC<Props> = ({ name, onEnd }) => {
   return (
     <div className="relative w-full h-full overflow-hidden bg-white dark:bg-[#0c0b1a]">
       {/* Headline */}
-      <div className="lm-fade-up-hero absolute left-1/2 top-[8%] -translate-x-1/2 text-center z-10">
+      <div className="lm-fade-up-hero absolute left-1/2 top-[8%] -translate-x-1/2 text-center z-10 dark:bg-[rgba(12,11,26,0.55)] dark:backdrop-blur-sm dark:rounded-2xl dark:px-6 dark:py-4">
         <div className="text-xs font-medium tracking-[0.16em] uppercase text-ink-dim mb-2.5">
           <span className="lm-blink inline-block w-1.5 h-1.5 bg-red-500 rounded-full mr-2 shadow-[0_0_8px_rgba(239,68,68,.6)]"/>
           Preparing your dashboard

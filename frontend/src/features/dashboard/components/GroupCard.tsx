@@ -28,7 +28,7 @@ export const GroupCard: React.FC<Props> = ({ group, index }) => {
         </div>
         <div className="text-right shrink-0">
           <div className="text-xs font-semibold text-indigo-500 dark:text-indigo-400">{group.memberCount}</div>
-          <div className="text-xs text-slate-400 dark:text-slate-500">članov</div>
+          <div className="text-xs text-slate-400 dark:text-slate-500">members</div>
         </div>
       </div>
     </Link>

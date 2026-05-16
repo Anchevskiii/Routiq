@@ -5,18 +5,12 @@ import { cn } from '@/utils/cn'
 import { ROUTES } from '@/constants/routes'
 import { QUERY_KEYS } from '@/constants/queryKeys'
 import { useAuth } from '@/app/Providers'
-import { Avatar } from '@/components/ui/Avatar'
 import { itineraryApi } from '@/api/itinerary.api'
 import { groupsApi } from '@/api/groups.api'
-import {
-  Home, Map, Users, Sparkles, Globe, Bookmark,
-  Settings, HelpCircle, Plus, ChevronLeft, ChevronRight,
-} from 'lucide-react'
-
-const NAV_BOTTOM = [
-  { id: 'settings', label: 'Nastavitve', icon: Settings,   href: ROUTES.PROFILE   },
-  { id: 'help',     label: 'Pomoč',      icon: HelpCircle, href: ROUTES.DASHBOARD },
-]
+import { Plus } from 'lucide-react'
+import { SidebarHeader }  from './SidebarHeader'
+import { SidebarProfile } from './SidebarProfile'
+import { NAV_BOTTOM, NAV_MAIN_STATIC } from './sidebar.data'
 
 export interface SidebarProps {
   collapsed: boolean
@@ -36,14 +30,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
     queryFn: () => groupsApi.getGroups(),
   })
 
-  const NAV_MAIN = [
-    { id: 'home',   label: 'Domov',       icon: Home,     href: ROUTES.DASHBOARD, badge: 0                            },
-    { id: 'trips',  label: 'Potovanja',   icon: Map,      href: ROUTES.DASHBOARD, badge: itinData?.meta?.total ?? 0   },
-    { id: 'groups', label: 'Skupini',     icon: Users,    href: ROUTES.GROUPS,    badge: groupData?.data?.length ?? 0 },
-    { id: 'ai',     label: 'AI Planer',   icon: Sparkles, href: ROUTES.PLANNER,   badge: 0                            },
-    { id: 'places', label: 'Destinacije', icon: Globe,    href: ROUTES.DASHBOARD, badge: 0                            },
-    { id: 'saved',  label: 'Shranjeno',   icon: Bookmark, href: ROUTES.DASHBOARD, badge: 0                            },
-  ]
+  const badges: Record<string, number> = {
+    trips:  itinData?.meta?.total   ?? 0,
+    groups: groupData?.data?.length ?? 0,
+  }
+  const NAV_MAIN = NAV_MAIN_STATIC.map(item => ({ ...item, badge: badges[item.id] ?? 0 }))
 
   const isActive = (id: string) => {
     if (id === 'home')     return location.pathname === ROUTES.DASHBOARD
@@ -64,52 +55,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
         collapsed ? 'w-[68px] min-w-[68px]' : 'w-[220px] min-w-[220px]',
       )}
     >
-      {/* Logo row */}
-      <div className="flex items-center gap-2.5 px-3.5 py-4 mb-1 min-h-[60px]">
-        <div className="w-[34px] h-[34px] flex items-center justify-center rounded-xl shrink-0 shadow-[0_4px_14px_rgba(99,102,241,0.35)] gradient-aurora">
-          <svg viewBox="0 0 28 28" width="20" height="20" fill="none">
-            <defs>
-              <linearGradient id="aurora-logo" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0" stopColor="#ffffff" />
-                <stop offset="1" stopColor="#e0e7ff" />
-              </linearGradient>
-            </defs>
-            <circle cx="14" cy="14" r="13" fill="url(#aurora-logo)" />
-            <path d="M8 18 L14 6 L20 18 L14 14 Z" fill="#6366f1" />
-          </svg>
-        </div>
-
-        {!collapsed && (
-          <span className="font-bold text-[15px] tracking-tight text-indigo-950 dark:text-indigo-100 whitespace-nowrap">
-            Routiq
-          </span>
-        )}
-
-        <button
-          className="ml-auto w-[26px] h-[26px] flex items-center justify-center rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors text-indigo-300 dark:text-indigo-500 shrink-0"
-          onClick={() => setCollapsed(c => !c)}
-          title={collapsed ? 'Razširi' : 'Skrij'}
-        >
-          {collapsed
-            ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5" />
-            : <ChevronLeft  strokeWidth={2} className="w-3.5 h-3.5" />
-          }
-        </button>
-      </div>
+      <SidebarHeader collapsed={collapsed} onExpand={() => setCollapsed(false)} onCollapse={() => setCollapsed(true)} />
 
       {/* New trip button */}
       <div className="px-3 mb-5">
         <Link to={ROUTES.PLANNER}>
           <button className="flex items-center justify-center gap-2 w-full h-[38px] rounded-xl font-semibold text-sm text-white hover:opacity-90 active:scale-95 transition-opacity shadow-[0_4px_14px_rgba(99,102,241,0.28)] gradient-aurora">
             <Plus strokeWidth={2.5} className="w-[15px] h-[15px] shrink-0" />
-            {!collapsed && <span>Nova pot</span>}
+            {!collapsed && <span>New trip</span>}
           </button>
         </Link>
       </div>
 
       {!collapsed && (
         <div className="px-4 mb-1">
-          <span className="text-[10px] font-bold tracking-widest text-indigo-200 dark:text-indigo-700">MENI</span>
+          <span className="text-[10px] font-bold tracking-widest text-indigo-200 dark:text-indigo-700">MENU</span>
         </div>
       )}
 
@@ -153,7 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       <div className="mt-5">
         {!collapsed && (
           <div className="px-4 mb-1">
-            <span className="text-[10px] font-bold tracking-widest text-indigo-200 dark:text-indigo-700">DRUGO</span>
+            <span className="text-[10px] font-bold tracking-widest text-indigo-200 dark:text-indigo-700">OTHER</span>
           </div>
         )}
         <nav className="flex flex-col gap-px px-2">
@@ -180,20 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       </div>
 
       <div className="flex-1" />
-
-      <Link to={ROUTES.PROFILE}>
-        <div className="flex items-center gap-2.5 mx-2.5 mb-4 p-2.5 rounded-xl bg-indigo-500/[0.05] dark:bg-indigo-900/20 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-colors cursor-pointer">
-          <div className="shrink-0">
-            <Avatar src={user?.avatarUrl} alt={user?.name} size="sm" />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold truncate text-indigo-950 dark:text-indigo-100">{user?.name ?? 'Traveler'}</div>
-              <div className="text-xs truncate text-indigo-300 dark:text-indigo-600">Pro · 5 članov</div>
-            </div>
-          )}
-        </div>
-      </Link>
+      <SidebarProfile collapsed={collapsed} name={user?.name} avatarUrl={user?.avatarUrl} />
     </aside>
   )
 }

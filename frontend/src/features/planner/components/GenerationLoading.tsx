@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, MapPin, Sparkles, MessageCircle, Info } from 'lucide-react'
+import { Clock, Info, MessageCircle } from 'lucide-react'
 import type { FormattedPlace } from '@/types/attractions.types'
-import type { StreamingDay, StreamingActivity } from '@/types/itinerary.types'
+import type { StreamingDay } from '@/types/itinerary.types'
+import { LoadingPreviewPanel }    from './LoadingPreviewPanel'
+import { LoadingAttractionsPanel } from './LoadingAttractionsPanel'
 
-interface GenerationLoadingProps {
+interface Props {
   progress: string
   attractions: FormattedPlace[]
   generatedDays: StreamingDay[]
@@ -15,27 +17,21 @@ const FUN_FACTS = [
   "France is the most visited country in the world, with over 89 million visitors annually.",
   "Japan has more than 6,800 islands, though only about 430 are inhabited.",
   "The world's longest commercial flight from New York to Singapore takes over 18 hours.",
-  "Australia has more than 10,000 beaches. You could visit a new one every day for 27 years!",
-  "The Great Wall of China is over 13,000 miles long - that's half the Earth's circumference.",
+  "Australia has more than 10,000 beaches — a new one every day for 27 years!",
+  "The Great Wall of China is over 13,000 miles long — half the Earth's circumference.",
   "Iceland is the only country in the world without mosquitoes.",
-  "Bangkok's full ceremonial name is the longest city name in the world (168 letters).",
 ]
 
 const QUESTIONS = [
-  "What's your absolute dream travel destination if money was no object?",
-  "Are you a 'pack everything' traveler or a 'essentials only' minimalist?",
-  "Do you prefer exploring hidden gems or visiting world-famous landmarks?",
-  "What's the most exotic or unusual food you've tried while traveling?",
-  "Would you rather have a luxury hotel stay or an authentic local experience?",
-  "What's the one thing you can never travel without (besides your phone)?",
+  "What's your dream destination if money was no object?",
+  "Are you a 'pack everything' or 'essentials only' traveler?",
+  "Hidden gems or world-famous landmarks?",
+  "Most exotic food you've tried while traveling?",
+  "Luxury hotel or authentic local experience?",
+  "One thing you never travel without (besides your phone)?",
 ]
 
-export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
-  progress,
-  attractions,
-  generatedDays,
-  elapsedTime,
-}) => {
+export const GenerationLoading: React.FC<Props> = ({ progress, attractions, generatedDays, elapsedTime }) => {
   const [factIndex, setFactIndex] = useState(0)
   const [questionIndex, setQuestionIndex] = useState(0)
   const [showFact, setShowFact] = useState(true)
@@ -44,8 +40,8 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
     const interval = setInterval(() => {
       setShowFact(false)
       setTimeout(() => {
-        setFactIndex((prev) => (prev + 1) % FUN_FACTS.length)
-        setQuestionIndex((prev) => (prev + 1) % QUESTIONS.length)
+        setFactIndex(p => (p + 1) % FUN_FACTS.length)
+        setQuestionIndex(p => (p + 1) % QUESTIONS.length)
         setShowFact(true)
       }, 500)
     }, 8000)
@@ -54,7 +50,6 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
-      {/* Header with Timer */}
       <div className="text-center space-y-4">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full font-mono text-lg border border-primary/20">
           <Clock className="w-5 h-5 animate-pulse" />
@@ -65,22 +60,14 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Left Column: Distractions & Preview */}
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-2xl p-6 border border-line h-48 flex flex-col justify-center relative overflow-hidden">
             <div className="absolute top-4 left-4 text-primary/20">
               {factIndex % 2 === 0 ? <Info className="w-8 h-8" /> : <MessageCircle className="w-8 h-8" />}
             </div>
-
             <AnimatePresence mode="wait">
               {showFact && (
-                <motion.div
-                  key={factIndex}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="text-center px-4"
-                >
+                <motion.div key={factIndex} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="text-center px-4">
                   <span className="text-xs font-bold uppercase tracking-wider text-primary mb-2 block">
                     {factIndex % 2 === 0 ? 'Travel Fun Fact' : 'A Question For You'}
                   </span>
@@ -91,101 +78,9 @@ export const GenerationLoading: React.FC<GenerationLoadingProps> = ({
               )}
             </AnimatePresence>
           </div>
-
-          {/* Real-time Itinerary Preview */}
-          <div className="bg-gray-900 rounded-2xl p-6 shadow-inner h-64 overflow-hidden relative flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-primary">
-                <Sparkles className="w-4 h-4" />
-                <span className="text-xs font-mono uppercase tracking-widest">Itinerary Preview</span>
-              </div>
-              <span className="text-[10px] font-mono text-primary/50">
-                {generatedDays.length} days generated
-              </span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
-              <AnimatePresence initial={false}>
-                {generatedDays.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-primary/30 space-y-3">
-                    <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                    <p className="text-xs font-mono animate-pulse">Waiting for AI to structure the route...</p>
-                  </div>
-                ) : (
-                  generatedDays.map((day, idx) => (
-                    <motion.div
-                      key={day.dayNumber || idx}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="border-l-2 border-primary/20 pl-4 py-1"
-                    >
-                      <h4 className="text-primary font-mono text-sm mb-2">
-                        Day {day.dayNumber}: {day.theme}
-                      </h4>
-                      <div className="space-y-1.5">
-                        {day.activities?.create?.map((activity: StreamingActivity, aIdx: number) => (
-                          <div key={aIdx} className="flex items-center gap-2 text-[10px] text-primary/70 font-mono">
-                            <span className="text-primary/40">{activity.startTime || '--:--'}</span>
-                            <span className="truncate">{activity.title}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+          <LoadingPreviewPanel generatedDays={generatedDays} />
         </div>
-
-        {/* Right Column: Attractions Discovered */}
-        <div className="bg-white dark:bg-[#1e1b38] rounded-2xl border border-line shadow-sm overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-line flex items-center justify-between">
-            <div className="flex items-center gap-2 font-semibold text-ink">
-              <MapPin className="w-5 h-5 text-red-500" />
-              <span>Spots Discovered</span>
-            </div>
-            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-ink-dim text-xs px-2 py-1 rounded-full">
-              {attractions.length} found
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto max-h-[420px] p-4 space-y-3 custom-scrollbar">
-            <AnimatePresence initial={false}>
-              {attractions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-ink-faint space-y-2 opacity-50">
-                  <MapPin className="w-12 h-12" />
-                  <p className="text-sm italic">Scanning local highlights...</p>
-                </div>
-              ) : (
-                attractions.map((place, idx) => (
-                  <motion.div
-                    key={place.id || idx}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex gap-3 p-3 bg-gray-50 dark:bg-[#16142e] rounded-xl border border-line hover:border-primary/20 transition-colors"
-                  >
-                    {place.photos?.[0] ? (
-                      <img
-                        src={place.photos[0]}
-                        alt={place.name}
-                        className="w-16 h-16 rounded-lg object-cover bg-gray-200 dark:bg-[#2a2650]"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-lg bg-gray-200 dark:bg-[#2a2650] flex items-center justify-center text-ink-faint">
-                        <MapPin className="w-6 h-6" />
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <h4 className="font-semibold text-ink text-sm truncate">{place.name}</h4>
-                      <p className="text-xs text-ink-dim line-clamp-2">{place.description || place.address}</p>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+        <LoadingAttractionsPanel attractions={attractions} />
       </div>
     </div>
   )

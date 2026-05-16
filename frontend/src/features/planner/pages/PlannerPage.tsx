@@ -71,55 +71,57 @@ export const PlannerPage: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#0c0b1a] overflow-x-hidden">
+    <div className="relative h-full overflow-hidden bg-white dark:bg-[#0c0b1a]">
 
-      {/* Orb top-right */}
-      <motion.div
-        style={{ ...ORB_STYLE, right: 60, top: -80,
-          background: 'radial-gradient(circle, rgba(109,40,217,0.70) 0%, rgba(124,92,255,0.40) 50%, transparent 100%)' }}
-        animate={{ x: [0, -80, 0], y: [0, 120, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      {/* Orb center-left */}
-      <motion.div
-        style={{ ...ORB_STYLE, left: -60, top: '30%',
-          background: 'radial-gradient(circle, rgba(139,92,246,0.65) 0%, rgba(167,139,250,0.35) 50%, transparent 100%)' }}
-        animate={{ x: [0, 100, 0], y: [0, -80, 0] }}
-        transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      {/* Orb bottom-right */}
-      <motion.div
-        style={{ ...ORB_STYLE, right: -40, top: '65%',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.55) 0%, rgba(129,140,248,0.30) 50%, transparent 100%)' }}
-        animate={{ x: [0, -60, 0], y: [0, -100, 0] }}
-        transition={{ duration: 34, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
-      />
+      {/* Orbs — pinned to container, do not scroll */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <motion.div
+          style={{ ...ORB_STYLE, right: 60, top: -80,
+            background: 'radial-gradient(circle, rgba(109,40,217,0.70) 0%, rgba(124,92,255,0.40) 50%, transparent 100%)' }}
+          animate={{ x: [0, -80, 0], y: [0, 120, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          style={{ ...ORB_STYLE, left: -60, top: '30%',
+            background: 'radial-gradient(circle, rgba(139,92,246,0.65) 0%, rgba(167,139,250,0.35) 50%, transparent 100%)' }}
+          animate={{ x: [0, 100, 0], y: [0, -80, 0] }}
+          transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          style={{ ...ORB_STYLE, right: -40, top: '65%',
+            background: 'radial-gradient(circle, rgba(99,102,241,0.55) 0%, rgba(129,140,248,0.30) 50%, transparent 100%)' }}
+          animate={{ x: [0, -60, 0], y: [0, -100, 0] }}
+          transition={{ duration: 34, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
+        />
+      </div>
 
-      {/* Page content */}
-      <div className="relative z-10 max-w-[1400px] mx-auto px-6 py-10">
-        <div className="mb-8">
-          <p className="text-[11px] font-mono uppercase tracking-[0.14em] text-ink-faint mb-3">
-            AI · planer · v3.2
-          </p>
-          <h1 className="text-5xl font-semibold tracking-tight text-ink leading-[1.1] mb-4">
-            Plan your next{' '}
-            <em className="font-serif italic font-normal text-aurora">journey</em>
-          </h1>
-          <p className="text-base text-ink-dim max-w-md leading-relaxed">
-            Tell Routiq where you're going. Watch your trip take shape on the right while you fill it in.
-          </p>
+      {/* Scrollable content */}
+      <div className="relative z-10 h-full overflow-y-auto">
+        <div className="max-w-[1400px] mx-auto px-6 py-10">
+          <div className="mb-8">
+            <p className="text-[11px] font-mono uppercase tracking-[0.14em] text-ink-faint mb-3">
+              AI · planner · v3.2
+            </p>
+            <h1 className="text-5xl font-semibold tracking-tight text-ink leading-[1.1] mb-4">
+              Plan your next{' '}
+              <em className="font-serif italic font-normal text-aurora">journey</em>
+            </h1>
+            <p className="text-base text-ink-dim max-w-md leading-relaxed">
+              Tell Routiq where you're going. Watch your trip take shape on the right while you fill it in.
+            </p>
+          </div>
+
+          {isLoading ? (
+            <GenerationLoading
+              progress={progress}
+              attractions={attractions}
+              generatedDays={generatedDays}
+              elapsedTime={elapsedTime}
+            />
+          ) : (
+            <PlannerForm onSubmit={handleGenerate} isLoading={isLoading} />
+          )}
         </div>
-
-        {isLoading ? (
-          <GenerationLoading
-            progress={progress}
-            attractions={attractions}
-            generatedDays={generatedDays}
-            elapsedTime={elapsedTime}
-          />
-        ) : (
-          <PlannerForm onSubmit={handleGenerate} isLoading={isLoading} />
-        )}
       </div>
     </div>
   )

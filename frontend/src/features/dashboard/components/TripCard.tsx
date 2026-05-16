@@ -33,7 +33,7 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
   const today = new Date()
   const end = new Date(trip.endDate)
   const start = new Date(trip.startDate)
-  const status = end < today ? 'Preteklo' : start <= today ? 'V teku' : 'Načrtovanje'
+  const status = end < today ? 'Past' : start <= today ? 'Active' : 'Planning'
 
   const [deleted, setDeleted] = useState(false)
 
@@ -60,21 +60,21 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
             className="rounded-2xl bg-white dark:bg-[#16142e] shadow-sm border border-red-100 dark:border-red-900/30 p-4 flex flex-col items-center gap-3"
           >
             <p className="text-sm font-semibold text-indigo-950 dark:text-indigo-100 text-center">
-              Zbriši <span className="text-indigo-500">{trip.destination}</span>?
+              Delete <span className="text-indigo-500">{trip.destination}</span>?
             </p>
             <div className="flex gap-2 w-full">
               <button
                 onClick={() => setConfirm(false)}
                 className="flex-1 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
-                Prekliči
+                Cancel
               </button>
               <button
                 onClick={() => mutate()}
                 disabled={isPending}
                 className="flex-1 py-2 rounded-xl text-xs font-semibold bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
               >
-                {isPending ? '…' : 'Zbriši'}
+                {isPending ? '…' : 'Delete'}
               </button>
             </div>
           </motion.div>

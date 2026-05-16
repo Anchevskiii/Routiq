@@ -18,11 +18,11 @@ export const SidePanel: React.FC<Props> = ({ groups, itineraries }) => (
   <motion.div initial="hidden" animate="show" variants={stagger} className="flex flex-col gap-5">
     <motion.section variants={fadeUp} className="rounded-2xl p-4 bg-white dark:bg-[#16142e] shadow-sm">
       <div className="flex items-center justify-between mb-3.5">
-        <h3 className="text-sm font-bold text-indigo-950 dark:text-indigo-100">Aktivne skupine</h3>
-        <Link to={ROUTES.GROUPS} className="text-xs font-semibold text-indigo-500">Vse</Link>
+        <h3 className="text-sm font-bold text-indigo-950 dark:text-indigo-100">Active groups</h3>
+        <Link to={ROUTES.GROUPS} className="text-xs font-semibold text-indigo-500">View all</Link>
       </div>
       {groups.length === 0 ? (
-        <p className="text-xs text-slate-400 text-center py-4">Ni skupin.</p>
+        <p className="text-xs text-slate-400 text-center py-4">No groups yet.</p>
       ) : (
         <div className="flex flex-col gap-2.5">
           {groups.slice(0, 3).map((g, i) => (
@@ -33,14 +33,14 @@ export const SidePanel: React.FC<Props> = ({ groups, itineraries }) => (
     </motion.section>
 
     <motion.section variants={fadeUp} className="rounded-2xl p-4 bg-white dark:bg-[#16142e] shadow-sm">
-      <h3 className="text-sm font-bold mb-3.5 text-indigo-950 dark:text-indigo-100">Aktivnost</h3>
+      <h3 className="text-sm font-bold mb-3.5 text-indigo-950 dark:text-indigo-100">Activity</h3>
       <ActivityFeed itineraries={itineraries.slice(0, 4)} />
     </motion.section>
 
     <motion.section variants={fadeUp}>
       <div className="flex items-center justify-between mb-3.5">
-        <h3 className="text-sm font-bold text-indigo-950 dark:text-indigo-100">Inspiracija</h3>
-        <button className="text-xs font-semibold text-indigo-500">Več</button>
+        <h3 className="text-sm font-bold text-indigo-950 dark:text-indigo-100">Inspiration</h3>
+        <button className="text-xs font-semibold text-indigo-500">More</button>
       </div>
       <InspirationCard />
     </motion.section>

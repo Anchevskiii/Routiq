@@ -12,8 +12,8 @@ interface Props {
 export const DashboardGreeting: React.FC<Props> = ({ firstName, nextTrip, daysUntil }) => {
   const today = new Date()
   const hour = today.getHours()
-  const greeting = hour < 12 ? 'Dobro jutro' : hour < 18 ? 'Dober dan' : 'Dober večer'
-  const dateLabel = today.toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' })
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const dateLabel = today.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <motion.div initial="hidden" animate="show" variants={fadeUp} className="flex items-start justify-between mb-7">
@@ -27,8 +27,8 @@ export const DashboardGreeting: React.FC<Props> = ({ firstName, nextTrip, daysUn
         </h1>
         <p className="text-sm mt-1 text-slate-400 dark:text-slate-500">
           {nextTrip
-            ? `Pripravimo ${nextTrip.destination}. Imaš še 3 odprta opravila in čas teče.`
-            : 'Planiraj svoje naslednje pustolovščino.'}
+            ? `Let's get ${nextTrip.destination} ready. You have 3 open tasks.`
+            : 'Start planning your next adventure.'}
         </p>
       </div>
 
@@ -41,7 +41,7 @@ export const DashboardGreeting: React.FC<Props> = ({ firstName, nextTrip, daysUn
             transition={{ duration: 2, repeat: Infinity }}
             className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"
           />
-          <strong>{daysUntil}</strong>&nbsp;dni do odhoda
+          <strong>{daysUntil}</strong>&nbsp;days to go
         </div>
       )}
     </motion.div>

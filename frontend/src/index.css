@@ -286,6 +286,15 @@
   .dark .border-line        { border-color: rgba(139,92,246,0.18); }
   .dark .border-line-strong { border-color: rgba(139,92,246,0.30); }
   .dark input[type="date"] { color-scheme: dark; color: #e8e6ff; }
+  input[type="date"]::-webkit-datetime-edit { padding: 0; }
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+  input[type="date"]::-webkit-inner-spin-button { display: none; }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+    cursor: pointer;
+    filter: invert(40%) sepia(80%) saturate(500%) hue-rotate(200deg);
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
   /* aurora gradient utilities — replaces inline style={{ background }} */
   .gradient-aurora      { background: linear-gradient(135deg, #6366f1, #8b5cf6); }

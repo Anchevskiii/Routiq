@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Info, Compass } from 'lucide-react'
 
 import { itineraryApi } from '@/api/itinerary.api'
+import { QUERY_KEYS } from '@/constants/queryKeys'
 import { Day } from '@/types/itinerary.types'
 
 import { DayCard } from '../components/DayCard'
@@ -15,7 +16,7 @@ export const ItineraryPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
 
   const { data: itinerary, isLoading, error } = useQuery({
-    queryKey: ['itinerary', id],
+    queryKey: QUERY_KEYS.itinerary(id!),
     queryFn: () => itineraryApi.getItinerary(id!),
     enabled: !!id,
   })

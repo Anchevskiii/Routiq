@@ -17,7 +17,7 @@ export const DashboardTopbar: React.FC = () => {
         <Search className="w-[15px] h-[15px] text-indigo-300 shrink-0" />
         <input
           className="flex-1 text-sm bg-transparent outline-none placeholder-slate-300 dark:placeholder-slate-600 text-slate-700 dark:text-slate-300"
-          placeholder="Iskanje destinacij, poti, skupin…"
+          placeholder="Search destinations, trips, groups…"
         />
         <kbd className="text-xs rounded px-1.5 py-0.5 font-mono bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700">
           ⌘K
