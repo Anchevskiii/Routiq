@@ -24,7 +24,7 @@ export const GroupCard: React.FC<Props> = ({ group, index }) => {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold truncate text-indigo-950 dark:text-indigo-100">{group.name}</div>
-          <div className="text-xs truncate text-slate-400 dark:text-slate-500">{group.description ?? 'Skupinska pot'}</div>
+          <div className="text-xs truncate text-slate-400 dark:text-slate-500">{group.description ?? 'Group trip'}</div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-xs font-semibold text-indigo-500 dark:text-indigo-400">{group.memberCount}</div>

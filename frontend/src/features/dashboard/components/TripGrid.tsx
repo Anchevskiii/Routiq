@@ -55,7 +55,7 @@ export const TripGrid: React.FC<Props> = ({ itineraries, isLoading }) => {
           ))}
         </div>
         <Link to={ROUTES.DASHBOARD} className="flex items-center gap-1 text-xs font-semibold text-indigo-500">
-          Vse <ArrowRight className="w-3 h-3" />
+          All <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
 

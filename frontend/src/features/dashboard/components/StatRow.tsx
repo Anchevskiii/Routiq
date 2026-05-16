@@ -4,10 +4,10 @@ import { TrendingUp, Calendar, Users, Heart } from 'lucide-react'
 import { fadeUp, stagger } from '../animations'
 
 const STATS = [
-  { key: 'total',  label: 'Skupaj poti', icon: TrendingUp, cls: 'bg-indigo-50 dark:bg-indigo-900/30  text-indigo-500'  },
-  { key: 'recent', label: 'Nedavne',     icon: Calendar,   cls: 'bg-violet-50 dark:bg-violet-900/30  text-violet-500'  },
+  { key: 'total',  label: 'Total trips', icon: TrendingUp, cls: 'bg-indigo-50 dark:bg-indigo-900/30  text-indigo-500'  },
+  { key: 'recent', label: 'Recent',      icon: Calendar,   cls: 'bg-violet-50 dark:bg-violet-900/30  text-violet-500'  },
   { key: 'groups', label: 'Groups',      icon: Users,      cls: 'bg-sky-50    dark:bg-sky-900/30     text-sky-500'     },
-  { key: 'shared', label: 'Deljeno',     icon: Heart,      cls: 'bg-pink-50   dark:bg-pink-900/30    text-pink-500'    },
+  { key: 'shared', label: 'Shared',      icon: Heart,      cls: 'bg-pink-50   dark:bg-pink-900/30    text-pink-500'    },
 ]
 
 interface Props {
