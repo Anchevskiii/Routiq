@@ -24,6 +24,14 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    /* login map tokens */
+    --color-sky:      #e0f2fe;
+    --color-land:     #ecfdf5;
+    --color-pin:      #6366f1;
+    --color-pin-glow: #818cf8;
+    --color-route:    #6366f1;
+    --color-primary:  #6366f1;
+    --color-foreground: #14122b;
     /* surface tokens */
     --surface:    #ffffff;
     --surface-2:  #f8f7ff;
@@ -204,7 +212,73 @@
   }
 }
 
+/* ── Login map animation keyframes ── */
+@keyframes mapReveal   { 0% { opacity:0; filter:blur(8px) } 100% { opacity:1; filter:blur(0) } }
+@keyframes continentIn { 0% { opacity:0; transform:scale(.95) } 100% { opacity:1; transform:scale(1) } }
+@keyframes gridIn      { to { opacity:1 } }
+@keyframes pinDrop {
+  0%   { transform:translate(-50%,-800%) scale(.6); opacity:0 }
+  30%  { opacity:1 }
+  70%  { transform:translate(-50%,-100%) scale(1,.85) }
+  85%  { transform:translate(-50%,-120%) scale(.95,1.05) }
+  100% { transform:translate(-50%,-120%) scale(1); opacity:1 }
+}
+@keyframes shadowPulse {
+  0%   { opacity:0; transform:translate(-50%,-2px) scale(2.5) }
+  70%  { opacity:.7; transform:translate(-50%,-2px) scale(.9) }
+  100% { opacity:1; transform:translate(-50%,-2px) scale(1) }
+}
+@keyframes lmRipple {
+  0%   { opacity:.7; width:6px; height:6px; border-width:1.5px }
+  100% { opacity:0; width:80px; height:80px; border-width:.5px }
+}
+@keyframes riseUp {
+  0%   { opacity:0; transform:translateY(40px) scale(.7) }
+  100% { opacity:1; transform:translateY(0) scale(1) }
+}
+@keyframes labelIn { to { opacity:1; transform:translateX(0) } }
+@keyframes drawRoute {
+  0%   { opacity:0; stroke-dashoffset:200 }
+  20%  { opacity:.8 }
+  100% { opacity:.7; stroke-dashoffset:0 }
+}
+@keyframes lmBlink { 50% { opacity:.3 } }
+@keyframes lmGlyphIn { to { transform:scale(1) } }
+@keyframes lmFadeUp  { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+
+/* continent colour tokens */
+:root {
+  --c-teal:   #c7e0f4;
+  --c-green:  #d8d4f7;
+  --c-orange: #fde2d3;
+}
+
 @layer utilities {
+  /* ── Login map animation classes ──────────────────────────────────────
+     Defined here (not tailwind.config) so PostCSS always emits them
+     regardless of JIT content-scanning.                                 */
+  .lm-map-reveal   { animation: mapReveal 1.2s ease-out .1s both; }
+  .lm-grid-in      { animation: gridIn 1.5s ease-out .8s both; }
+  .lm-fade-up-hero { animation: lmFadeUp .8s ease-out .3s both; }
+  .lm-blink        { animation: lmBlink 1.6s ease-in-out infinite; }
+  .lm-pin-drop     { animation: pinDrop 1.1s cubic-bezier(.55,1.5,.42,1) forwards; }
+  .lm-shadow-pulse { animation: shadowPulse 1.1s cubic-bezier(.55,1.5,.42,1) forwards; }
+  .lm-rise-up      { animation: riseUp 1.2s cubic-bezier(.25,1,.4,1) .2s forwards; }
+  .lm-ripple-1     { animation: lmRipple 1.4s ease-out 1s forwards; }
+  .lm-ripple-2     { animation: lmRipple 1.4s ease-out 1.3s forwards; }
+  .lm-label-in     { animation: labelIn .5s cubic-bezier(.2,1.2,.4,1) forwards; }
+  .lm-draw-route   { animation: drawRoute 1s ease-out forwards; }
+  .lm-draw-route-2 { animation: drawRoute 1s ease-out .3s forwards; }
+  .lm-glyph-in     { animation: lmGlyphIn .6s cubic-bezier(.2,1.4,.4,1) .1s both; }
+  .lm-fade-up-0    { animation: lmFadeUp .6s ease-out .35s both; }
+  .lm-fade-up-1    { animation: lmFadeUp .6s ease-out .45s both; }
+  .lm-continent-1  { animation: continentIn .6s ease-out .05s both; }
+  .lm-continent-2  { animation: continentIn .6s ease-out .10s both; }
+  .lm-continent-3  { animation: continentIn .6s ease-out .15s both; }
+  .lm-continent-4  { animation: continentIn .6s ease-out .20s both; }
+  .lm-continent-5  { animation: continentIn .6s ease-out .25s both; }
+  .lm-continent-6  { animation: continentIn .6s ease-out .30s both; }
+
   /* dark-mode token overrides */
   .dark .text-ink       { color: #e8e6ff; }
   .dark .text-ink-dim   { color: #a8a4d8; }
