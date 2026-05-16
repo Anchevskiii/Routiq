@@ -57,7 +57,7 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination }) => {
       markersRef.current.push({ marker, activity })
     })
     mapInstanceRef.current.fitBounds(bounds, 48)
-  }, [placed])
+  }, [placed, isLoaded])
 
   const fitVisible = useCallback((visible: PlacedActivity[]) => {
     if (!mapInstanceRef.current || visible.length === 0) return
