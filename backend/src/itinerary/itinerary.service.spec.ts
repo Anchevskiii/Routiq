@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { ActivityType, TravelType } from '@prisma/client';
+import { TravelType } from '@prisma/client';
 
 import { ItineraryService } from './itinerary.service';
 import { concat, of, delay } from 'rxjs';
@@ -30,12 +30,10 @@ const mockGeminiService = {
   streamGenerateObservable: jest.fn(),
 };
 
-const mockAttractionsService = {
-  getAttractions: jest.fn(),
-};
-
-const mockWeatherService = {
-  getForecast: jest.fn(),
+const mockItineraryGenerationService = {
+  prepareGenerationData: jest.fn(),
+  persistGeneratedItinerary: jest.fn(),
+  mapSingleDay: jest.fn(),
 };
 
 // ---------------------------------------------------------------------------
@@ -120,8 +118,7 @@ function buildService(): ItineraryService {
   return new ItineraryService(
     mockPrisma as any,
     mockGeminiService as any,
-    mockAttractionsService as any,
-    mockWeatherService as any,
+    mockItineraryGenerationService as any,
   );
 }
 
@@ -382,37 +379,53 @@ describe('ItineraryService', () => {
   // =========================================================================
 
   describe('generateStream', () => {
+    const preparedData = {
+      generationStart: Date.now(),
+      weatherData,
+      attractions: attractionsData,
+      prompt: 'prompt-text',
+    };
+
+    const dayJson = {
+      day: 1,
+      activities: [],
+      meals: [],
+    };
+
     beforeEach(() => {
-      mockWeatherService.getForecast.mockResolvedValue(weatherData);
-      mockAttractionsService.getAttractions.mockResolvedValue(attractionsData);
+      mockItineraryGenerationService.prepareGenerationData.mockResolvedValue(
+        preparedData,
+      );
+      mockItineraryGenerationService.mapSingleDay.mockReturnValue({
+        dayNumber: 1,
+        date: new Date('2024-06-01'),
+        theme: 'Arrival',
+        activities: { create: [] },
+        weather: { create: { condition: 'Sunny' } },
+      });
+      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
+        { id: itineraryId },
+      );
 
       // Simulate two observable events: progress then complete
       mockGeminiService.streamGenerateObservable.mockReturnValue(
         concat(
-          of({ type: 'progress', content: 'Thinking...' }).pipe(delay(0)),
+          of({ type: 'chunk', content: JSON.stringify(dayJson) }).pipe(delay(0)),
           of({ type: 'complete', data: generatedItinerary }).pipe(delay(1)),
         ),
       );
-
-      // $transaction executes the callback with the mock tx
-      mockPrisma.$transaction.mockImplementation((cb: any) =>
-        cb(mockPrisma),
-      );
-      mockPrisma.itinerary.create.mockResolvedValue(savedItineraryRecord);
-      mockPrisma.itineraryDay.create.mockResolvedValue({ id: 'day-1' });
-      mockPrisma.itineraryActivity.create.mockResolvedValue({});
-      mockPrisma.itineraryTip.create.mockResolvedValue({});
-      mockPrisma.itineraryWeatherSnapshot.create.mockResolvedValue({});
     });
 
-    it('emits progress events before the complete event', (done) => {
+    it('emits status updates, a day event, and a complete event', (done) => {
       const events: unknown[] = [];
 
       service.generateStream(userId, baseDto).subscribe({
         next: (v) => events.push(v),
         complete: () => {
           const types = (events as any[]).map((e) => e.type);
-          expect(types).toContain('progress');
+          expect(types).toContain('status');
+          expect(types).toContain('attractions');
+          expect(types).toContain('day');
           expect(types[types.length - 1]).toBe('complete');
           done();
         },
@@ -432,13 +445,31 @@ describe('ItineraryService', () => {
       });
     });
 
-    it('fetches weather for the correct destination and start date', (done) => {
+    it('prepares generation data with the request DTO', (done) => {
       service.generateStream(userId, baseDto).subscribe({
         complete: () => {
-          expect(mockWeatherService.getForecast).toHaveBeenCalledWith(
-            baseDto.destination,
-            '2024-06-01',
-            baseDto.days,
+          expect(
+            mockItineraryGenerationService.prepareGenerationData,
+          ).toHaveBeenCalledWith(baseDto);
+          done();
+        },
+        error: done,
+      });
+    });
+
+    it('persists the generated itinerary after completion', (done) => {
+      service.generateStream(userId, baseDto).subscribe({
+        complete: () => {
+          expect(
+            mockItineraryGenerationService.persistGeneratedItinerary,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              userId,
+              createItineraryDto: baseDto,
+              weatherData,
+              attractions: attractionsData,
+              prompt: preparedData.prompt,
+            }),
           );
           done();
         },
@@ -446,20 +477,8 @@ describe('ItineraryService', () => {
       });
     });
 
-    it('persists generalTips via itineraryTip.create', (done) => {
-      service.generateStream(userId, baseDto).subscribe({
-        complete: () => {
-          expect(mockPrisma.itineraryTip.create).toHaveBeenCalledTimes(
-            generatedItinerary.generalTips.length,
-          );
-          done();
-        },
-        error: done,
-      });
-    });
-
-    it('emits an error event (not throws) when weather fetch fails', (done) => {
-      mockWeatherService.getForecast.mockRejectedValue(
+    it('emits an error event (not throws) when preparation fails', (done) => {
+      mockItineraryGenerationService.prepareGenerationData.mockRejectedValue(
         new Error('Weather API down'),
       );
 
@@ -475,7 +494,7 @@ describe('ItineraryService', () => {
       });
     });
 
-    it('emits an error event when the Gemini stream fails', (done) => {
+    it('emits a user-friendly error when the Gemini stream fails', (done) => {
       mockGeminiService.streamGenerateObservable.mockReturnValue(
         new (require('rxjs').Observable)((obs: any) =>
           obs.error(new Error('Gemini timeout')),
@@ -485,7 +504,7 @@ describe('ItineraryService', () => {
       service.generateStream(userId, baseDto).subscribe({
         next: (v: any) => {
           if (v.type === 'error') {
-            expect(v.error).toBe('Gemini timeout');
+            expect(v.error).toBe('Generation timed out. Please try again.');
             done();
           }
         },
@@ -498,25 +517,6 @@ describe('ItineraryService', () => {
   // =========================================================================
   // Private helpers (tested indirectly via public methods)
   // =========================================================================
-
-  describe('parseDuration (via generateItinerary transaction)', () => {
-    // Access private method for direct unit tests
-    const svc = () => service as any;
-
-    it('converts numeric hours to minutes', () => {
-      expect(svc().parseDuration(2)).toBe(120);
-    });
-
-    it('converts string hours to minutes', () => {
-      expect(svc().parseDuration('1.5')).toBe(90);
-    });
-
-    it('returns null for invalid input', () => {
-      expect(svc().parseDuration('not-a-number')).toBeNull();
-      expect(svc().parseDuration(undefined)).toBeNull();
-      expect(svc().parseDuration(null)).toBeNull();
-    });
-  });
 
   describe('generateRandomToken', () => {
     it('returns a non-empty string', () => {
