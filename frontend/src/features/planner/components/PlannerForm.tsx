@@ -45,8 +45,8 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-[22px] items-start">
       <section className="relative bg-white dark:bg-[#1e1b38] border border-line rounded-[22px] shadow-card">
-        {/* progress strip — width is dynamic state, inline required */}
-        <div className="relative h-1 bg-indigo-100/60 dark:bg-indigo-900/30 overflow-hidden rounded-t-[22px]">
+        {/* progress strip — absolute + own overflow-hidden so it clips to inner radius (21px = 22px outer − 1px border) without overflow-hidden on section (which would clip the dropdown) */}
+        <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-[21px] bg-indigo-100/60 dark:bg-indigo-900/30">
           <div
             className="absolute inset-y-0 left-0 bg-aurora shadow-[0_0_8px_var(--accent-glow)] transition-[width] duration-700 ease-[cubic-bezier(.2,.8,.2,1)]"
             style={{ width: `${progress}%` }}
