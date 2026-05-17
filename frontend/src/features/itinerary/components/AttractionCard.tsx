@@ -16,15 +16,15 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({ activity, isFirs
         isMeal ? 'bg-orange-500 ring-orange-500/10' : 'bg-primary ring-primary/10'
       }`} />
       
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-shadow group">
+      <div className="bg-white dark:bg-[#1e1b38] rounded-2xl border border-gray-100 dark:border-indigo-500/10 p-4 hover:shadow-md transition-shadow group">
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-20 flex-shrink-0">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Time</span>
-            <span className="text-sm font-bold text-gray-900 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
+            <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Time</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-indigo-100 bg-gray-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg border border-gray-100 dark:border-slate-700">
               {activity.startTime || '--:--'}
             </span>
           </div>
-          
+
           <div className="flex-grow">
             <div className="flex items-start justify-between mb-2">
               <div>
@@ -34,35 +34,35 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({ activity, isFirs
                   ) : (
                     <Camera className="w-4 h-4 text-primary" />
                   )}
-                  <h4 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">
+                  <h4 className="text-lg font-bold text-gray-900 dark:text-indigo-100 group-hover:text-primary transition-colors">
                     {activity.title}
                   </h4>
                 </div>
-                <p className="text-gray-500 text-sm flex items-center">
+                <p className="text-gray-500 dark:text-slate-500 text-sm flex items-center">
                   <MapPin className="w-3.5 h-3.5 mr-1" />
                   {activity.location}
                 </p>
               </div>
-              
+
               {activity.placeId && (
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : ''}&query_place_id=${activity.placeId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-primary transition-colors"
+                  className="p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 text-gray-400 dark:text-slate-500 hover:text-primary transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </a>
               )}            </div>
-            
+
             {activity.description && (
-              <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-2">
+              <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed mb-4 line-clamp-2">
                 {activity.description}
               </p>
             )}
-            
+
             <div className="flex flex-wrap gap-3">
-              <div className="flex items-center px-2.5 py-1 rounded-full bg-gray-50 text-[10px] font-bold text-gray-500 border border-gray-100">
+              <div className="flex items-center px-2.5 py-1 rounded-full bg-gray-50 dark:bg-slate-800/50 text-[10px] font-bold text-gray-500 dark:text-slate-500 border border-gray-100 dark:border-slate-700">
                 <Clock className="w-3 h-3 mr-1" />
                 {activity.durationMinutes} MINS
               </div>

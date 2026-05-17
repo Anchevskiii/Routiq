@@ -15,7 +15,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isLoading || props.disabled} 
         {...props}
       >
-        {isLoading ? 'Nalagam...' : children}
+        {isLoading ? 'Loading...' : children}
       </button>
     )
   }

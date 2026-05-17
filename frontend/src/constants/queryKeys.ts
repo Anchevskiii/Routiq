@@ -24,6 +24,9 @@ export const QUERY_KEYS = {
 
   // Profile
   profile: ['profile'] as const,
+  settings: ['user-settings'] as const,
+  itinerariesCount: ['itineraries', 'count'] as const,
+  groupsCount: ['groups', 'count'] as const,
 
   // Export
   export: (id: string, type: string) => ['export', id, type] as const,

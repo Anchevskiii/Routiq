@@ -49,7 +49,7 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
     const script = document.createElement('script')
     script.id = SCRIPT_ID
     // Use the latest loading=async pattern
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&loading=async&callback=initGoogleMaps`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry,marker&loading=async&callback=initGoogleMaps`
     script.async = true
     script.defer = true
 
