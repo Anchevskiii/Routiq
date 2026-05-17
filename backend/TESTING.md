@@ -46,8 +46,6 @@ src/
     └── itinerary.service.spec.ts         ← Business logic layer
 └── users/
     └── users.service.spec.ts             ← User profile + settings + avatar flows
-└── itinerary/
-    └── itinerary-generation.service.spec.ts ← Generation prep + mapping + persistence
 ```
 
 ---
@@ -113,7 +111,7 @@ and shapes the response correctly.
 
 | Endpoint | Tests |
 |---|---|
-| `POST /itinerary/generate` | Writes each SSE emission to the response stream; on stream error writes a generic `{ type: 'error', error: 'Streaming connection failed' }` event and closes the response |
+| `POST /itinerary/generate` | Each SSE emission is wrapped in `{ data: ... }`; stream errors propagate to the subscriber |
 | `GET /itinerary` | Defaults to page 1, limit 10 when query params are absent; parses string query params to integers; always uses the authenticated user's id |
 | `GET /itinerary/:id` | Passes `id` and `user.sub` to the service; surfaces `NotFoundException` |
 | `PATCH /itinerary/:id` | Passes `id`, `user.sub`, and the DTO to the service; surfaces `NotFoundException` |
@@ -126,7 +124,7 @@ and shapes the response correctly.
 ## `itinerary.service.spec.ts`
 
 **What it covers:** The `ItineraryService` business logic.
-Prisma, GeminiService, and ItineraryGenerationService are all mocked.
+Prisma, GeminiService, AttractionsService, and WeatherService are all mocked.
 
 ### `getUserItineraries`
 
@@ -163,21 +161,22 @@ and `NotFoundException` for unowned records.
 
 ### `generateStream`
 
-This is the most complex method — it chains preparation (weather + attractions)
-→ Gemini SSE stream → persistence via the generation service.
+This is the most complex method — it chains weather fetch → attractions fetch →
+Gemini SSE stream → Prisma transaction.
 
 **How the mock works for event ordering:** The Gemini observable is mocked with
-`concat(of(chunkEvent).pipe(delay(0)), of(completeEvent).pipe(delay(1)))`.
-The `delay` ensures the chunk is emitted before the completion event in the subscriber.
+`concat(of(progressEvent).pipe(delay(0)), of(completeEvent).pipe(delay(1)))`.
+The `delay` is needed because `switchMap` cancels the outer observable when a new
+inner observable arrives — without the delay, the progress event would be dropped.
 
 | Test | What is asserted |
 |---|---|
-| Event ordering | Status and attractions events appear before the complete event, and a day event is emitted from chunk parsing |
+| Event ordering | Progress events appear before the complete event |
 | Complete payload | The `complete` event contains the persisted `itineraryId` |
-| Preparation call | `ItineraryGenerationService.prepareGenerationData` is called with the DTO |
-| Persistence call | `ItineraryGenerationService.persistGeneratedItinerary` is called with user, DTO, prompt, attractions, and weather data |
-| Preparation failure | If preparation rejects, the stream emits `{ type: 'error', error: message }` instead of throwing to the subscriber |
-| Gemini failure | If the Gemini observable errors, it emits a user-friendly timeout message and completes |
+| Weather call | `WeatherService.getForecast` is called with the correct destination and ISO date string |
+| Tip persistence | `itineraryTip.create` is called once per tip in `generalTips` |
+| Weather failure | If weather fetch rejects, the stream emits `{ type: 'error', error: message }` instead of throwing to the subscriber |
+| Gemini failure | If the Gemini observable errors, same — emits an error event, does not throw |
 
 ### Private helpers
 
@@ -187,25 +186,6 @@ These are accessed directly via `(service as any).methodName()`.
 |---|---|
 | `generateRandomToken` | Returns a non-empty string; two successive calls return different values |
 | `hashString` | Same input always produces the same hash; different inputs produce different hashes; always returns a string |
-
----
-
-## `itinerary-generation.service.spec.ts`
-
-**What it covers:** The `ItineraryGenerationService` that prepares data for AI generation
-and maps/persists generated itineraries.
-
-**How it works:** All dependencies are mocked: Prisma, AttractionsService, WeatherService,
-and the prompt builder. No network or database is touched.
-
-| Test group | What is asserted |
-|---|---|
-| `prepareGenerationData` | Fetches weather and attractions in parallel; calls the prompt builder with ISO dates and all inputs; returns `{ generationStart, weatherData, attractions, prompt }`. |
-| `persistGeneratedItinerary` | Uses default `bestSeason`/`estimatedBudget` and default tips when missing; writes expected fields to Prisma. |
-| `mapSingleDay` | Maps activities/meals into nested create payloads; sets activity types; uses forecast weather and AI weather notes. |
-| `mapDaysForNestedWrite` | Delegates each day to `mapSingleDay`. |
-
----
 
 ## `users.service.spec.ts`
 

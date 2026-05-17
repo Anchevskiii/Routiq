@@ -44,34 +44,6 @@ const mockItineraryService = {
 describe('ItineraryController', () => {
   let controller: ItineraryController;
 
-  function buildSseMocks() {
-    const handlers: Record<string, () => void> = {};
-    const req = {
-      on: jest.fn((event: string, handler: () => void) => {
-        handlers[event] = handler;
-      }),
-    };
-    let res: {
-      writableEnded: boolean;
-      status: jest.Mock;
-      setHeader: jest.Mock;
-      flushHeaders: jest.Mock;
-      write: jest.Mock;
-      end: jest.Mock;
-    };
-    res = {
-      writableEnded: false,
-      status: jest.fn().mockReturnThis(),
-      setHeader: jest.fn(),
-      flushHeaders: jest.fn(),
-      write: jest.fn(),
-      end: jest.fn(() => {
-        res.writableEnded = true;
-      }),
-    };
-    return { req, res, handlers };
-  }
-
   beforeEach(() => {
     jest.clearAllMocks();
     controller = new ItineraryController(
@@ -92,56 +64,41 @@ describe('ItineraryController', () => {
       travelType: TravelType.CULTURAL,
     };
 
-    it('writes each emission to the SSE response', async () => {
+    it('wraps each emission from generateStream in a { data } envelope', (done) => {
       const events = [
         { type: 'progress', message: 'Generating...' },
         { type: 'complete', itineraryId: 'itin-1' },
       ];
       mockItineraryService.generateStream.mockReturnValue(of(...events));
 
-      const { req, res } = buildSseMocks();
-
-      await controller.generateItinerary(
-        mockUser,
-        dto,
-        req as any,
-        res as any,
-      );
-
-      expect(res.write).toHaveBeenCalledWith(
-        `data: ${JSON.stringify(events[0])}\n\n`,
-      );
-      expect(res.write).toHaveBeenCalledWith(
-        `data: ${JSON.stringify(events[1])}\n\n`,
-      );
-      expect(res.end).toHaveBeenCalled();
-      expect(mockItineraryService.generateStream).toHaveBeenCalledWith(
-        mockUser.sub,
-        dto,
-      );
+      const results: unknown[] = [];
+      controller.generateItinerary(mockUser, dto).subscribe({
+        next: (v) => results.push(v),
+        complete: () => {
+          expect(results).toEqual([
+            { data: { type: 'progress', message: 'Generating...' } },
+            { data: { type: 'complete', itineraryId: 'itin-1' } },
+          ]);
+          expect(mockItineraryService.generateStream).toHaveBeenCalledWith(
+            mockUser.sub,
+            dto,
+          );
+          done();
+        },
+      });
     });
 
-    it('writes a generic error event when the stream errors', async () => {
+    it('propagates errors emitted by the stream', (done) => {
       mockItineraryService.generateStream.mockReturnValue(
         throwError(() => new Error('AI failure')),
       );
 
-      const { req, res } = buildSseMocks();
-
-      await controller.generateItinerary(
-        mockUser,
-        dto,
-        req as any,
-        res as any,
-      );
-
-      expect(res.write).toHaveBeenCalledWith(
-        `data: ${JSON.stringify({
-          type: 'error',
-          error: 'Streaming connection failed',
-        })}\n\n`,
-      );
-      expect(res.end).toHaveBeenCalled();
+      controller.generateItinerary(mockUser, dto).subscribe({
+        error: (err) => {
+          expect(err.message).toBe('AI failure');
+          done();
+        },
+      });
     });
   });
 
