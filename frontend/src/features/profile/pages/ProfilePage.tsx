@@ -4,10 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { profileApi, type UserSettings } from '@/api/profile.api'
 import { itineraryApi } from '@/api/itinerary.api'
 import { groupsApi } from '@/api/groups.api'
-import { supabase } from '@/api/supabase'
+import { QUERY_KEYS } from '@/constants/queryKeys'
 import toast from 'react-hot-toast'
-
-import { ProfileStats } from '../components/ProfileStats'
+import { ProfileHero }   from '../components/ProfileHero'
 import { ProfileNav, type Section } from '../components/ProfileNav'
 import { GeneralSection, type ProfileFormValues } from '../components/GeneralSection'
 import { SecuritySection, type PasswordFormValues } from '../components/SecuritySection'
@@ -32,9 +31,9 @@ export const ProfilePage: React.FC = () => {
   const queryClient = useQueryClient()
   const [activeSection, setActiveSection] = useState<Section>('general')
 
-  const { data: itinerariesData } = useQuery({ queryKey: ['itineraries-count'], queryFn: () => itineraryApi.listItineraries({ limit: 1 }) })
-  const { data: groupsData } = useQuery({ queryKey: ['groups-count'], queryFn: () => groupsApi.getGroups() })
-  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: profileApi.getSettings })
+  const { data: itinerariesData } = useQuery({ queryKey: QUERY_KEYS.itinerariesCount, queryFn: () => itineraryApi.listItineraries({ limit: 1 }) })
+  const { data: groupsData } = useQuery({ queryKey: QUERY_KEYS.groupsCount, queryFn: () => groupsApi.getGroups() })
+  const { data: settings } = useQuery({ queryKey: QUERY_KEYS.settings, queryFn: profileApi.getSettings })
 
   const updateProfileMutation = useMutation({
     mutationFn: profileApi.updateProfile,
@@ -49,10 +48,7 @@ export const ProfilePage: React.FC = () => {
   })
 
   const changePasswordMutation = useMutation({
-    mutationFn: async ({ newPassword }: PasswordFormValues) => {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
-    },
+    mutationFn: profileApi.changePassword,
     onSuccess: () => toast.success('Password changed'),
     onError: () => toast.error('Failed to change password'),
   })
@@ -60,16 +56,16 @@ export const ProfilePage: React.FC = () => {
   const updateSettingsMutation = useMutation({
     mutationFn: (payload: Partial<UserSettings>) => profileApi.updateSettings(payload),
     onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: ['user-settings'] })
-      const previous = queryClient.getQueryData<UserSettings>(['user-settings'])
-      queryClient.setQueryData<UserSettings>(['user-settings'], old => old ? { ...old, ...payload } : old)
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.settings })
+      const previous = queryClient.getQueryData<UserSettings>(QUERY_KEYS.settings)
+      queryClient.setQueryData<UserSettings>(QUERY_KEYS.settings, old => old ? { ...old, ...payload } : old)
       return { previous }
     },
     onError: (_err, _payload, context) => {
-      if (context?.previous) queryClient.setQueryData(['user-settings'], context.previous)
+      if (context?.previous) queryClient.setQueryData(QUERY_KEYS.settings, context.previous)
       toast.error('Failed to save setting')
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['user-settings'] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.settings }),
   })
 
   const deleteAccountMutation = useMutation({
@@ -80,22 +76,18 @@ export const ProfilePage: React.FC = () => {
 
   if (!user) return null
 
+  const itineraryCount = itinerariesData?.meta?.total ?? 0
+  const groupCount = Array.isArray(groupsData?.data) ? groupsData.data.length : 0
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-10">
-        <h1 className="text-3xl font-extrabold text-gray-900">Account Settings</h1>
-        <p className="text-gray-500 mt-2">Manage your profile, preferences and security settings.</p>
-      </div>
 
-      <ProfileStats
-        itineraryCount={itinerariesData?.meta?.total ?? 0}
-        groupCount={Array.isArray(groupsData?.data) ? groupsData.data.length : 0}
-      />
+      <ProfileHero user={user} itineraryCount={itineraryCount} groupCount={groupCount} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
         <ProfileNav active={activeSection} onSelect={setActiveSection} onLogout={logout} />
 
-        <div className="md:col-span-2 space-y-8">
+        <div className="space-y-5">
           {activeSection === 'general' && (
             <GeneralSection
               user={user}

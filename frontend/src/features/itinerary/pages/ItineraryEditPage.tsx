@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { QUERY_KEYS } from '@/constants/queryKeys'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,7 +24,7 @@ export const ItineraryEditPage: React.FC = () => {
   const queryClient = useQueryClient()
 
   const { data: itinerary, isLoading } = useQuery({
-    queryKey: ['itinerary', id],
+    queryKey: QUERY_KEYS.itinerary(id!),
     queryFn: () => itineraryApi.getItinerary(id!),
     enabled: !!id,
   })
@@ -51,7 +52,7 @@ export const ItineraryEditPage: React.FC = () => {
     mutationFn: (values: EditFormValues) => itineraryApi.updateItinerary(id!, values),
     onSuccess: () => {
       toast.success('Itinerary updated successfully')
-      queryClient.invalidateQueries({ queryKey: ['itinerary', id] })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
       navigate(ROUTES.ITINERARY(id!))
     },
     onError: () => toast.error('Failed to update itinerary'),

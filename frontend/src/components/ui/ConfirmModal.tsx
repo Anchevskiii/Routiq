@@ -14,7 +14,7 @@ export interface ConfirmModalProps {
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
-  isOpen, onClose, onConfirm, title, message, confirmText = 'Potrdi', cancelText = 'Prekliči', isLoading
+  isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', cancelText = 'Cancel', isLoading
 }) => {
   return (
     <Modal

@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -113,10 +114,40 @@ const config: Config = {
           900: '#7f1d1d',
           950: '#450a0a',
         },
+        brand: {
+          50:  '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1',
+          600: '#4f46e5',
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
+          950: '#1e1b4b',
+        },
+        ink: {
+          DEFAULT: '#14122b',
+          dim:     '#6b6892',
+          faint:   '#9b98be',
+        },
+        line: {
+          DEFAULT: 'rgba(20,22,50,0.07)',
+          strong:  'rgba(20,22,50,0.12)',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Consolas', 'monospace'],
+        sans:  ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+        serif: ['Instrument Serif', 'serif'],
+        mono:  ['JetBrains Mono', 'Consolas', 'monospace'],
+      },
+      backgroundImage: {
+        aurora: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 35%, #8b5cf6 70%, #a78bfa 100%)',
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(20,22,50,0.04), 0 6px 24px -10px rgba(80,60,200,0.18)',
+        pop:  '0 1px 2px rgba(20,22,50,0.04), 0 20px 60px -20px rgba(124,92,255,0.35)',
       },
       spacing: {
         '18': '4.5rem',
@@ -124,28 +155,28 @@ const config: Config = {
         '128': '32rem',
       },
       animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-up': 'slideUp 0.3s ease-out',
-        'slide-down': 'slideDown 0.3s ease-out',
-        'scale-in': 'scaleIn 0.2s ease-out',
+        'fade-in':       'fadeIn 0.5s ease-in-out',
+        'slide-up':      'slideUp 0.3s ease-out',
+        'slide-down':    'slideDown 0.3s ease-out',
+        'scale-in':      'scaleIn 0.2s ease-out',
+        shimmer:         'shimmer 3s ease-in-out infinite',
+        'think-shimmer': 'think-shimmer 3s ease-in-out infinite',
+        'ring-pulse':    'ring-pulse 4s ease-out infinite',
+        'orb-breathe':   'orb-breathe 2.4s ease-in-out infinite',
+        'dot-blink':     'dot-blink 1.4s ease-in-out infinite',
+        'glyph-float':   'glyph-float 3s ease-in-out infinite',
       },
       keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideUp: {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        slideDown: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        scaleIn: {
-          '0%': { transform: 'scale(0.95)', opacity: '0' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
-        },
+        fadeIn:    { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        slideUp:   { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+        slideDown: { '0%': { transform: 'translateY(-10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+        scaleIn:   { '0%': { transform: 'scale(0.95)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } },
+        shimmer:         { '0%, 60%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
+        'think-shimmer': { '0%, 100%': { transform: 'translateX(-100%)' }, '50%': { transform: 'translateX(100%)' } },
+        'ring-pulse':    { '0%': { width: '60px', height: '60px', opacity: '0.7' }, '100%': { width: '480px', height: '480px', opacity: '0' } },
+        'orb-breathe':   { '0%, 100%': { transform: 'scale(1)' }, '50%': { transform: 'scale(1.08)' } },
+        'dot-blink':     { '0%, 80%, 100%': { opacity: '0.2' }, '40%': { opacity: '1' } },
+        'glyph-float':   { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-3px)' } },
       },
     },
   },

@@ -52,7 +52,7 @@ frontend/
    VITE_API_URL=http://localhost:3000/api
    VITE_GOOGLE_MAPS_API_KEY=your_key_here
    ```
-   > ⚠️ **IMPORTANT**: `VITE_GOOGLE_MAPS_API_KEY` is the ONLY API key allowed on the frontend. Never expose Gemini, OpenWeather, or Spotify keys here.
+   > ⚠️ **IMPORTANT**: `VITE_GOOGLE_MAPS_API_KEY` is the ONLY API key allowed on the frontend. Never expose Gemini, Google Weather, or Spotify keys here.
 
 3. **Start Development Server**:
    ```bash

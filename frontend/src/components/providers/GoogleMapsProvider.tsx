@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
+declare global {
+  interface Window {
+    initGoogleMaps?: () => void
+  }
+}
+
 interface GoogleMapsContextType {
   isLoaded: boolean
   loadError: Error | null
@@ -31,12 +37,24 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
       return
     }
 
+    // Check if script is already loaded or being loaded
+    const SCRIPT_ID = 'google-maps-sdk'
+    const existingScript = document.getElementById(SCRIPT_ID)
+    
+    if (window.google?.maps || existingScript) {
+      setIsLoaded(true)
+      return
+    }
+
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`
+    script.id = SCRIPT_ID
+    // Use the latest loading=async pattern
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry,marker&loading=async&callback=initGoogleMaps`
     script.async = true
     script.defer = true
 
-    const handleLoad = () => {
+    // Define the global callback
+    window.initGoogleMaps = () => {
       setIsLoaded(true)
       setLoadError(null)
     }
@@ -46,15 +64,13 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
       setIsLoaded(false)
     }
 
-    script.addEventListener('load', handleLoad)
     script.addEventListener('error', handleError)
 
     document.head.appendChild(script)
 
     return () => {
-      script.removeEventListener('load', handleLoad)
       script.removeEventListener('error', handleError)
-      document.head.removeChild(script)
+      delete window.initGoogleMaps
     }
   }, [])
 

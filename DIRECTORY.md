@@ -281,10 +281,10 @@ routiq/                                             # Koren monorepa
 │   │   │   └── dto/
 │   │   │       └── search-attractions.dto.ts       # { destination, travelType }
 │   │   │
-│   │   ├── weather/                                # OpenWeather API proxy + caching
+│   │   ├── weather/                                # Google Weather API proxy + caching
 │   │   │   ├── weather.module.ts
 │   │   │   ├── weather.controller.ts               # Endpoint: /weather?destination=&startDate=&days=
-│   │   │   └── weather.service.ts                  # getForecast(): kliče OpenWeather, cache 1h v memory
+│   │   │   └── weather.service.ts                  # getForecast(): kliče Google Weather API, cache 1h v memory
 │   │   │
 │   │   ├── groups/                                 # Skupinska potovanja
 │   │   │   ├── groups.module.ts

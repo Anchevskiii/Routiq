@@ -20,6 +20,7 @@ interface AuthContextType {
   loginWithGoogle: () => void
   refreshToken: () => Promise<void>
   refreshUser: () => Promise<void>
+  setLoginAnimating: (v: boolean) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -39,6 +40,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoginAnimating, setIsLoginAnimating] = useState(false)
 
   useEffect(() => {
     // Check active session on mount
@@ -105,7 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = useMemo(
     () => ({
       user,
-      isAuthenticated: Boolean(user),
+      isAuthenticated: Boolean(user) && !isLoginAnimating,
       isLoading,
       login,
       register,
@@ -113,8 +115,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       loginWithGoogle: authApi.loginWithGoogle,
       refreshToken,
       refreshUser,
+      setLoginAnimating: setIsLoginAnimating,
     }),
-    [user, isLoading, login, logout, register, refreshToken]
+    [user, isLoading, isLoginAnimating, login, logout, register, refreshToken, refreshUser]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

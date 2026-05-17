@@ -2,16 +2,20 @@
  * Activity within a day of the itinerary (from AI response)
  */
 export interface GeneratedActivity {
-  time: string;
-  title: string;
-  description: string;
-  location: string;
-  duration: number;
+  time?: string;
+  title?: string;
+  shortName?: string;
+  type?: 'attraction' | 'restaurant' | string;
+  description?: string;
+  location?: string;
+  placeId?: string;
+  duration?: number | string;
   cost?: string;
   tips?: string;
+  mealType?: string;
   coordinates?: {
-    lat: number;
-    lng: number;
+    lat?: number;
+    lng?: number;
   };
 }
 
@@ -19,28 +23,28 @@ export interface GeneratedActivity {
  * Meal recommendation within a day (from AI response)
  */
 export interface GeneratedMeal {
-  type: string;
-  recommendation: string;
-  location: string;
-  priceRange: string;
+  type?: string;
+  recommendation?: string;
+  location?: string;
+  priceRange?: string;
 }
 
 /**
  * Transportation details for a day (from AI response)
  */
 export interface GeneratedTransportation {
-  method: string;
-  estimatedCost: string;
-  notes: string;
+  method?: string;
+  estimatedCost?: string;
+  notes?: string;
 }
 
 /**
  * Weather information for a day (from AI response)
  */
 export interface GeneratedDayWeather {
-  condition: string;
-  temperature: string;
-  recommendations: string;
+  condition?: string;
+  temperature?: string;
+  recommendations?: string;
 }
 
 /**
@@ -48,32 +52,32 @@ export interface GeneratedDayWeather {
  */
 export interface GeneratedDay {
   day: number;
-  date: string;
-  theme: string;
-  weather: GeneratedDayWeather;
-  activities: GeneratedActivity[];
-  meals: GeneratedMeal[];
-  transportation: GeneratedTransportation;
+  date?: string;
+  theme?: string;
+  weather?: GeneratedDayWeather;
+  activities?: GeneratedActivity[];
+  meals?: GeneratedMeal[];
+  transportation?: GeneratedTransportation;
 }
 
 /**
  * Summary information for a generated itinerary (from AI response)
  */
 export interface GeneratedSummary {
-  destination: string;
-  totalDays: number;
-  travelType: string;
-  bestSeason: string;
-  estimatedBudget: string;
+  destination?: string;
+  totalDays?: number;
+  travelType?: string;
+  bestSeason?: string;
+  estimatedBudget?: string;
 }
 
 /**
  * Complete AI-generated itinerary structure
  */
 export interface GeneratedItinerary {
-  summary: GeneratedSummary;
-  days: GeneratedDay[];
-  generalTips: string[];
+  summary?: GeneratedSummary;
+  days?: GeneratedDay[];
+  generalTips?: string[];
 }
 
 /**

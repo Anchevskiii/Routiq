@@ -1,3 +1,4 @@
+import { supabase } from '@/api/supabase'
 import { apiClient } from '@/api/axios'
 import type { ApiResponse } from '@/types/api.types'
 import type { Profile, UpdateProfileDto } from '@/types/profile.types'
@@ -22,8 +23,9 @@ export const profileApi = {
     return response.data.data
   },
 
-  async changePassword(payload: unknown): Promise<void> {
-    await apiClient.post('/users/password', payload)
+  async changePassword({ newPassword }: { newPassword: string }): Promise<void> {
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) throw error
   },
 
   async deleteAccount(): Promise<void> {

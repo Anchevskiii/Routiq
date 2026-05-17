@@ -27,39 +27,50 @@ export const SecuritySection: React.FC<Props> = ({ isChanging, onSubmit }) => {
     resolver: zodResolver(passwordSchema),
   })
 
+  const fields = [
+    { key: 'newPassword' as const,     label: 'New Password',     show: showNew,     toggle: () => setShowNew(p => !p) },
+    { key: 'confirmPassword' as const, label: 'Confirm Password', show: showConfirm, toggle: () => setShowConfirm(p => !p) },
+  ]
+
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-      <h3 className="text-xl font-bold text-gray-900 mb-2">Change Password</h3>
-      <p className="text-gray-500 text-sm mb-6">Choose a strong password with at least 8 characters.</p>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {([
-          { key: 'newPassword' as const, label: 'New Password', show: showNew, toggle: () => setShowNew(p => !p) },
-          { key: 'confirmPassword' as const, label: 'Confirm Password', show: showConfirm, toggle: () => setShowConfirm(p => !p) },
-        ] as const).map(field => (
+    <div className="bg-white dark:bg-[#1e1b38] border border-line rounded-[22px] shadow-card p-6">
+      <p className="text-[11px] font-mono uppercase tracking-[0.1em] text-ink-faint mb-1">Change Password</p>
+      <p className="text-sm text-ink-dim mb-5">Choose a strong password with at least 8 characters.</p>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {fields.map(field => (
           <div key={field.key}>
-            <label className="block text-sm font-bold text-gray-700 mb-2">{field.label}</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <label className="flex items-center gap-2 mb-2 text-[11px] font-mono uppercase tracking-[0.1em] text-ink-dim">
+              {field.label}
+            </label>
+            <div className={[
+              'relative rounded-[14px] border-[1.5px] transition-all bg-white dark:bg-[#16142e]',
+              errors[field.key] ? 'border-red-400' : 'border-line focus-within:border-transparent focus-within:shadow-[0_0_0_1.5px_theme(colors.indigo.500),0_0_0_5px_rgba(99,102,241,0.12)]',
+            ].join(' ')}>
+              <Lock className="absolute left-[18px] top-1/2 -translate-y-1/2 w-[17px] h-[17px] text-ink-faint" />
               <input
                 type={field.show ? 'text' : 'password'}
                 {...register(field.key)}
-                className={`w-full pl-12 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all ${
-                  errors[field.key] ? 'border-red-500 bg-red-50' : 'border-gray-100 bg-gray-50/50'
-                }`}
+                className="w-full bg-transparent border-none outline-none text-ink text-[15px] font-medium py-[14px] pl-[46px] pr-12"
               />
-              <button type="button" onClick={field.toggle} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                {field.show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              <button
+                type="button"
+                onClick={field.toggle}
+                className="absolute right-[14px] top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink transition-colors"
+              >
+                {field.show ? <EyeOff className="w-[17px] h-[17px]" /> : <Eye className="w-[17px] h-[17px]" />}
               </button>
             </div>
-            {errors[field.key] && <p className="mt-1 text-xs text-red-600 font-bold">{errors[field.key]?.message}</p>}
+            {errors[field.key] && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors[field.key]?.message}</p>}
           </div>
         ))}
+
         <button
           type="submit"
           disabled={isChanging}
-          className="px-8 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 disabled:opacity-50 transition-all shadow-lg"
+          className="mt-2 px-6 py-[13px] bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-[14px] text-sm font-semibold shadow-[0_8px_24px_-8px_rgba(99,102,241,0.5)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(99,102,241,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          {isChanging ? 'Changing...' : 'Change Password'}
+          {isChanging ? 'Changing…' : 'Change Password'}
         </button>
       </form>
     </div>

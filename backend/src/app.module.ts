@@ -32,8 +32,14 @@ import { SupabaseModule } from './supabase/supabase.module';
     // Rate limiting
     ThrottlerModule.forRoot([
       {
+        name: 'default',
         ttl: 60000, // 1 minute
         limit: 100, // 100 requests per minute per IP
+      },
+      {
+        name: 'itinerary-generate',
+        ttl: 60000, // 1 minute
+        limit: 5, // 5 requests per minute per user
       },
     ]),
 
