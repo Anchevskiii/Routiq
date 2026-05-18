@@ -1,8 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
-import { ActivityType, TravelType } from '@prisma/client';
+import { TravelType } from '@prisma/client';
 
-import { ItineraryService } from './itinerary.service';
-import { concat, of, delay } from 'rxjs';
+import { ItineraryService, ItineraryGenerateStreamEvent } from './itinerary.service';
+import { concat, of, delay, Observable } from 'rxjs';
+import { PrismaService } from '../prisma/prisma.service';
+import { GeminiService, GeminiStreamEvent } from '../gemini/gemini.service';
+import { ItineraryGenerationService } from './itinerary-generation.service';
 
 
 // ---------------------------------------------------------------------------
@@ -30,12 +33,10 @@ const mockGeminiService = {
   streamGenerateObservable: jest.fn(),
 };
 
-const mockAttractionsService = {
-  getAttractions: jest.fn(),
-};
-
-const mockWeatherService = {
-  getForecast: jest.fn(),
+const mockItineraryGenerationService = {
+  prepareGenerationData: jest.fn(),
+  persistGeneratedItinerary: jest.fn(),
+  mapSingleDay: jest.fn(),
 };
 
 // ---------------------------------------------------------------------------
@@ -118,10 +119,9 @@ const savedItineraryRecord = {
 
 function buildService(): ItineraryService {
   return new ItineraryService(
-    mockPrisma as any,
-    mockGeminiService as any,
-    mockAttractionsService as any,
-    mockWeatherService as any,
+    mockPrisma as unknown as PrismaService,
+    mockGeminiService as unknown as GeminiService,
+    mockItineraryGenerationService as unknown as ItineraryGenerationService,
   );
 }
 
@@ -221,7 +221,7 @@ describe('ItineraryService', () => {
     it('omits userId filter when userId is falsy (public share path)', async () => {
       mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
 
-      await service.getItineraryById(itineraryId, undefined as any);
+      await service.getItineraryById(itineraryId, undefined as unknown as string);
 
       expect(mockPrisma.itinerary.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: itineraryId } }),
@@ -383,21 +383,30 @@ describe('ItineraryService', () => {
 
   describe('generateStream', () => {
     beforeEach(() => {
-      mockWeatherService.getForecast.mockResolvedValue(weatherData);
-      mockAttractionsService.getAttractions.mockResolvedValue(attractionsData);
+      mockItineraryGenerationService.prepareGenerationData.mockResolvedValue({
+        generationStart: Date.now(),
+        weatherData,
+        attractions: attractionsData,
+        prompt: 'mocked prompt',
+      });
+      mockItineraryGenerationService.mapSingleDay.mockReturnValue({
+        dayNumber: 1,
+        theme: 'Arrival',
+        activities: { create: [] },
+        weather: { create: {} },
+      });
+      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(savedItineraryRecord);
 
       // Simulate two observable events: progress then complete
       mockGeminiService.streamGenerateObservable.mockReturnValue(
         concat(
-          of({ type: 'progress', content: 'Thinking...' }).pipe(delay(0)),
+          of({ type: 'chunk', content: 'Thinking...' }).pipe(delay(0)),
           of({ type: 'complete', data: generatedItinerary }).pipe(delay(1)),
         ),
       );
 
       // $transaction executes the callback with the mock tx
-      mockPrisma.$transaction.mockImplementation((cb: any) =>
-        cb(mockPrisma),
-      );
+      mockPrisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(mockPrisma));
       mockPrisma.itinerary.create.mockResolvedValue(savedItineraryRecord);
       mockPrisma.itineraryDay.create.mockResolvedValue({ id: 'day-1' });
       mockPrisma.itineraryActivity.create.mockResolvedValue({});
@@ -406,13 +415,13 @@ describe('ItineraryService', () => {
     });
 
     it('emits progress events before the complete event', (done) => {
-      const events: unknown[] = [];
+      const events: ItineraryGenerateStreamEvent[] = [];
 
       service.generateStream(userId, baseDto).subscribe({
         next: (v) => events.push(v),
         complete: () => {
-          const types = (events as any[]).map((e) => e.type);
-          expect(types).toContain('progress');
+          const types = events.map((e) => e.type);
+          expect(types).toContain('status');
           expect(types[types.length - 1]).toBe('complete');
           done();
         },
@@ -422,7 +431,7 @@ describe('ItineraryService', () => {
 
     it('emits a complete event with the persisted itinerary id', (done) => {
       service.generateStream(userId, baseDto).subscribe({
-        next: (v: any) => {
+        next: (v) => {
           if (v.type === 'complete') {
             expect(v.itineraryId).toBe(itineraryId);
           }
@@ -432,13 +441,11 @@ describe('ItineraryService', () => {
       });
     });
 
-    it('fetches weather for the correct destination and start date', (done) => {
+    it('prepares generation data with the correct parameters', (done) => {
       service.generateStream(userId, baseDto).subscribe({
         complete: () => {
-          expect(mockWeatherService.getForecast).toHaveBeenCalledWith(
-            baseDto.destination,
-            '2024-06-01',
-            baseDto.days,
+          expect(mockItineraryGenerationService.prepareGenerationData).toHaveBeenCalledWith(
+            baseDto,
           );
           done();
         },
@@ -446,11 +453,15 @@ describe('ItineraryService', () => {
       });
     });
 
-    it('persists generalTips via itineraryTip.create', (done) => {
+    it('persists the generated itinerary via itineraryGenerationService', (done) => {
       service.generateStream(userId, baseDto).subscribe({
         complete: () => {
-          expect(mockPrisma.itineraryTip.create).toHaveBeenCalledTimes(
-            generatedItinerary.generalTips.length,
+          expect(mockItineraryGenerationService.persistGeneratedItinerary).toHaveBeenCalledWith(
+            expect.objectContaining({
+              userId,
+              createItineraryDto: baseDto,
+              generated: generatedItinerary,
+            }),
           );
           done();
         },
@@ -458,15 +469,15 @@ describe('ItineraryService', () => {
       });
     });
 
-    it('emits an error event (not throws) when weather fetch fails', (done) => {
-      mockWeatherService.getForecast.mockRejectedValue(
-        new Error('Weather API down'),
+    it('emits an error event (not throws) when data preparation fails', (done) => {
+      mockItineraryGenerationService.prepareGenerationData.mockRejectedValue(
+        new Error('Preparation failed'),
       );
 
       service.generateStream(userId, baseDto).subscribe({
-        next: (v: any) => {
+        next: (v) => {
           if (v.type === 'error') {
-            expect(v.error).toBe('Weather API down');
+            expect(v.error).toBe('Preparation failed');
             done();
           }
         },
@@ -477,15 +488,15 @@ describe('ItineraryService', () => {
 
     it('emits an error event when the Gemini stream fails', (done) => {
       mockGeminiService.streamGenerateObservable.mockReturnValue(
-        new (require('rxjs').Observable)((obs: any) =>
+        new Observable<GeminiStreamEvent>((obs) =>
           obs.error(new Error('Gemini timeout')),
         ),
       );
 
       service.generateStream(userId, baseDto).subscribe({
-        next: (v: any) => {
+        next: (v) => {
           if (v.type === 'error') {
-            expect(v.error).toBe('Gemini timeout');
+            expect(v.error).toBe('Generation timed out. Please try again.');
             done();
           }
         },
@@ -499,35 +510,16 @@ describe('ItineraryService', () => {
   // Private helpers (tested indirectly via public methods)
   // =========================================================================
 
-  describe('parseDuration (via generateItinerary transaction)', () => {
-    // Access private method for direct unit tests
-    const svc = () => service as any;
-
-    it('converts numeric hours to minutes', () => {
-      expect(svc().parseDuration(2)).toBe(120);
-    });
-
-    it('converts string hours to minutes', () => {
-      expect(svc().parseDuration('1.5')).toBe(90);
-    });
-
-    it('returns null for invalid input', () => {
-      expect(svc().parseDuration('not-a-number')).toBeNull();
-      expect(svc().parseDuration(undefined)).toBeNull();
-      expect(svc().parseDuration(null)).toBeNull();
-    });
-  });
-
   describe('generateRandomToken', () => {
     it('returns a non-empty string', () => {
-      const token = (service as any).generateRandomToken();
+      const token = (service as unknown as { generateRandomToken: () => string }).generateRandomToken();
       expect(typeof token).toBe('string');
       expect(token.length).toBeGreaterThan(0);
     });
 
     it('returns different values on successive calls', () => {
-      const t1 = (service as any).generateRandomToken();
-      const t2 = (service as any).generateRandomToken();
+      const t1 = (service as unknown as { generateRandomToken: () => string }).generateRandomToken();
+      const t2 = (service as unknown as { generateRandomToken: () => string }).generateRandomToken();
       // Probabilistically true; collision chance is astronomically low
       expect(t1).not.toBe(t2);
     });
@@ -535,19 +527,19 @@ describe('ItineraryService', () => {
 
   describe('hashString', () => {
     it('is deterministic for the same input', () => {
-      const h1 = (service as any).hashString('hello');
-      const h2 = (service as any).hashString('hello');
+      const h1 = (service as unknown as { hashString: (s: string) => string }).hashString('hello');
+      const h2 = (service as unknown as { hashString: (s: string) => string }).hashString('hello');
       expect(h1).toBe(h2);
     });
 
     it('produces different hashes for different inputs', () => {
-      expect((service as any).hashString('a')).not.toBe(
-        (service as any).hashString('b'),
+      expect((service as unknown as { hashString: (s: string) => string }).hashString('a')).not.toBe(
+        (service as unknown as { hashString: (s: string) => string }).hashString('b'),
       );
     });
 
     it('returns a string', () => {
-      expect(typeof (service as any).hashString('test')).toBe('string');
+      expect(typeof (service as unknown as { hashString: (s: string) => string }).hashString('test')).toBe('string');
     });
   });
 });

@@ -44,6 +44,8 @@ src/
 └── itinerary/
     ├── itinerary.controller.spec.ts      ← HTTP routing layer
     └── itinerary.service.spec.ts         ← Business logic layer
+└── users/
+    └── users.service.spec.ts             ← User profile + settings + avatar flows
 ```
 
 ---
@@ -122,7 +124,7 @@ and shapes the response correctly.
 ## `itinerary.service.spec.ts`
 
 **What it covers:** The `ItineraryService` business logic.
-Prisma, GeminiService, AttractionsService, and WeatherService are all mocked.
+Prisma, GeminiService, and ItineraryGenerationService are all mocked (the weather and attractions logic is encapsulated within the ItineraryGenerationService).
 
 ### `getUserItineraries`
 
@@ -159,30 +161,42 @@ and `NotFoundException` for unowned records.
 
 ### `generateStream`
 
-This is the most complex method — it chains weather fetch → attractions fetch →
-Gemini SSE stream → Prisma transaction.
+This is the most complex method — it chains data preparation → Gemini SSE stream → Prisma transaction.
 
 **How the mock works for event ordering:** The Gemini observable is mocked with
 `concat(of(progressEvent).pipe(delay(0)), of(completeEvent).pipe(delay(1)))`.
-The `delay` is needed because `switchMap` (used in the service) cancels the outer
-observable when a new inner observable arrives — without the delay, the progress
-event would be emitted synchronously and discarded before the subscriber collects it.
+The `delay` is needed because `switchMap` cancels the outer observable when a new
+inner observable arrives — without the delay, the progress event would be dropped.
 
 | Test | What is asserted |
 |---|---|
 | Event ordering | Progress events appear before the complete event |
 | Complete payload | The `complete` event contains the persisted `itineraryId` |
-| Weather call | `WeatherService.getForecast` is called with the correct destination and ISO date string |
+| Prep call | `ItineraryGenerationService.prepareGenerationData` is called with the correct destination and DTO parameters |
 | Tip persistence | `itineraryTip.create` is called once per tip in `generalTips` |
-| Weather failure | If weather fetch rejects, the stream emits `{ type: 'error', error: message }` instead of throwing to the subscriber |
+| Prep failure | If data preparation rejects, the stream emits `{ type: 'error', error: message }` instead of throwing to the subscriber |
 | Gemini failure | If the Gemini observable errors, same — emits an error event, does not throw |
 
 ### Private helpers
 
-These are accessed directly via `(service as any).methodName()`.
+These are accessed directly via type-safe mock casting: `(service as unknown as { methodName: ... })`.
 
 | Helper | Tests |
 |---|---|
-| `parseDuration` | Number input → minutes; string input → minutes; invalid/null/undefined → `null` |
 | `generateRandomToken` | Returns a non-empty string; two successive calls return different values |
 | `hashString` | Same input always produces the same hash; different inputs produce different hashes; always returns a string |
+
+## `users.service.spec.ts`
+
+**What it covers:** The `UsersService` profile, settings, avatar, and account lifecycle logic.
+
+**How it works:** Prisma and Supabase are mocked; uploads and auth deletes are simulated.
+No real Supabase calls are made.
+
+| Test group | What is asserted |
+|---|---|
+| `upsertUser` | Creates/updates users with default name/avatar and updates `lastLoginAt`. |
+| `updateProfile` | Throws on missing user; throws on email conflict; updates profile on success. |
+| `getSettings`/`updateSettings` | Merges defaults with stored metadata and persists updates. |
+| `uploadAvatarFile` | Handles missing storage, upload errors, and persists public avatar URL. |
+| `deleteAccount` | Soft-deletes and (when available) calls Supabase admin delete. |

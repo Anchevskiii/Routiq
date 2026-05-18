@@ -19,7 +19,7 @@ import { GeneratedDay, GeneratedItinerary } from './types';
 import { Prisma } from '@prisma/client';
 import { FormattedPlace } from '../attractions/types';
 
-type ItineraryGenerateStreamEvent =
+export type ItineraryGenerateStreamEvent =
   | { type: 'status'; message: string }
   | { type: 'attractions'; data: FormattedPlace[] }
   | { type: 'day'; data: Prisma.ItineraryDayCreateWithoutItineraryInput }

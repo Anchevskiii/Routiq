@@ -4,6 +4,8 @@ import { ItineraryService } from './itinerary.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
 import { TravelType } from '@prisma/client';
+import { Request, Response } from 'express';
+import { JwtPayload } from '../common/types/jwt-payload.type';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -64,41 +66,71 @@ describe('ItineraryController', () => {
       travelType: TravelType.CULTURAL,
     };
 
-    it('wraps each emission from generateStream in a { data } envelope', (done) => {
+    it('configures SSE response headers and writes events from generateStream', async () => {
       const events = [
-        { type: 'progress', message: 'Generating...' },
+        { type: 'status', message: 'Generating...' },
         { type: 'complete', itineraryId: 'itin-1' },
       ];
       mockItineraryService.generateStream.mockReturnValue(of(...events));
 
-      const results: unknown[] = [];
-      controller.generateItinerary(mockUser, dto).subscribe({
-        next: (v) => results.push(v),
-        complete: () => {
-          expect(results).toEqual([
-            { data: { type: 'progress', message: 'Generating...' } },
-            { data: { type: 'complete', itineraryId: 'itin-1' } },
-          ]);
-          expect(mockItineraryService.generateStream).toHaveBeenCalledWith(
-            mockUser.sub,
-            dto,
-          );
-          done();
-        },
-      });
+      const mockReq = {
+        on: jest.fn(),
+      } as unknown as Request;
+
+      const mockRes = {
+        status: jest.fn().mockReturnThis(),
+        setHeader: jest.fn().mockReturnThis(),
+        flushHeaders: jest.fn().mockReturnThis(),
+        write: jest.fn(),
+        end: jest.fn(),
+        writableEnded: false,
+      } as unknown as Response;
+
+      await controller.generateItinerary(mockUser as unknown as JwtPayload, dto, mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
+      expect(mockRes.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache');
+      expect(mockRes.setHeader).toHaveBeenCalledWith('Connection', 'keep-alive');
+      expect(mockRes.flushHeaders).toHaveBeenCalled();
+
+      expect(mockRes.write).toHaveBeenCalledWith(`data: ${JSON.stringify(events[0])}\n\n`);
+      expect(mockRes.write).toHaveBeenCalledWith(`data: ${JSON.stringify(events[1])}\n\n`);
+      expect(mockRes.end).toHaveBeenCalled();
+
+      expect(mockItineraryService.generateStream).toHaveBeenCalledWith(
+        mockUser.sub,
+        dto,
+      );
     });
 
-    it('propagates errors emitted by the stream', (done) => {
+    it('handles errors by writing error structure to response', async () => {
       mockItineraryService.generateStream.mockReturnValue(
         throwError(() => new Error('AI failure')),
       );
 
-      controller.generateItinerary(mockUser, dto).subscribe({
-        error: (err) => {
-          expect(err.message).toBe('AI failure');
-          done();
-        },
-      });
+      const mockReq = {
+        on: jest.fn(),
+      } as unknown as Request;
+
+      const mockRes = {
+        status: jest.fn().mockReturnThis(),
+        setHeader: jest.fn().mockReturnThis(),
+        flushHeaders: jest.fn().mockReturnThis(),
+        write: jest.fn(),
+        end: jest.fn(),
+        writableEnded: false,
+      } as unknown as Response;
+
+      await controller.generateItinerary(mockUser as unknown as JwtPayload, dto, mockReq, mockRes);
+
+      expect(mockRes.write).toHaveBeenCalledWith(
+        `data: ${JSON.stringify({
+          type: 'error',
+          error: 'Streaming connection failed',
+        })}\n\n`,
+      );
+      expect(mockRes.end).toHaveBeenCalled();
     });
   });
 
@@ -116,7 +148,7 @@ describe('ItineraryController', () => {
       mockItineraryService.getUserItineraries.mockResolvedValue(paginatedResult);
 
       const result = await controller.getUserItineraries(
-        mockUser,
+        mockUser as unknown as JwtPayload,
         undefined as unknown as string,
         undefined as unknown as string,
       );
@@ -135,7 +167,7 @@ describe('ItineraryController', () => {
     it('parses string query params into integers', async () => {
       mockItineraryService.getUserItineraries.mockResolvedValue(paginatedResult);
 
-      await controller.getUserItineraries(mockUser, '3', '5');
+      await controller.getUserItineraries(mockUser as unknown as JwtPayload, '3', '5');
 
       expect(mockItineraryService.getUserItineraries).toHaveBeenCalledWith(
         'user-123',
@@ -147,7 +179,7 @@ describe('ItineraryController', () => {
     it('uses the authenticated user id, not a user-supplied value', async () => {
       mockItineraryService.getUserItineraries.mockResolvedValue(paginatedResult);
 
-      await controller.getUserItineraries(mockUser, '1', '10');
+      await controller.getUserItineraries(mockUser as unknown as JwtPayload, '1', '10');
 
       const [calledUserId] =
         mockItineraryService.getUserItineraries.mock.calls[0];
@@ -163,7 +195,7 @@ describe('ItineraryController', () => {
     it('delegates to service with id and user.sub', async () => {
       mockItineraryService.getItineraryById.mockResolvedValue(mockItinerary);
 
-      const result = await controller.getItineraryById('itin-1', mockUser);
+      const result = await controller.getItineraryById('itin-1', mockUser as unknown as JwtPayload);
 
       expect(mockItineraryService.getItineraryById).toHaveBeenCalledWith(
         'itin-1',
@@ -179,7 +211,7 @@ describe('ItineraryController', () => {
       );
 
       await expect(
-        controller.getItineraryById('nonexistent', mockUser),
+        controller.getItineraryById('nonexistent', mockUser as unknown as JwtPayload),
       ).rejects.toThrow('Itinerary not found');
     });
   });
@@ -199,7 +231,7 @@ describe('ItineraryController', () => {
 
       const result = await controller.updateItinerary(
         'itin-1',
-        mockUser,
+        mockUser as unknown as JwtPayload,
         updateDto,
       );
 
@@ -218,7 +250,7 @@ describe('ItineraryController', () => {
       );
 
       await expect(
-        controller.updateItinerary('other-itin', mockUser, updateDto),
+        controller.updateItinerary('other-itin', mockUser as unknown as JwtPayload, updateDto),
       ).rejects.toThrow('Itinerary not found');
     });
   });
@@ -233,7 +265,7 @@ describe('ItineraryController', () => {
         message: 'Itinerary deleted successfully',
       });
 
-      const result = await controller.deleteItinerary('itin-1', mockUser);
+      const result = await controller.deleteItinerary('itin-1', mockUser as unknown as JwtPayload);
 
       expect(mockItineraryService.deleteItinerary).toHaveBeenCalledWith(
         'itin-1',
@@ -249,7 +281,7 @@ describe('ItineraryController', () => {
       );
 
       await expect(
-        controller.deleteItinerary('other-itin', mockUser),
+        controller.deleteItinerary('other-itin', mockUser as unknown as JwtPayload),
       ).rejects.toThrow('Itinerary not found');
     });
   });
@@ -264,7 +296,7 @@ describe('ItineraryController', () => {
         shareToken: 'abc123xyz',
       });
 
-      const result = await controller.generateShareToken('itin-1', mockUser);
+      const result = await controller.generateShareToken('itin-1', mockUser as unknown as JwtPayload);
 
       expect(mockItineraryService.generateShareToken).toHaveBeenCalledWith(
         'itin-1',
@@ -279,7 +311,7 @@ describe('ItineraryController', () => {
         shareToken: 'existing-token',
       });
 
-      const result = await controller.generateShareToken('itin-1', mockUser);
+      const result = await controller.generateShareToken('itin-1', mockUser as unknown as JwtPayload);
 
       expect(result).toEqual({ shareToken: 'existing-token' });
       // Expect service called exactly once — no double-generation
