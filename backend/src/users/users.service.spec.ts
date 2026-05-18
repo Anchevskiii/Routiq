@@ -4,6 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 const mockPrisma = {
   user: {
@@ -30,11 +35,14 @@ const mockSupabaseClient = {
 };
 
 const mockSupabaseService = {
-  getClient: jest.fn(() => mockSupabaseClient),
+  getClient: jest.fn<SupabaseClient | undefined, []>(() => mockSupabaseClient as unknown as SupabaseClient),
 };
 
 function buildService() {
-  return new UsersService(mockPrisma as any, mockSupabaseService as any);
+  return new UsersService(
+    mockPrisma as unknown as PrismaService,
+    mockSupabaseService as unknown as SupabaseService,
+  );
 }
 
 describe('UsersService', () => {
@@ -42,7 +50,9 @@ describe('UsersService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabaseService.getClient.mockReturnValue(mockSupabaseClient as any);
+    mockSupabaseService.getClient.mockReturnValue(
+      mockSupabaseClient as unknown as SupabaseClient,
+    );
     service = buildService();
   });
 
@@ -74,7 +84,7 @@ describe('UsersService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateProfile('missing', { name: 'New' } as any),
+        service.updateProfile('missing', { name: 'New' } as UpdateProfileDto),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -84,7 +94,7 @@ describe('UsersService', () => {
         .mockResolvedValueOnce({ id: 'user-2', email: 'new@b.com' });
 
       await expect(
-        service.updateProfile('user-1', { email: 'new@b.com' } as any),
+        service.updateProfile('user-1', { email: 'new@b.com' } as UpdateProfileDto),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -97,7 +107,7 @@ describe('UsersService', () => {
 
       const result = await service.updateProfile('user-1', {
         name: 'Alice',
-      } as any);
+      } as UpdateProfileDto);
 
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
@@ -152,7 +162,7 @@ describe('UsersService', () => {
 
       const result = await service.updateSettings('user-1', {
         comments: false,
-      } as any);
+      } as UpdateSettingsDto);
 
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
@@ -172,7 +182,7 @@ describe('UsersService', () => {
 
   describe('uploadAvatarFile', () => {
     it('throws when storage is unavailable', async () => {
-      mockSupabaseService.getClient.mockReturnValue(null as any);
+      mockSupabaseService.getClient.mockReturnValue(undefined);
 
       await expect(
         service.uploadAvatarFile('user-1', Buffer.from('x'), 'image/png'),
