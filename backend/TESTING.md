@@ -124,7 +124,7 @@ and shapes the response correctly.
 ## `itinerary.service.spec.ts`
 
 **What it covers:** The `ItineraryService` business logic.
-Prisma, GeminiService, AttractionsService, and WeatherService are all mocked.
+Prisma, GeminiService, and ItineraryGenerationService are all mocked (the weather and attractions logic is encapsulated within the ItineraryGenerationService).
 
 ### `getUserItineraries`
 
@@ -161,8 +161,7 @@ and `NotFoundException` for unowned records.
 
 ### `generateStream`
 
-This is the most complex method — it chains weather fetch → attractions fetch →
-Gemini SSE stream → Prisma transaction.
+This is the most complex method — it chains data preparation → Gemini SSE stream → Prisma transaction.
 
 **How the mock works for event ordering:** The Gemini observable is mocked with
 `concat(of(progressEvent).pipe(delay(0)), of(completeEvent).pipe(delay(1)))`.
@@ -173,14 +172,14 @@ inner observable arrives — without the delay, the progress event would be drop
 |---|---|
 | Event ordering | Progress events appear before the complete event |
 | Complete payload | The `complete` event contains the persisted `itineraryId` |
-| Weather call | `WeatherService.getForecast` is called with the correct destination and ISO date string |
+| Prep call | `ItineraryGenerationService.prepareGenerationData` is called with the correct destination and DTO parameters |
 | Tip persistence | `itineraryTip.create` is called once per tip in `generalTips` |
-| Weather failure | If weather fetch rejects, the stream emits `{ type: 'error', error: message }` instead of throwing to the subscriber |
+| Prep failure | If data preparation rejects, the stream emits `{ type: 'error', error: message }` instead of throwing to the subscriber |
 | Gemini failure | If the Gemini observable errors, same — emits an error event, does not throw |
 
 ### Private helpers
 
-These are accessed directly via `(service as any).methodName()`.
+These are accessed directly via type-safe mock casting: `(service as unknown as { methodName: ... })`.
 
 | Helper | Tests |
 |---|---|
