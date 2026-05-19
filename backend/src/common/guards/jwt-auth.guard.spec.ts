@@ -100,7 +100,10 @@ const supabaseUser = {
   id: 'supabase-uid-123',
   email: 'test@example.com',
   role: 'authenticated',
-  user_metadata: { name: 'Test User', avatar_url: 'https://example.com/pic.png' },
+  user_metadata: {
+    name: 'Test User',
+    avatar_url: 'https://example.com/pic.png',
+  },
   app_metadata: {},
 };
 
@@ -121,8 +124,8 @@ describe('JwtAuthGuard', () => {
 
     guard = new JwtAuthGuard(
       mockReflector,
-      mockSupabaseService as any,
-      mockUsersService as any,
+      mockSupabaseService as unknown as never,
+      mockUsersService as unknown as never,
     );
   });
 
@@ -149,10 +152,10 @@ describe('JwtAuthGuard', () => {
 
       await guard.canActivate(ctx);
 
-      expect(mockReflector.getAllAndOverride).toHaveBeenCalledWith(
-        'isPublic',
-        [handler, cls],
-      );
+      expect(mockReflector.getAllAndOverride).toHaveBeenCalledWith('isPublic', [
+        handler,
+        cls,
+      ]);
     });
   });
 

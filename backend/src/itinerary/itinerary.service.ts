@@ -87,6 +87,16 @@ export class ItineraryService {
               days: true,
             },
           },
+          groupItineraries: {
+            select: {
+              groupId: true,
+              group: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
         },
       }),
       this.prisma.itinerary.count({
@@ -130,6 +140,17 @@ export class ItineraryService {
         },
         generalTips: {
           orderBy: { sortOrder: 'asc' },
+        },
+        groupItineraries: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+              },
+            },
+          },
         },
       },
     });
