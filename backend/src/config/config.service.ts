@@ -86,4 +86,25 @@ export class AppConfigService {
   isProduction(): boolean {
     return this.getNodeEnv() === 'production';
   }
+
+  // Email Config
+  getMailHost(): string {
+    return this.get<string>('MAIL_HOST') || 'smtp.resend.com';
+  }
+
+  getMailPort(): number {
+    return Number(this.get<string>('MAIL_PORT')) || 465;
+  }
+
+  getMailUser(): string {
+    return this.get<string>('MAIL_USER') || '';
+  }
+
+  getMailPass(): string {
+    return this.get<string>('MAIL_PASS') || '';
+  }
+
+  getMailFrom(): string {
+    return this.get<string>('MAIL_FROM') || 'routiqtravel@proton.me';
+  }
 }

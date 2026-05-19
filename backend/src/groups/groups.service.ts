@@ -11,12 +11,16 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class GroupsService {
   private readonly logger = new Logger(GroupsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   // ─── Group CRUD ───────────────────────────────────────────
 
@@ -348,6 +352,21 @@ export class GroupsService {
         invitedEmail: inviteMemberDto.email,
       });
 
+      // Get inviter and group details for email
+      const [inviter, group] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: inviterId } }),
+        this.prisma.group.findUnique({ where: { id: groupId } }),
+      ]);
+
+      if (inviter && group) {
+        await this.mailService.sendGroupInvitation(
+          inviteMemberDto.email,
+          inviter.name,
+          group.name,
+          groupId,
+        );
+      }
+
       return updatedMembership;
     }
 
@@ -377,6 +396,21 @@ export class GroupsService {
       invitedUserId: userToInvite.id,
       invitedEmail: inviteMemberDto.email,
     });
+
+    // Get inviter and group details for email
+    const [inviter, group] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: inviterId } }),
+      this.prisma.group.findUnique({ where: { id: groupId } }),
+    ]);
+
+    if (inviter && group) {
+      await this.mailService.sendGroupInvitation(
+        inviteMemberDto.email,
+        inviter.name,
+        group.name,
+        groupId,
+      );
+    }
 
     return newMember;
   }
