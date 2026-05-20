@@ -15,6 +15,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { WeatherModule } from './weather/weather.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     GroupsModule,
     ExportModule,
     HealthModule,
+    MailModule,
   ],
   controllers: [],
   providers: [

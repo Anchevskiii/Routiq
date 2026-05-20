@@ -1,4 +1,11 @@
-import { IsString, IsOptional, MinLength, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  MinLength,
+  MaxLength,
+  IsUrl,
+  IsHexColor,
+} from 'class-validator';
 
 export class CreateGroupDto {
   @IsString()
@@ -10,4 +17,12 @@ export class CreateGroupDto {
   @IsOptional()
   @MaxLength(500)
   description?: string;
+
+  @IsUrl()
+  @IsOptional()
+  imageUrl?: string;
+
+  @IsHexColor()
+  @IsOptional()
+  themeColor?: string;
 }

@@ -1,8 +1,12 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { format } from 'date-fns'
-import { Calendar, User, ExternalLink, ThumbsUp, MessageSquare } from 'lucide-react'
+import { Calendar, User, ExternalLink, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { groupsApi } from '@/api/groups.api'
+import { QUERY_KEYS } from '@/constants/queryKeys'
+import toast from 'react-hot-toast'
 import type { GroupItinerary } from '@/types/group.types'
 
 interface Props {
@@ -10,7 +14,18 @@ interface Props {
 }
 
 export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary }) => {
-  const { itinerary } = groupItinerary
+  const { itinerary, score } = groupItinerary
+  const { id: groupId } = useParams<{ id: string }>()
+  const queryClient = useQueryClient()
+
+  const voteMutation = useMutation({
+    mutationFn: (voteType: 'UPVOTE' | 'DOWNVOTE') => 
+      groupsApi.vote(groupId!, groupItinerary.id, voteType),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+    },
+    onError: () => toast.error('Failed to register vote'),
+  })
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
@@ -42,15 +57,35 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary }) => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <button className="flex items-center justify-center gap-2 py-3 bg-gray-50 rounded-2xl font-bold text-gray-600 hover:bg-primary/5 hover:text-primary transition-all">
-            <ThumbsUp className="w-5 h-5" />
-            <span>{groupItinerary._count?.votes || 0} Votes</span>
-          </button>
-          <button className="flex items-center justify-center gap-2 py-3 bg-gray-50 rounded-2xl font-bold text-gray-600 hover:bg-primary/5 hover:text-primary transition-all">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center bg-gray-50 rounded-2xl p-1 shadow-inner border border-gray-100">
+            <button 
+              onClick={() => voteMutation.mutate('UPVOTE')}
+              disabled={voteMutation.isPending}
+              className="p-3 hover:bg-white hover:text-primary hover:shadow-sm rounded-xl transition-all"
+            >
+              <ThumbsUp className="w-5 h-5" />
+            </button>
+            
+            <div className={`px-4 font-black text-lg ${score >= 0 ? 'text-primary' : 'text-red-500'}`}>
+              {score > 0 ? `+${score}` : score}
+            </div>
+
+            <button 
+              onClick={() => voteMutation.mutate('DOWNVOTE')}
+              disabled={voteMutation.isPending}
+              className="p-3 hover:bg-white hover:text-red-500 hover:shadow-sm rounded-xl transition-all"
+            >
+              <ThumbsDown className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 rounded-2xl font-bold text-gray-400">
             <MessageSquare className="w-5 h-5" />
-            <span>{groupItinerary._count?.comments || 0} Comments</span>
-          </button>
+            <span>Discussion</span>
+          </div>
         </div>
       </div>
     </div>

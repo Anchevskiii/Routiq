@@ -140,7 +140,11 @@ export class UsersService {
     return { ...DEFAULT_SETTINGS, ...updated };
   }
 
-  async uploadAvatarFile(userId: string, buffer: Buffer, mimetype: string): Promise<{ avatarUrl: string }> {
+  async uploadAvatarFile(
+    userId: string,
+    buffer: Buffer,
+    mimetype: string,
+  ): Promise<{ avatarUrl: string }> {
     const client = this.supabase.getClient();
     if (!client) {
       throw new InternalServerErrorException('Storage service unavailable');

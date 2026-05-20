@@ -5,6 +5,7 @@ import {
   IsDate,
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
   Max,
   Min,
@@ -96,4 +97,12 @@ export class CreateItineraryDto {
   })
   @IsEnum(TravelType)
   travelType!: TravelType;
+
+  @ApiProperty({
+    description: 'Optional Group ID to automatically share the itinerary',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  groupId?: string;
 }

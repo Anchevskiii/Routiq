@@ -98,7 +98,7 @@ export class ItineraryGenerationService {
       generated.summary?.estimatedBudget ?? 'Contact local guides for pricing';
 
     return this.prisma.$transaction(async (tx) => {
-      return tx.itinerary.create({
+      const itinerary = await tx.itinerary.create({
         data: {
           userId,
           destination: createItineraryDto.destination,
@@ -134,6 +134,19 @@ export class ItineraryGenerationService {
           },
         },
       });
+
+      // If groupId is provided, automatically link the itinerary to the group
+      if (createItineraryDto.groupId) {
+        await tx.groupItinerary.create({
+          data: {
+            groupId: createItineraryDto.groupId,
+            itineraryId: itinerary.id,
+            addedById: userId,
+          },
+        });
+      }
+
+      return itinerary;
     });
   }
 

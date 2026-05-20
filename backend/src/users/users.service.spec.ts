@@ -35,7 +35,9 @@ const mockSupabaseClient = {
 };
 
 const mockSupabaseService = {
-  getClient: jest.fn<SupabaseClient | undefined, []>(() => mockSupabaseClient as unknown as SupabaseClient),
+  getClient: jest.fn<SupabaseClient | undefined, []>(
+    () => mockSupabaseClient as unknown as SupabaseClient,
+  ),
 };
 
 function buildService() {
@@ -94,7 +96,9 @@ describe('UsersService', () => {
         .mockResolvedValueOnce({ id: 'user-2', email: 'new@b.com' });
 
       await expect(
-        service.updateProfile('user-1', { email: 'new@b.com' } as UpdateProfileDto),
+        service.updateProfile('user-1', {
+          email: 'new@b.com',
+        } as UpdateProfileDto),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -222,7 +226,9 @@ describe('UsersService', () => {
         where: { id: 'user-1' },
         data: { avatarUrl: 'https://cdn.example.com/avatar.png' },
       });
-      expect(result).toEqual({ avatarUrl: 'https://cdn.example.com/avatar.png' });
+      expect(result).toEqual({
+        avatarUrl: 'https://cdn.example.com/avatar.png',
+      });
     });
   });
 
