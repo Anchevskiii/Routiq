@@ -30,9 +30,7 @@ npx jest --coverage
 > Tests are **not wired to git push**. They only run when you invoke them manually.
 > If you later add CI (GitHub Actions, etc.), add `npx jest` to the workflow file at that point.
 
----
-
-## Test files
+---## Test files
 
 ```
 src/
@@ -41,9 +39,13 @@ src/
 │   │   └── jwt-auth.guard.spec.ts        ← Guard behaviour
 │   └── decorators/
 │       └── auth-decorators.spec.ts       ← @Public() and @CurrentUser()
-└── itinerary/
-    ├── itinerary.controller.spec.ts      ← HTTP routing layer
-    └── itinerary.service.spec.ts         ← Business logic layer
+├── groups/
+│   ├── groups.controller.spec.ts         ← Group management routing layer
+│   └── groups.service.spec.ts            ← Group travel business logic
+├── itinerary/
+│   ├── itinerary.controller.spec.ts      ← HTTP routing layer
+│   ├── itinerary-generation.service.spec.ts ← AI itinerary building/mapping
+│   └── itinerary.service.spec.ts         ← Business logic layer
 └── users/
     └── users.service.spec.ts             ← User profile + settings + avatar flows
 ```
@@ -186,6 +188,8 @@ These are accessed directly via type-safe mock casting: `(service as unknown as 
 | `generateRandomToken` | Returns a non-empty string; two successive calls return different values |
 | `hashString` | Same input always produces the same hash; different inputs produce different hashes; always returns a string |
 
+---
+
 ## `users.service.spec.ts`
 
 **What it covers:** The `UsersService` profile, settings, avatar, and account lifecycle logic.
@@ -200,3 +204,55 @@ No real Supabase calls are made.
 | `getSettings`/`updateSettings` | Merges defaults with stored metadata and persists updates. |
 | `uploadAvatarFile` | Handles missing storage, upload errors, and persists public avatar URL. |
 | `deleteAccount` | Soft-deletes and (when available) calls Supabase admin delete. |
+
+---
+
+## `groups.controller.spec.ts`
+
+**What it covers:** The `GroupsController` HTTP routing layer. The `GroupsService` is fully mocked — tests verify routing, parameter extraction, default handling, and that errors are correctly surfaced.
+
+| Endpoint / Method | What is asserted |
+|---|---|
+| `getUserGroups` | Delegates to service with `user.sub` and returns result; handles empty lists. |
+| `getPendingInvitations` | Retrieves the calling user's pending invitations. |
+| `getGroupById` | Returns group detail for member; surfaces `ForbiddenException` and `NotFoundException` from service. |
+| `getGroupActivityLog` | Passes default limit of 50 or parses/passes custom string limit query parameter. |
+| `createGroup` | Passes creation DTO and `user.sub` to the service and returns the new group. |
+| `deleteGroup` | Returns success message; surfaces `ForbiddenException` when the caller is not the owner. |
+| `inviteMember` | Returns membership record; surfaces `BadRequestException` (duplicates) or `NotFoundException` (unknown emails). |
+| `acceptInvitation` / `declineInvitation` | Resolves or declines invitation, returning updated status; surfaces `NotFoundException` if no pending invitation. |
+| `removeMember` | Calls service to remove member; surfaces `ForbiddenException` for insufficient roles. |
+| `updateMemberRole` | Updates target member's role; surfaces `BadRequestException` for self-role modifications. |
+| `addItineraryToGroup` | Adds itinerary; surfaces `BadRequestException` if already added. |
+| `getComments` / `addComment` | Handles retrieval and creation of group comments/replies; surfaces `NotFoundException` for invalid targets. |
+| `getVotes` / `voteForItinerary` | Registers UPVOTEs or DOWNVOTEs; surfaces `ForbiddenException` for non-members. |
+
+---
+
+## `groups.service.spec.ts`
+
+**What it covers:** The `GroupsService` business logic. Both `PrismaService` and `MailService` are completely mocked.
+
+**How it works:** Tests check permission hierarchies (OWNER vs ADMIN vs MEMBER), transaction logic, and resilience when creating log records.
+
+| Feature Area | What is asserted |
+|---|---|
+| **Group Query & Creation** | `getUserGroups` enriches groups with member and itinerary counts; `createGroup` sets role to `OWNER` for the creator and logs `GROUP_CREATED`. |
+| **Deletion** | Allows deleting groups only if the caller is the `OWNER`; throws `ForbiddenException` for all other roles. |
+| **Invitations & Roles** | `inviteMember` enforces role checks (`OWNER`/`ADMIN` can invite), creates `PENDING` invitation, and handles re-invitations for declined members; `acceptInvitation` records respond/join dates. |
+| **Membership Management** | `removeMember` enforces role rank hierarchy (caller must have higher role than target), blocks sole owner self-removal, and deletes connection record. `updateMemberRole` blocks self-role updates. |
+| **Group Itineraries** | `addItineraryToGroup` checks membership and itinerary ownership before adding, and blocks duplicates. `voteForItinerary` upserts `UPVOTE`/`DOWNVOTE` and defaults unknown types. |
+| **Comments & Activity** | `addComment` supports top-level comments and threaded replies (validating parent exists). `activity log resilience` guarantees that a logging failure does not propagate and crash the outer operation. |
+
+---
+
+## `itinerary-generation.service.spec.ts`
+
+**What it covers:** The `ItineraryGenerationService` data fetching, prompt construction, data mapping, and persistence. `PrismaService`, `AttractionsService`, `WeatherService`, and `AppConfigService` are fully mocked.
+
+| Method | What is asserted |
+|---|---|
+| `prepareGenerationData` | Fetches weather forecasts and curated attractions in parallel; invokes prompt builder and returns all context data. |
+| `persistGeneratedItinerary` | Saves itinerary record via transaction; handles missing summaries/tips with sensible fallbacks. |
+| `mapSingleDay` | Maps custom generated day schema (activities, meals, weather) into the DB representation; converts duration strings to minutes and sets correct activity types (`ATTRACTION` vs `MEAL`). |
+| `mapDaysForNestedWrite` | Iterates and maps multiple generated days. |
