@@ -6,6 +6,7 @@ import {
 import { GroupRole, InvitationStatus } from '@prisma/client';
 import { GroupsService } from './groups.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 
 // ---------------------------------------------------------------------------
 // Mock PrismaService
@@ -15,7 +16,9 @@ const mockPrisma = {
   group: {
     findMany: jest.fn(),
     findFirst: jest.fn(),
+    findUnique: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
     delete: jest.fn(),
   },
   groupMember: {
@@ -49,6 +52,10 @@ const mockPrisma = {
   user: {
     findUnique: jest.fn(),
   },
+};
+
+const mockMailService = {
+  sendGroupInvitation: jest.fn(),
 };
 
 // ---------------------------------------------------------------------------
@@ -108,7 +115,10 @@ const groupRecord = {
 // ---------------------------------------------------------------------------
 
 function buildService(): GroupsService {
-  return new GroupsService(mockPrisma as unknown as PrismaService);
+  return new GroupsService(
+    mockPrisma as unknown as PrismaService,
+    mockMailService as unknown as MailService,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -170,11 +180,12 @@ describe('GroupsService', () => {
   describe('getGroupById', () => {
     it('returns the group when user is an accepted member', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      mockPrisma.group.findFirst.mockResolvedValue(groupRecord);
+      const groupWithItineraries = { ...groupRecord, itineraries: [] };
+      mockPrisma.group.findFirst.mockResolvedValue(groupWithItineraries);
 
       const result = await service.getGroupById(groupId, memberId);
 
-      expect(result).toEqual(groupRecord);
+      expect(result).toEqual(groupWithItineraries);
     });
 
     it('throws ForbiddenException when user is not an accepted member', async () => {
@@ -690,20 +701,18 @@ describe('GroupsService', () => {
   });
 
   // =========================================================================
-  // voteForActivity
+  // voteForItinerary
   // =========================================================================
 
-  describe('voteForActivity', () => {
-    // voteForActivity call order:
+  describe('voteForItinerary', () => {
+    // voteForItinerary call order:
     //   1. requireAcceptedMember → groupMember.findFirst
     //   2. groupItinerary.findFirst
 
-    const activityId = 'act-111';
     const baseVote = {
       id: 'vote-1',
       groupItineraryId,
       userId: memberId,
-      activityId,
       voteType: 'UPVOTE',
       user: {},
     };
@@ -713,13 +722,13 @@ describe('GroupsService', () => {
       mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
       mockPrisma.vote.upsert.mockResolvedValue(baseVote);
 
-      const result = await service.voteForActivity(
-        groupId, groupItineraryId, memberId, activityId, 'UPVOTE',
+      const result = await service.voteForItinerary(
+        groupId, groupItineraryId, memberId, 'UPVOTE',
       );
 
       expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          create: expect.objectContaining({ groupItineraryId, userId: memberId, activityId, voteType: 'UPVOTE' }),
+          create: expect.objectContaining({ groupItineraryId, userId: memberId, voteType: 'UPVOTE' }),
           update: { voteType: 'UPVOTE' },
         }),
       );
@@ -731,7 +740,7 @@ describe('GroupsService', () => {
       mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
       mockPrisma.vote.upsert.mockResolvedValue(baseVote);
 
-      await service.voteForActivity(groupId, groupItineraryId, memberId, activityId, 'INVALID');
+      await service.voteForItinerary(groupId, groupItineraryId, memberId, 'INVALID');
 
       expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ create: expect.objectContaining({ voteType: 'UPVOTE' }) }),
@@ -743,8 +752,8 @@ describe('GroupsService', () => {
       mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
       mockPrisma.vote.upsert.mockResolvedValue({ ...baseVote, voteType: 'DOWNVOTE' });
 
-      const result = await service.voteForActivity(
-        groupId, groupItineraryId, memberId, activityId, 'DOWNVOTE',
+      const result = await service.voteForItinerary(
+        groupId, groupItineraryId, memberId, 'DOWNVOTE',
       );
 
       expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
@@ -757,7 +766,7 @@ describe('GroupsService', () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.voteForActivity(groupId, groupItineraryId, outsiderId, activityId, 'UPVOTE'),
+        service.voteForItinerary(groupId, groupItineraryId, outsiderId, 'UPVOTE'),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -766,7 +775,7 @@ describe('GroupsService', () => {
       mockPrisma.groupItinerary.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.voteForActivity(groupId, 'bad-gi', memberId, activityId, 'UPVOTE'),
+        service.voteForItinerary(groupId, 'bad-gi', memberId, 'UPVOTE'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -778,14 +787,13 @@ describe('GroupsService', () => {
   describe('addComment', () => {
     // addComment call order:
     //   1. requireAcceptedMember → groupMember.findFirst
-    //   2. groupItinerary.findFirst
-    //   3. (only if parentId) comment.findFirst
-    //   4. comment.create
+    //   2. (only if parentId) comment.findFirst
+    //   3. comment.create
 
     const addCommentDto = { content: 'Great itinerary!' };
     const commentRecord = {
       id: 'comment-1',
-      groupItineraryId,
+      groupId,
       userId: memberId,
       content: 'Great itinerary!',
       parentId: null,
@@ -795,17 +803,16 @@ describe('GroupsService', () => {
 
     it('creates a top-level comment and logs COMMENT_ADDED', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
       mockPrisma.comment.create.mockResolvedValue(commentRecord);
 
       const result = await service.addComment(
-        groupId, groupItineraryId, memberId, addCommentDto,
+        groupId, memberId, addCommentDto,
       );
 
       expect(mockPrisma.comment.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            groupItineraryId,
+            groupId,
             userId: memberId,
             content: 'Great itinerary!',
             parentId: null,
@@ -821,14 +828,13 @@ describe('GroupsService', () => {
     });
 
     it('creates a threaded reply when parentId is provided and valid', async () => {
-      const parentComment = { id: 'parent-1', groupItineraryId };
+      const parentComment = { id: 'parent-1', groupId };
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
       mockPrisma.comment.findFirst.mockResolvedValue(parentComment); // 3. parent exists
       mockPrisma.comment.create.mockResolvedValue({ ...commentRecord, parentId: 'parent-1' });
 
       const result = await service.addComment(
-        groupId, groupItineraryId, memberId,
+        groupId, memberId,
         { content: 'Reply!', parentId: 'parent-1' },
       );
 
@@ -842,11 +848,10 @@ describe('GroupsService', () => {
 
     it('throws NotFoundException when parentId does not exist', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
       mockPrisma.comment.findFirst.mockResolvedValue(null); // 3. parent not found
 
       await expect(
-        service.addComment(groupId, groupItineraryId, memberId, {
+        service.addComment(groupId, memberId, {
           content: 'Reply!',
           parentId: 'ghost-parent',
         }),
@@ -857,17 +862,8 @@ describe('GroupsService', () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.addComment(groupId, groupItineraryId, outsiderId, addCommentDto),
+        service.addComment(groupId, outsiderId, addCommentDto),
       ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('throws NotFoundException when group itinerary is not in this group', async () => {
-      mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.addComment(groupId, 'bad-gi', memberId, addCommentDto),
-      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -881,11 +877,11 @@ describe('GroupsService', () => {
       const comments = [{ id: 'c1', parentId: null, content: 'Hi', replies: [] }];
       mockPrisma.comment.findMany.mockResolvedValue(comments);
 
-      const result = await service.getComments(groupId, groupItineraryId, memberId);
+      const result = await service.getComments(groupId, memberId);
 
       expect(mockPrisma.comment.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { groupItineraryId, parentId: null, deletedAt: null },
+          where: { groupId, parentId: null, deletedAt: null },
         }),
       );
       expect(result).toEqual(comments);
@@ -895,7 +891,7 @@ describe('GroupsService', () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.getComments(groupId, groupItineraryId, outsiderId),
+        service.getComments(groupId, outsiderId),
       ).rejects.toThrow(ForbiddenException);
     });
   });

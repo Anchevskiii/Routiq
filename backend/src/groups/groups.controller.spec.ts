@@ -27,7 +27,7 @@ const mockGroupsService = {
   addItineraryToGroup: jest.fn(),
   getComments: jest.fn(),
   getVotes: jest.fn(),
-  voteForActivity: jest.fn(),
+  voteForItinerary: jest.fn(),
   addComment: jest.fn(),
 };
 
@@ -427,19 +427,14 @@ describe('GroupsController', () => {
   // =========================================================================
 
   describe('getComments', () => {
-    it('returns comments for a group itinerary', async () => {
+    it('returns comments for a group', async () => {
       const comments = [{ id: 'c1', content: 'Nice!', replies: [] }];
       mockGroupsService.getComments.mockResolvedValue(comments);
 
-      const result = await controller.getComments(
-        groupId,
-        groupItineraryId,
-        mockUser,
-      );
+      const result = await controller.getComments(groupId, mockUser);
 
       expect(mockGroupsService.getComments).toHaveBeenCalledWith(
         groupId,
-        groupItineraryId,
         mockUser.sub,
       );
       expect(result).toEqual(comments);
@@ -449,7 +444,7 @@ describe('GroupsController', () => {
       mockGroupsService.getComments.mockRejectedValue(new ForbiddenException());
 
       await expect(
-        controller.getComments(groupId, groupItineraryId, mockUser),
+        controller.getComments(groupId, mockUser),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -479,28 +474,27 @@ describe('GroupsController', () => {
   });
 
   // =========================================================================
-  // voteForActivity
+  // voteForItinerary
   // =========================================================================
 
-  describe('voteForActivity', () => {
-    const voteDto = { activityId: 'act-123', voteType: 'UPVOTE' };
+  describe('voteForItinerary', () => {
+    const voteDto = { voteType: 'UPVOTE' };
 
     it('registers an UPVOTE', async () => {
       const vote = { id: 'vote-1', voteType: 'UPVOTE', user: {} };
-      mockGroupsService.voteForActivity.mockResolvedValue(vote);
+      mockGroupsService.voteForItinerary.mockResolvedValue(vote);
 
-      const result = await controller.voteForActivity(
+      const result = await controller.voteForItinerary(
         groupId,
         groupItineraryId,
         mockUser,
         voteDto,
       );
 
-      expect(mockGroupsService.voteForActivity).toHaveBeenCalledWith(
+      expect(mockGroupsService.voteForItinerary).toHaveBeenCalledWith(
         groupId,
         groupItineraryId,
         mockUser.sub,
-        voteDto.activityId,
         voteDto.voteType,
       );
       expect(result.voteType).toBe('UPVOTE');
@@ -508,29 +502,25 @@ describe('GroupsController', () => {
 
     it('uses UPVOTE as default when voteType is not provided', async () => {
       const vote = { id: 'vote-1', voteType: 'UPVOTE', user: {} };
-      mockGroupsService.voteForActivity.mockResolvedValue(vote);
+      mockGroupsService.voteForItinerary.mockResolvedValue(vote);
 
-      await controller.voteForActivity(groupId, groupItineraryId, mockUser, {
-        activityId: 'act-123',
-        // voteType omitted — controller defaults to 'UPVOTE'
-      });
+      await controller.voteForItinerary(groupId, groupItineraryId, mockUser, {});
 
-      expect(mockGroupsService.voteForActivity).toHaveBeenCalledWith(
+      expect(mockGroupsService.voteForItinerary).toHaveBeenCalledWith(
         groupId,
         groupItineraryId,
         mockUser.sub,
-        'act-123',
         'UPVOTE',
       );
     });
 
     it('surfaces ForbiddenException for non-members', async () => {
-      mockGroupsService.voteForActivity.mockRejectedValue(
+      mockGroupsService.voteForItinerary.mockRejectedValue(
         new ForbiddenException(),
       );
 
       await expect(
-        controller.voteForActivity(groupId, groupItineraryId, mockUser, voteDto),
+        controller.voteForItinerary(groupId, groupItineraryId, mockUser, voteDto),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -552,16 +542,10 @@ describe('GroupsController', () => {
       };
       mockGroupsService.addComment.mockResolvedValue(comment);
 
-      const result = await controller.addComment(
-        groupId,
-        groupItineraryId,
-        mockUser,
-        commentDto,
-      );
+      const result = await controller.addComment(groupId, mockUser, commentDto);
 
       expect(mockGroupsService.addComment).toHaveBeenCalledWith(
         groupId,
-        groupItineraryId,
         mockUser.sub,
         commentDto,
       );
@@ -574,7 +558,7 @@ describe('GroupsController', () => {
       );
 
       await expect(
-        controller.addComment(groupId, 'bad-gi', mockUser, commentDto),
+        controller.addComment(groupId, mockUser, commentDto),
       ).rejects.toThrow(NotFoundException);
     });
   });
