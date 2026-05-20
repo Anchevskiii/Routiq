@@ -105,7 +105,6 @@ model ItineraryActivity {
   updatedAt       DateTime     @updatedAt
   deletedAt       DateTime?
   day             ItineraryDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  votes           Vote[]
 
   @@index([dayId])
   @@index([activityType])
@@ -145,6 +144,8 @@ model Group {
   id           String           @id @default(uuid()) @db.Uuid
   name         String
   description  String?
+  imageUrl     String?
+  themeColor   String?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
   deletedAt    DateTime?
@@ -152,6 +153,7 @@ model Group {
   activityLogs ActivityLog[]
   itineraries  GroupItinerary[]
   members      GroupMember[]
+  comments     Comment[]
   createdBy    User             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([createdById])
@@ -189,7 +191,6 @@ model GroupItinerary {
   addedAt     DateTime  @default(now())
   deletedAt   DateTime?
   addedById   String    @db.Uuid
-  comments    Comment[]
   group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
   itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
   votes       Vote[]
@@ -201,43 +202,39 @@ model GroupItinerary {
 }
 
 model Comment {
-  id               String         @id @default(uuid()) @db.Uuid
-  groupItineraryId String         @db.Uuid
-  userId           String         @db.Uuid
-  content          String
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  deletedAt        DateTime?
-  parentId         String?        @db.Uuid
-  groupItinerary   GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
-  parent           Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies          Comment[]      @relation("CommentReplies")
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid()) @db.Uuid
+  groupId   String    @db.Uuid
+  userId    String    @db.Uuid
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  parentId  String?   @db.Uuid
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([groupItineraryId])
+  @@index([groupId])
   @@index([userId])
   @@index([parentId])
   @@map("comments")
 }
 
 model Vote {
-  id               String             @id @default(uuid()) @db.Uuid
-  groupItineraryId String             @db.Uuid
-  userId           String             @db.Uuid
-  createdAt        DateTime           @default(now())
+  id               String         @id @default(uuid()) @db.Uuid
+  groupItineraryId String         @db.Uuid
+  userId           String         @db.Uuid
+  voteType         VoteType       @default(UPVOTE)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
   deletedAt        DateTime?
-  activityId       String?            @db.Uuid
-  rating           Int?
-  updatedAt        DateTime           @updatedAt
-  voteType         VoteType           @default(UPVOTE)
-  activity         ItineraryActivity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  groupItinerary   GroupItinerary     @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupItinerary   GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([groupItineraryId, userId, activityId])
+  @@unique([groupItineraryId, userId])
   @@index([groupItineraryId])
   @@index([userId])
-  @@index([activityId])
   @@map("votes")
 }
 

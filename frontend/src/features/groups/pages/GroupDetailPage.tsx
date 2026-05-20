@@ -9,11 +9,14 @@ import toast from 'react-hot-toast'
 import { Users, Plus, User, MapPin, Calendar, Trash2 } from 'lucide-react'
 import { GroupItineraryCard }  from '@/features/groups/components/GroupItineraryCard'
 import { GroupDetailSidebar }  from '@/features/groups/components/GroupDetailSidebar'
+import { GroupComments } from '@/features/groups/components/GroupComments'
+import { AddItineraryModal } from '@/features/groups/components/AddItineraryModal'
 
 export const GroupDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
   const [inviteEmail, setInviteEmail] = useState('')
+  const [isAddItineraryOpen, setIsAddItineraryOpen] = useState(false)
 
   const { data: group, isLoading, error } = useQuery({
     queryKey: QUERY_KEYS.group(id!),
@@ -29,6 +32,16 @@ export const GroupDetailPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(id!) })
     },
     onError: () => toast.error('Failed to send invitation'),
+  })
+
+  const addItineraryMutation = useMutation({
+    mutationFn: (itineraryId: string) => groupsApi.addItineraryToGroup(id!, itineraryId),
+    onSuccess: () => {
+      toast.success('Itinerary added to group')
+      setIsAddItineraryOpen(false)
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(id!) })
+    },
+    onError: () => toast.error('Failed to add itinerary'),
   })
 
   const removeMemberMutation = useMutation({
@@ -56,10 +69,19 @@ export const GroupDetailPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Group Header */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-8 overflow-hidden relative">
+        {group.imageUrl && (
+          <div className="absolute inset-0 z-0">
+             <img src={group.imageUrl} alt={group.name} className="w-full h-full object-cover opacity-20 blur-sm" />
+             <div className="absolute inset-0 bg-white/60" />
+          </div>
+        )}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+            <div 
+              className="w-20 h-20 rounded-2xl flex items-center justify-center text-white shadow-xl"
+              style={{ backgroundColor: group.themeColor || '#10b981' }}
+            >
               <Users className="w-10 h-10" />
             </div>
             <div>
@@ -83,7 +105,10 @@ export const GroupDetailPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-8">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">Shared Itineraries</h2>
-            <button className="flex items-center text-sm font-bold text-primary hover:underline">
+            <button 
+              onClick={() => setIsAddItineraryOpen(true)}
+              className="flex items-center text-sm font-bold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-lg"
+            >
               <Plus className="w-4 h-4 mr-1" /> Add Itinerary
             </button>
           </div>
@@ -101,6 +126,9 @@ export const GroupDetailPage: React.FC = () => {
               ))}
             </div>
           )}
+
+          {/* Group Discussion Section */}
+          <GroupComments groupId={group.id} />
         </div>
 
         <GroupDetailSidebar
@@ -113,6 +141,14 @@ export const GroupDetailPage: React.FC = () => {
           onRemoveMember={(userId) => removeMemberMutation.mutate(userId)}
         />
       </div>
+
+      {isAddItineraryOpen && (
+        <AddItineraryModal
+          onClose={() => setIsAddItineraryOpen(false)}
+          onAdd={(itineraryId) => addItineraryMutation.mutate(itineraryId)}
+          isSubmitting={addItineraryMutation.isPending}
+        />
+      )}
     </div>
   )
 }

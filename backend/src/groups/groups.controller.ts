@@ -16,8 +16,9 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { AddItineraryToGroupDto } from './dto/add-itinerary-to-group.dto';
-import { VoteForAttractionDto } from './dto/vote-for-attraction.dto';
+import { VoteItineraryDto } from './dto/vote-itinerary.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { JwtPayload } from '../common/types/jwt-payload.type';
 
 @Controller('groups')
@@ -56,6 +57,15 @@ export class GroupsController {
     @Body() createGroupDto: CreateGroupDto,
   ) {
     return this.groupsService.createGroup(user.sub, createGroupDto);
+  }
+
+  @Patch(':id')
+  async updateGroup(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() updateGroupDto: UpdateGroupDto,
+  ) {
+    return this.groupsService.updateGroup(id, user.sub, updateGroupDto);
   }
 
   @Delete(':id')
@@ -133,13 +143,12 @@ export class GroupsController {
 
   // ─── Voting & Comments ───────────────────────────────────
 
-  @Get(':groupId/itineraries/:groupItineraryId/comments')
+  @Get(':groupId/comments')
   async getComments(
     @Param('groupId') groupId: string,
-    @Param('groupItineraryId') groupItineraryId: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.groupsService.getComments(groupId, groupItineraryId, user.sub);
+    return this.groupsService.getComments(groupId, user.sub);
   }
 
   @Get(':groupId/itineraries/:groupItineraryId/votes')
@@ -152,33 +161,26 @@ export class GroupsController {
   }
 
   @Post(':groupId/itineraries/:groupItineraryId/vote')
-  async voteForActivity(
+  async voteForItinerary(
     @Param('groupId') groupId: string,
     @Param('groupItineraryId') groupItineraryId: string,
     @CurrentUser() user: JwtPayload,
-    @Body() voteForAttractionDto: VoteForAttractionDto,
+    @Body() voteItineraryDto: VoteItineraryDto,
   ) {
-    return this.groupsService.voteForActivity(
+    return this.groupsService.voteForItinerary(
       groupId,
       groupItineraryId,
       user.sub,
-      voteForAttractionDto.activityId,
-      voteForAttractionDto.voteType ?? 'UPVOTE',
+      voteItineraryDto.voteType ?? 'UPVOTE',
     );
   }
 
-  @Post(':groupId/itineraries/:groupItineraryId/comments')
+  @Post(':groupId/comments')
   async addComment(
     @Param('groupId') groupId: string,
-    @Param('groupItineraryId') groupItineraryId: string,
     @CurrentUser() user: JwtPayload,
     @Body() addCommentDto: AddCommentDto,
   ) {
-    return this.groupsService.addComment(
-      groupId,
-      groupItineraryId,
-      user.sub,
-      addCommentDto,
-    );
+    return this.groupsService.addComment(groupId, user.sub, addCommentDto);
   }
 }
