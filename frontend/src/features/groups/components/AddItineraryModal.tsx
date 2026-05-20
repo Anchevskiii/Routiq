@@ -4,6 +4,7 @@ import { itineraryApi } from '@/api/itinerary.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
 import { X, MapPin, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
+import type { Itinerary } from '@/types/itinerary.types'
 
 interface Props {
   onClose: () => void
@@ -41,7 +42,7 @@ export const AddItineraryModal: React.FC<Props> = ({ onClose, onAdd, isSubmittin
               <p className="text-gray-500">You don't have any itineraries yet.</p>
             </div>
           ) : (
-            itineraries.map((itinerary: any) => (
+            itineraries.map((itinerary: Itinerary) => (
               <button
                 key={itinerary.id}
                 onClick={() => onAdd(itinerary.id)}
