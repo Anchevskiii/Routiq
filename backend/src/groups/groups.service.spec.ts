@@ -191,18 +191,18 @@ describe('GroupsService', () => {
     it('throws ForbiddenException when user is not an accepted member', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(null);
 
-      await expect(
-        service.getGroupById(groupId, outsiderId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getGroupById(groupId, outsiderId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('throws NotFoundException when group does not exist', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
       mockPrisma.group.findFirst.mockResolvedValue(null);
 
-      await expect(
-        service.getGroupById(groupId, memberId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getGroupById(groupId, memberId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -268,9 +268,9 @@ describe('GroupsService', () => {
     it('throws ForbiddenException when caller is not OWNER', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(null);
 
-      await expect(
-        service.deleteGroup(groupId, adminId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.deleteGroup(groupId, adminId)).rejects.toThrow(
+        ForbiddenException,
+      );
 
       expect(mockPrisma.group.delete).not.toHaveBeenCalled();
     });
@@ -292,7 +292,7 @@ describe('GroupsService', () => {
     it('creates a new PENDING invitation and logs MEMBER_INVITED', async () => {
       mockPrisma.groupMember.findFirst
         .mockResolvedValueOnce(adminMembership) // 1. requireRole ok
-        .mockResolvedValueOnce(null);           // 3. no existing membership
+        .mockResolvedValueOnce(null); // 3. no existing membership
       mockPrisma.user.findUnique.mockResolvedValue(newUser);
       mockPrisma.groupMember.create.mockResolvedValue({
         id: 'new-mem',
@@ -326,7 +326,7 @@ describe('GroupsService', () => {
 
     it('throws NotFoundException when the invited user does not exist', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValueOnce(adminMembership); // 1. requireRole
-      mockPrisma.user.findUnique.mockResolvedValue(null);                      // 2. user not found
+      mockPrisma.user.findUnique.mockResolvedValue(null); // 2. user not found
 
       await expect(
         service.inviteMember(groupId, adminId, inviteDto),
@@ -335,9 +335,12 @@ describe('GroupsService', () => {
 
     it('throws BadRequestException when user is already an accepted member', async () => {
       mockPrisma.groupMember.findFirst
-        .mockResolvedValueOnce(adminMembership)                                   // 1. requireRole
-        .mockResolvedValueOnce({ ...regularMembership, userId: newUser.id,
-                                  status: InvitationStatus.ACCEPTED });           // 3. already member
+        .mockResolvedValueOnce(adminMembership) // 1. requireRole
+        .mockResolvedValueOnce({
+          ...regularMembership,
+          userId: newUser.id,
+          status: InvitationStatus.ACCEPTED,
+        }); // 3. already member
       mockPrisma.user.findUnique.mockResolvedValue(newUser);
 
       await expect(
@@ -347,9 +350,12 @@ describe('GroupsService', () => {
 
     it('throws BadRequestException when user already has a pending invitation', async () => {
       mockPrisma.groupMember.findFirst
-        .mockResolvedValueOnce(adminMembership)                                   // 1. requireRole
-        .mockResolvedValueOnce({ ...regularMembership, userId: newUser.id,
-                                  status: InvitationStatus.PENDING });            // 3. already pending
+        .mockResolvedValueOnce(adminMembership) // 1. requireRole
+        .mockResolvedValueOnce({
+          ...regularMembership,
+          userId: newUser.id,
+          status: InvitationStatus.PENDING,
+        }); // 3. already pending
       mockPrisma.user.findUnique.mockResolvedValue(newUser);
 
       await expect(
@@ -366,7 +372,7 @@ describe('GroupsService', () => {
         status: InvitationStatus.DECLINED,
       };
       mockPrisma.groupMember.findFirst
-        .mockResolvedValueOnce(adminMembership)    // 1. requireRole
+        .mockResolvedValueOnce(adminMembership) // 1. requireRole
         .mockResolvedValueOnce(declinedMembership); // 3. declined → re-invite path
       mockPrisma.user.findUnique.mockResolvedValue(newUser);
       mockPrisma.groupMember.update.mockResolvedValue({
@@ -416,7 +422,12 @@ describe('GroupsService', () => {
       mockPrisma.groupMember.update.mockResolvedValue({
         ...pendingMembership,
         status: InvitationStatus.ACCEPTED,
-        user: { id: memberId, name: 'Member', email: 'm@m.com', avatarUrl: null },
+        user: {
+          id: memberId,
+          name: 'Member',
+          email: 'm@m.com',
+          avatarUrl: null,
+        },
         group: { id: groupId, name: 'Test Group' },
       });
 
@@ -443,9 +454,9 @@ describe('GroupsService', () => {
     it('throws NotFoundException when no pending invitation exists', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(null);
 
-      await expect(
-        service.acceptInvitation(groupId, memberId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.acceptInvitation(groupId, memberId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -515,7 +526,7 @@ describe('GroupsService', () => {
 
     it('removes a lower-ranked member when caller is ADMIN', async () => {
       mockPrisma.groupMember.findFirst
-        .mockResolvedValueOnce(adminMembership)    // 1. requireRole
+        .mockResolvedValueOnce(adminMembership) // 1. requireRole
         .mockResolvedValueOnce(regularMembership); // 3. target membership
       mockPrisma.groupMember.delete.mockResolvedValue(regularMembership);
 
@@ -536,7 +547,7 @@ describe('GroupsService', () => {
       };
       mockPrisma.groupMember.findFirst
         .mockResolvedValueOnce(adminMembership) // 1. requireRole → admin ok
-        .mockResolvedValueOnce(otherAdmin);     // 3. target = also ADMIN → blocked
+        .mockResolvedValueOnce(otherAdmin); // 3. target = also ADMIN → blocked
 
       await expect(
         service.removeMember(groupId, adminId, 'other-admin-uid'),
@@ -548,7 +559,7 @@ describe('GroupsService', () => {
     it('throws BadRequestException when sole OWNER tries to remove themselves', async () => {
       // removerId === memberToRemoveId AND role === OWNER → count check fires before target lookup
       mockPrisma.groupMember.findFirst.mockResolvedValueOnce(ownerMembership); // 1. requireRole
-      mockPrisma.groupMember.count.mockResolvedValue(1);                       // 2. only 1 owner
+      mockPrisma.groupMember.count.mockResolvedValue(1); // 2. only 1 owner
 
       await expect(
         service.removeMember(groupId, ownerId, ownerId),
@@ -558,7 +569,7 @@ describe('GroupsService', () => {
     it('throws NotFoundException when target member does not exist', async () => {
       mockPrisma.groupMember.findFirst
         .mockResolvedValueOnce(adminMembership) // 1. requireRole
-        .mockResolvedValueOnce(null);           // 3. target not found
+        .mockResolvedValueOnce(null); // 3. target not found
 
       await expect(
         service.removeMember(groupId, adminId, 'ghost-user'),
@@ -587,7 +598,7 @@ describe('GroupsService', () => {
 
     it('updates the role of a target member when caller is OWNER', async () => {
       mockPrisma.groupMember.findFirst
-        .mockResolvedValueOnce(ownerMembership)    // 1. requireRole
+        .mockResolvedValueOnce(ownerMembership) // 1. requireRole
         .mockResolvedValueOnce(regularMembership); // 3. target lookup
       const updated = { ...regularMembership, role: GroupRole.ADMIN, user: {} };
       mockPrisma.groupMember.update.mockResolvedValue(updated);
@@ -622,7 +633,7 @@ describe('GroupsService', () => {
     it('throws NotFoundException when target member is not found', async () => {
       mockPrisma.groupMember.findFirst
         .mockResolvedValueOnce(ownerMembership) // 1. requireRole
-        .mockResolvedValueOnce(null);           // 3. target not found
+        .mockResolvedValueOnce(null); // 3. target not found
 
       await expect(
         service.updateMemberRole(groupId, ownerId, 'ghost', GroupRole.ADMIN),
@@ -649,12 +660,16 @@ describe('GroupsService', () => {
     //   3. groupItinerary.findFirst (duplicate check)
     //   4. groupItinerary.create
 
-    const itinerary = { id: itineraryId, userId: memberId, destination: 'Paris' };
+    const itinerary = {
+      id: itineraryId,
+      userId: memberId,
+      destination: 'Paris',
+    };
 
     it('adds an itinerary to the group when user is a member and owns the itinerary', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership); // 1. member ok
-      mockPrisma.itinerary.findFirst.mockResolvedValue(itinerary);           // 2. owned
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue(null);           // 3. not duplicate
+      mockPrisma.itinerary.findFirst.mockResolvedValue(itinerary); // 2. owned
+      mockPrisma.groupItinerary.findFirst.mockResolvedValue(null); // 3. not duplicate
       mockPrisma.groupItinerary.create.mockResolvedValue({
         id: groupItineraryId,
         groupId,
@@ -662,11 +677,19 @@ describe('GroupsService', () => {
         itinerary,
       });
 
-      const result = await service.addItineraryToGroup(groupId, memberId, itineraryId);
+      const result = await service.addItineraryToGroup(
+        groupId,
+        memberId,
+        itineraryId,
+      );
 
       expect(mockPrisma.groupItinerary.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ groupId, itineraryId, addedById: memberId }),
+          data: expect.objectContaining({
+            groupId,
+            itineraryId,
+            addedById: memberId,
+          }),
         }),
       );
       expect(result.itineraryId).toBe(itineraryId);
@@ -674,7 +697,7 @@ describe('GroupsService', () => {
 
     it('throws NotFoundException when itinerary does not belong to the user', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership); // 1. member ok
-      mockPrisma.itinerary.findFirst.mockResolvedValue(null);                // 2. not found/not owned
+      mockPrisma.itinerary.findFirst.mockResolvedValue(null); // 2. not found/not owned
 
       await expect(
         service.addItineraryToGroup(groupId, memberId, 'other-itin'),
@@ -684,7 +707,9 @@ describe('GroupsService', () => {
     it('throws BadRequestException when itinerary is already in the group', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
       mockPrisma.itinerary.findFirst.mockResolvedValue(itinerary);
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId }); // 3. duplicate
+      mockPrisma.groupItinerary.findFirst.mockResolvedValue({
+        id: groupItineraryId,
+      }); // 3. duplicate
 
       await expect(
         service.addItineraryToGroup(groupId, memberId, itineraryId),
@@ -719,16 +744,26 @@ describe('GroupsService', () => {
 
     it('upserts an UPVOTE for an accepted member', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
+      mockPrisma.groupItinerary.findFirst.mockResolvedValue({
+        id: groupItineraryId,
+        groupId,
+      });
       mockPrisma.vote.upsert.mockResolvedValue(baseVote);
 
       const result = await service.voteForItinerary(
-        groupId, groupItineraryId, memberId, 'UPVOTE',
+        groupId,
+        groupItineraryId,
+        memberId,
+        'UPVOTE',
       );
 
       expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          create: expect.objectContaining({ groupItineraryId, userId: memberId, voteType: 'UPVOTE' }),
+          create: expect.objectContaining({
+            groupItineraryId,
+            userId: memberId,
+            voteType: 'UPVOTE',
+          }),
           update: { voteType: 'UPVOTE' },
         }),
       );
@@ -737,23 +772,42 @@ describe('GroupsService', () => {
 
     it('maps unknown voteType to UPVOTE', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
+      mockPrisma.groupItinerary.findFirst.mockResolvedValue({
+        id: groupItineraryId,
+        groupId,
+      });
       mockPrisma.vote.upsert.mockResolvedValue(baseVote);
 
-      await service.voteForItinerary(groupId, groupItineraryId, memberId, 'INVALID');
+      await service.voteForItinerary(
+        groupId,
+        groupItineraryId,
+        memberId,
+        'INVALID',
+      );
 
       expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ create: expect.objectContaining({ voteType: 'UPVOTE' }) }),
+        expect.objectContaining({
+          create: expect.objectContaining({ voteType: 'UPVOTE' }),
+        }),
       );
     });
 
     it('upserts a DOWNVOTE correctly', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      mockPrisma.groupItinerary.findFirst.mockResolvedValue({ id: groupItineraryId, groupId });
-      mockPrisma.vote.upsert.mockResolvedValue({ ...baseVote, voteType: 'DOWNVOTE' });
+      mockPrisma.groupItinerary.findFirst.mockResolvedValue({
+        id: groupItineraryId,
+        groupId,
+      });
+      mockPrisma.vote.upsert.mockResolvedValue({
+        ...baseVote,
+        voteType: 'DOWNVOTE',
+      });
 
       const result = await service.voteForItinerary(
-        groupId, groupItineraryId, memberId, 'DOWNVOTE',
+        groupId,
+        groupItineraryId,
+        memberId,
+        'DOWNVOTE',
       );
 
       expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
@@ -766,7 +820,12 @@ describe('GroupsService', () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.voteForItinerary(groupId, groupItineraryId, outsiderId, 'UPVOTE'),
+        service.voteForItinerary(
+          groupId,
+          groupItineraryId,
+          outsiderId,
+          'UPVOTE',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -805,9 +864,7 @@ describe('GroupsService', () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
       mockPrisma.comment.create.mockResolvedValue(commentRecord);
 
-      const result = await service.addComment(
-        groupId, memberId, addCommentDto,
-      );
+      const result = await service.addComment(groupId, memberId, addCommentDto);
 
       expect(mockPrisma.comment.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -831,12 +888,15 @@ describe('GroupsService', () => {
       const parentComment = { id: 'parent-1', groupId };
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
       mockPrisma.comment.findFirst.mockResolvedValue(parentComment); // 3. parent exists
-      mockPrisma.comment.create.mockResolvedValue({ ...commentRecord, parentId: 'parent-1' });
+      mockPrisma.comment.create.mockResolvedValue({
+        ...commentRecord,
+        parentId: 'parent-1',
+      });
 
-      const result = await service.addComment(
-        groupId, memberId,
-        { content: 'Reply!', parentId: 'parent-1' },
-      );
+      const result = await service.addComment(groupId, memberId, {
+        content: 'Reply!',
+        parentId: 'parent-1',
+      });
 
       expect(mockPrisma.comment.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -874,7 +934,9 @@ describe('GroupsService', () => {
   describe('getComments', () => {
     it('returns top-level comments for a member', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(regularMembership);
-      const comments = [{ id: 'c1', parentId: null, content: 'Hi', replies: [] }];
+      const comments = [
+        { id: 'c1', parentId: null, content: 'Hi', replies: [] },
+      ];
       mockPrisma.comment.findMany.mockResolvedValue(comments);
 
       const result = await service.getComments(groupId, memberId);
@@ -890,9 +952,9 @@ describe('GroupsService', () => {
     it('throws ForbiddenException for non-members', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(null);
 
-      await expect(
-        service.getComments(groupId, outsiderId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getComments(groupId, outsiderId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -906,10 +968,16 @@ describe('GroupsService', () => {
       const votes = [{ id: 'v1', voteType: 'UPVOTE', user: {} }];
       mockPrisma.vote.findMany.mockResolvedValue(votes);
 
-      const result = await service.getVotes(groupId, groupItineraryId, memberId);
+      const result = await service.getVotes(
+        groupId,
+        groupItineraryId,
+        memberId,
+      );
 
       expect(mockPrisma.vote.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { groupItineraryId, deletedAt: null } }),
+        expect.objectContaining({
+          where: { groupItineraryId, deletedAt: null },
+        }),
       );
       expect(result).toEqual(votes);
     });
@@ -972,7 +1040,9 @@ describe('GroupsService', () => {
         createdBy: {},
         members: [],
       });
-      mockPrisma.activityLog.create.mockRejectedValue(new Error('DB write failed'));
+      mockPrisma.activityLog.create.mockRejectedValue(
+        new Error('DB write failed'),
+      );
 
       await expect(
         service.createGroup(ownerId, { name: 'New Group' }),

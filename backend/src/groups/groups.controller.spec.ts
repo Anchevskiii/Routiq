@@ -80,7 +80,9 @@ describe('GroupsController', () => {
 
       const result = await controller.getUserGroups(mockUser);
 
-      expect(mockGroupsService.getUserGroups).toHaveBeenCalledWith(mockUser.sub);
+      expect(mockGroupsService.getUserGroups).toHaveBeenCalledWith(
+        mockUser.sub,
+      );
       expect(result).toEqual([mockGroup]);
     });
 
@@ -131,9 +133,9 @@ describe('GroupsController', () => {
         new ForbiddenException(),
       );
 
-      await expect(
-        controller.getGroupById(groupId, mockUser),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(controller.getGroupById(groupId, mockUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('surfaces NotFoundException from service', async () => {
@@ -219,9 +221,9 @@ describe('GroupsController', () => {
     it('surfaces ForbiddenException when caller is not OWNER', async () => {
       mockGroupsService.deleteGroup.mockRejectedValue(new ForbiddenException());
 
-      await expect(
-        controller.deleteGroup(groupId, mockUser),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(controller.deleteGroup(groupId, mockUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -240,7 +242,11 @@ describe('GroupsController', () => {
       };
       mockGroupsService.inviteMember.mockResolvedValue(newMembership);
 
-      const result = await controller.inviteMember(groupId, mockUser, inviteDto);
+      const result = await controller.inviteMember(
+        groupId,
+        mockUser,
+        inviteDto,
+      );
 
       expect(mockGroupsService.inviteMember).toHaveBeenCalledWith(
         groupId,
@@ -336,7 +342,9 @@ describe('GroupsController', () => {
     });
 
     it('surfaces ForbiddenException when caller has insufficient role', async () => {
-      mockGroupsService.removeMember.mockRejectedValue(new ForbiddenException());
+      mockGroupsService.removeMember.mockRejectedValue(
+        new ForbiddenException(),
+      );
 
       await expect(
         controller.removeMember(groupId, memberId, mockUser),
@@ -394,7 +402,11 @@ describe('GroupsController', () => {
     const addDto = { itineraryId: 'itin-789' };
 
     it('adds the itinerary to the group', async () => {
-      const gi = { id: groupItineraryId, groupId, itineraryId: addDto.itineraryId };
+      const gi = {
+        id: groupItineraryId,
+        groupId,
+        itineraryId: addDto.itineraryId,
+      };
       mockGroupsService.addItineraryToGroup.mockResolvedValue(gi);
 
       const result = await controller.addItineraryToGroup(
@@ -443,9 +455,9 @@ describe('GroupsController', () => {
     it('surfaces ForbiddenException for non-members', async () => {
       mockGroupsService.getComments.mockRejectedValue(new ForbiddenException());
 
-      await expect(
-        controller.getComments(groupId, mockUser),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(controller.getComments(groupId, mockUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -504,7 +516,12 @@ describe('GroupsController', () => {
       const vote = { id: 'vote-1', voteType: 'UPVOTE', user: {} };
       mockGroupsService.voteForItinerary.mockResolvedValue(vote);
 
-      await controller.voteForItinerary(groupId, groupItineraryId, mockUser, {});
+      await controller.voteForItinerary(
+        groupId,
+        groupItineraryId,
+        mockUser,
+        {},
+      );
 
       expect(mockGroupsService.voteForItinerary).toHaveBeenCalledWith(
         groupId,
@@ -520,7 +537,12 @@ describe('GroupsController', () => {
       );
 
       await expect(
-        controller.voteForItinerary(groupId, groupItineraryId, mockUser, voteDto),
+        controller.voteForItinerary(
+          groupId,
+          groupItineraryId,
+          mockUser,
+          voteDto,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });

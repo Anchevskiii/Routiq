@@ -1,6 +1,14 @@
 import { ActivityType } from '@prisma/client';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { buildItineraryPrompt } from './prompts/generate-itinerary.prompt';
+import { PrismaService } from '../prisma/prisma.service';
+import { AttractionsService } from '../attractions/attractions.service';
+import { WeatherService } from '../weather/weather.service';
+import { AppConfigService } from '../config/config.service';
+import { CreateItineraryDto } from './dto/create-itinerary.dto';
+import { GeneratedDay } from './types';
+import { WeatherData } from '../weather/types';
+import { FormattedPlace } from '../attractions/types';
 
 jest.mock('./prompts/generate-itinerary.prompt', () => ({
   buildItineraryPrompt: jest.fn(),
@@ -64,12 +72,12 @@ const attractions = [
   },
 ];
 
-function buildService() {
+function buildService(): ItineraryGenerationService {
   return new ItineraryGenerationService(
-    mockPrisma as any,
-    mockAttractionsService as any,
-    mockWeatherService as any,
-    mockConfigService as any,
+    mockPrisma as unknown as PrismaService,
+    mockAttractionsService as unknown as AttractionsService,
+    mockWeatherService as unknown as WeatherService,
+    mockConfigService as unknown as AppConfigService,
   );
 }
 
@@ -87,7 +95,9 @@ describe('ItineraryGenerationService', () => {
       mockAttractionsService.getCuratedPlaces.mockResolvedValue(attractions);
       (buildItineraryPrompt as jest.Mock).mockReturnValue('PROMPT');
 
-      const result = await service.prepareGenerationData(baseDto as any);
+      const result = await service.prepareGenerationData(
+        baseDto as unknown as CreateItineraryDto,
+      );
 
       expect(mockWeatherService.getForecast).toHaveBeenCalledWith(
         baseDto.destination,
@@ -123,15 +133,17 @@ describe('ItineraryGenerationService', () => {
       const tx = {
         itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-1' }) },
       };
-      mockPrisma.$transaction.mockImplementation((cb: any) => cb(tx));
+      mockPrisma.$transaction.mockImplementation(
+        (cb: (txClient: unknown) => unknown) => cb(tx),
+      );
 
       await service.persistGeneratedItinerary({
         userId: 'user-1',
-        createItineraryDto: baseDto as any,
+        createItineraryDto: baseDto as unknown as CreateItineraryDto,
         generated: { days: [] },
         generationStart: Date.now() - 1000,
-        weatherData,
-        attractions,
+        weatherData: weatherData as unknown as WeatherData,
+        attractions: attractions as unknown as FormattedPlace[],
         prompt: 'PROMPT',
         promptHash: 'hash',
       });
@@ -183,14 +195,24 @@ describe('ItineraryGenerationService', () => {
       };
 
       const result = service.mapSingleDay(
-        day as any,
+        day as unknown as GeneratedDay,
         baseDto.startDate,
-        weatherData as any,
-        attractions as any,
+        weatherData as unknown as WeatherData,
+        attractions as unknown as FormattedPlace[],
       );
 
-      const activities = (result.activities as any)?.create ?? [];
-      const weather = (result.weather as any)?.create ?? {};
+      const activities =
+        (
+          result.activities as unknown as {
+            create?: { activityType: ActivityType; durationMinutes: number }[];
+          }
+        )?.create ?? [];
+      const weather =
+        (
+          result.weather as unknown as {
+            create?: { condition?: string; recommendation?: string };
+          }
+        )?.create ?? {};
 
       expect(result.dayNumber).toBe(1);
       expect(result.theme).toBe('Day 1: Exploration');
@@ -209,10 +231,10 @@ describe('ItineraryGenerationService', () => {
       const days = [{ day: 1 }, { day: 2 }];
 
       const result = service.mapDaysForNestedWrite(
-        days as any,
+        days as unknown as GeneratedDay[],
         baseDto.startDate,
-        weatherData as any,
-        attractions as any,
+        weatherData as unknown as WeatherData,
+        attractions as unknown as FormattedPlace[],
       );
 
       expect(spy).toHaveBeenCalledTimes(2);
