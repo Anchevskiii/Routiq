@@ -8,6 +8,8 @@ import {
   Param,
   Query,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -15,6 +17,7 @@ import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { AddReactionDto } from './dto/add-reaction.dto';
 import { AddItineraryToGroupDto } from './dto/add-itinerary-to-group.dto';
 import { VoteItineraryDto } from './dto/vote-itinerary.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
@@ -182,5 +185,16 @@ export class GroupsController {
     @Body() addCommentDto: AddCommentDto,
   ) {
     return this.groupsService.addComment(groupId, user.sub, addCommentDto);
+  }
+
+  @Post(':groupId/comments/:commentId/reactions')
+  @HttpCode(HttpStatus.OK)
+  async toggleReaction(
+    @Param('groupId') groupId: string,
+    @Param('commentId') commentId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: AddReactionDto,
+  ) {
+    return this.groupsService.toggleReaction(groupId, commentId, user.sub, dto.emoji);
   }
 }

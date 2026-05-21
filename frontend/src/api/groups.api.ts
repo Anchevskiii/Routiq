@@ -79,6 +79,14 @@ export const groupsApi = {
     return response.data.data
   },
 
+  async toggleReaction(groupId: string, commentId: string, emoji: string): Promise<{ removed: boolean }> {
+    const response = await apiClient.post<ApiResponse<{ removed: boolean }>>(
+      `/groups/${groupId}/comments/${commentId}/reactions`,
+      { emoji }
+    )
+    return response.data.data
+  },
+
   async addItineraryToGroup(groupId: string, itineraryId: string): Promise<void> {
     await apiClient.post(`/groups/${groupId}/itineraries`, { itineraryId })
   },

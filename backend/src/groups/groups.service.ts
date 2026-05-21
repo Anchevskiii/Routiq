@@ -807,24 +807,49 @@ export class GroupsService {
   async getComments(groupId: string, userId: string) {
     await this.requireAcceptedMember(groupId, userId);
 
+    const reactionSelect = {
+      select: { emoji: true, userId: true },
+    };
+
     return this.prisma.comment.findMany({
-      where: {
-        groupId,
-        parentId: null,
-        deletedAt: null,
-      },
+      where: { groupId, parentId: null, deletedAt: null },
       include: {
         user: { select: { id: true, name: true, avatarUrl: true } },
+        reactions: reactionSelect,
         replies: {
           where: { deletedAt: null },
           include: {
             user: { select: { id: true, name: true, avatarUrl: true } },
+            reactions: reactionSelect,
           },
           orderBy: { createdAt: 'asc' },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
+  }
+
+  async toggleReaction(groupId: string, commentId: string, userId: string, emoji: string) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    const comment = await this.prisma.comment.findFirst({
+      where: { id: commentId, groupId },
+    });
+    if (!comment) throw new NotFoundException('Comment not found');
+
+    const existing = await this.prisma.commentReaction.findUnique({
+      where: { commentId_userId_emoji: { commentId, userId, emoji } },
+    });
+
+    if (existing) {
+      await this.prisma.commentReaction.delete({
+        where: { commentId_userId_emoji: { commentId, userId, emoji } },
+      });
+      return { removed: true };
+    }
+
+    await this.prisma.commentReaction.create({ data: { commentId, userId, emoji } });
+    return { removed: false };
   }
 
   async getVotes(groupId: string, groupItineraryId: string, userId: string) {
