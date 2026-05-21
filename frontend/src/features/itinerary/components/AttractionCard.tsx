@@ -16,11 +16,11 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({ activity, isFirs
         isMeal ? 'bg-orange-500 ring-orange-500/10' : 'bg-primary ring-primary/10'
       }`} />
       
-      <div className="bg-white dark:bg-[#1e1b38] rounded-2xl border border-gray-100 dark:border-indigo-500/10 p-4 hover:shadow-md transition-shadow group">
+      <div className="bg-white dark:bg-[#1e1b38] rounded-2xl border border-gray-100 dark:border-blue-600/10 p-4 hover:shadow-md transition-shadow group">
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-20 flex-shrink-0">
             <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Time</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-indigo-100 bg-gray-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg border border-gray-100 dark:border-slate-700">
+            <span className="text-sm font-bold text-gray-900 dark:text-blue-300 bg-gray-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg border border-gray-100 dark:border-slate-700">
               {activity.startTime || '--:--'}
             </span>
           </div>
@@ -34,7 +34,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({ activity, isFirs
                   ) : (
                     <Camera className="w-4 h-4 text-primary" />
                   )}
-                  <h4 className="text-lg font-bold text-gray-900 dark:text-indigo-100 group-hover:text-primary transition-colors">
+                  <h4 className="text-lg font-bold text-gray-900 dark:text-blue-300 group-hover:text-primary transition-colors">
                     {activity.title}
                   </h4>
                 </div>

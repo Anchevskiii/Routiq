@@ -25,8 +25,8 @@ export const ProfileNav: React.FC<Props> = ({ active, onSelect, onLogout }) => (
         className={[
           'flex items-center gap-2.5 px-3.5 py-2.5 rounded-[12px] text-sm font-semibold transition-all text-left',
           active === item.id
-            ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-[0_4px_14px_rgba(99,102,241,0.35)]'
-            : 'text-ink-dim hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-ink',
+            ? 'gradient-aurora text-white shadow-[0_4px_14px_rgba(37,99,235,0.35)]'
+            : 'text-ink-dim hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-ink',
         ].join(' ')}
       >
         {item.icon}

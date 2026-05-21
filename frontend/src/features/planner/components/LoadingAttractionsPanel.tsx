@@ -14,7 +14,7 @@ export const LoadingAttractionsPanel: React.FC<Props> = ({ attractions }) => (
         <MapPin className="w-5 h-5 text-red-500" />
         <span>Spots Discovered</span>
       </div>
-      <span className="bg-indigo-50 dark:bg-indigo-900/30 text-ink-dim text-xs px-2 py-1 rounded-full">
+      <span className="bg-blue-50 dark:bg-blue-900/30 text-ink-dim text-xs px-2 py-1 rounded-full">
         {attractions.length} found
       </span>
     </div>

@@ -299,6 +299,13 @@ export class GeminiService {
         this.logger.error(
           `Gemini API error: ${err instanceof Error ? err.message : String(err)}`,
         );
+        if (axios.isAxiosError(err) && err.response?.data) {
+          const chunks: Buffer[] = [];
+          err.response.data.on('data', (c: Buffer) => chunks.push(c));
+          err.response.data.on('end', () => {
+            this.logger.error(`Gemini error body: ${Buffer.concat(chunks).toString()}`);
+          });
+        }
         subject.error(this.handleGeminiError(err));
       });
 

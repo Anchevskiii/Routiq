@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react'
 
 const CARDS = [
   { city: 'Santorini', tag: 'Romantic', palette: ['#f59e0b', '#ec4899'], price: 'from €450' },
-  { city: 'Dubrovnik', tag: 'Coastal',      palette: ['#0ea5e9', '#6366f1'], price: 'from €280' },
+  { city: 'Dubrovnik', tag: 'Coastal',      palette: ['#0ea5e9', '#2563eb'], price: 'from €280' },
   { city: 'Prague',     tag: 'Cultural',   palette: ['#10b981', '#0ea5e9'], price: 'from €190' },
 ]
 

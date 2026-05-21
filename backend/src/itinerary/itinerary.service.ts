@@ -229,8 +229,9 @@ export class ItineraryService {
       throw new NotFoundException('Itinerary not found');
     }
 
-    await this.prisma.itinerary.delete({
+    await this.prisma.itinerary.update({
       where: { id },
+      data: { deletedAt: new Date() },
     });
 
     return { message: 'Itinerary deleted successfully' };

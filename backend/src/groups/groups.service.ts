@@ -13,6 +13,13 @@ import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { MailService } from '../mail/mail.service';
 
+const ROLE_HIERARCHY: Record<GroupRole, number> = {
+  [GroupRole.OWNER]: 4,
+  [GroupRole.ADMIN]: 3,
+  [GroupRole.MODERATOR]: 2,
+  [GroupRole.MEMBER]: 1,
+};
+
 @Injectable()
 export class GroupsService {
   private readonly logger = new Logger(GroupsService.name);
@@ -166,6 +173,13 @@ export class GroupsService {
               select: {
                 voteType: true,
                 userId: true,
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    avatarUrl: true,
+                  },
+                },
               },
             },
             _count: {
@@ -567,12 +581,7 @@ export class GroupsService {
       throw new NotFoundException('Member not found in this group');
     }
 
-    const roleHierarchy: Record<GroupRole, number> = {
-      [GroupRole.OWNER]: 4,
-      [GroupRole.ADMIN]: 3,
-      [GroupRole.MODERATOR]: 2,
-      [GroupRole.MEMBER]: 1,
-    };
+    const roleHierarchy = ROLE_HIERARCHY;
 
     if (
       removerId !== memberToRemoveId &&
@@ -631,12 +640,7 @@ export class GroupsService {
       throw new NotFoundException('Active member not found in this group');
     }
 
-    const roleHierarchy: Record<GroupRole, number> = {
-      [GroupRole.OWNER]: 4,
-      [GroupRole.ADMIN]: 3,
-      [GroupRole.MODERATOR]: 2,
-      [GroupRole.MEMBER]: 1,
-    };
+    const roleHierarchy = ROLE_HIERARCHY;
 
     if (
       updaterMembership.role === GroupRole.ADMIN &&

@@ -15,6 +15,7 @@ import { ItineraryPage } from '@/features/itinerary/pages/ItineraryPage'
 import { ItineraryEditPage } from '@/features/itinerary/pages/ItineraryEditPage'
 import { GroupsPage } from '@/features/groups/pages/GroupsPage'
 import { GroupDetailPage } from '@/features/groups/pages/GroupDetailPage'
+import { NotificationsPage } from '@/features/groups/pages/NotificationsPage'
 import { ProfilePage } from '@/features/profile/pages/ProfilePage'
 
 // Layout components
@@ -74,6 +75,7 @@ export const AppRouter: React.FC = () => {
         <Route path={ROUTES.ITINERARY_EDIT(':id')} element={<ItineraryEditPage />} />
         <Route path={ROUTES.GROUPS} element={<GroupsPage />} />
         <Route path={ROUTES.GROUP_DETAIL(':id')} element={<GroupDetailPage />} />
+        <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
         <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
       </Route>
 

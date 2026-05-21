@@ -45,7 +45,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-[22px] items-start">
       <section className="relative bg-white dark:bg-[#1e1b38] border border-line rounded-[22px] shadow-card overflow-hidden">
-        <div className="h-1 bg-indigo-100/60 dark:bg-indigo-900/30">
+        <div className="h-1 bg-blue-100/60 dark:bg-blue-900/30">
           <div
             className="h-full bg-aurora shadow-[0_0_8px_var(--accent-glow)] transition-[width] duration-700 ease-[cubic-bezier(.2,.8,.2,1)]"
             style={{ width: `${progress}%` }}
@@ -53,8 +53,8 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
         </div>
 
         <div className="flex items-center gap-3 pt-[18px] px-[26px] pb-[6px]">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 shadow-[0_0_8px_currentColor] animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-[0.08em] text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_currentColor] animate-pulse" />
             Trip parameters
           </span>
           <span className="ml-auto text-xs font-mono text-ink-faint">{filled}/4 fields complete</span>
@@ -69,7 +69,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
           <div className="mb-5 relative">
             <FieldLabel num="01" text="Destination" required />
             <FieldShell focused={focusKey === 'dest'} filled={!!destination} error={!!errors.destination}>
-              <MapPin className={['absolute left-[18px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] transition-colors', focusKey === 'dest' ? 'text-indigo-500' : 'text-ink-faint'].join(' ')} />
+              <MapPin className={['absolute left-[18px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] transition-colors', focusKey === 'dest' ? 'text-blue-600' : 'text-ink-faint'].join(' ')} />
               <input
                 {...register('destination')}
                 onFocus={() => setFocusKey('dest')}
@@ -88,7 +88,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                     <button key={m.name} type="button"
                       onMouseDown={() => { selectingRef.current = true }}
                       onClick={() => { setValue('destination', m.name, { shouldValidate: true }); setFocusKey(null) }}
-                      className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-[10px] text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                      className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-[10px] text-sm hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                     >
                       <span className="text-xl">{m.flag}</span>
                       <span className="text-left">
@@ -133,7 +133,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
           </div>
         </form>
 
-        <div className="grid grid-cols-3 border-t border-line bg-gradient-to-b from-transparent to-indigo-50/40 dark:to-indigo-900/10">
+        <div className="grid grid-cols-3 border-t border-line bg-gradient-to-b from-transparent to-blue-50/40 dark:to-blue-900/10">
           <MetaCell k="Duration"      v={dur ?? '—'}                                     unit={dur ? 'nights' : ''}    aurora={dur != null} />
           <MetaCell k="Est. budget"   v={dur ? '€' + (dur * 220).toLocaleString() : '—'} unit={dur ? 'pp' : ''}       />
           <MetaCell k="AI confidence" v={progress === 100 ? '94%' : '—'}                 unit={progress === 100 ? 'match' : ''} aurora={progress === 100} last />

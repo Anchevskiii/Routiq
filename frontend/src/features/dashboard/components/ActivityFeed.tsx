@@ -20,8 +20,8 @@ export const ActivityFeed: React.FC<Props> = ({ itineraries }) => {
           />
           <div className="min-w-0">
             <p className="text-xs leading-snug text-slate-700 dark:text-slate-300">
-              <strong className="text-indigo-950 dark:text-indigo-100">{it.user?.name ?? 'You'}</strong> added{' '}
-              <span className="text-indigo-500 dark:text-indigo-400">{it.destination}</span>
+              <strong className="text-blue-600 dark:text-blue-300">{it.user?.name ?? 'You'}</strong> added{' '}
+              <span className="text-blue-600 dark:text-blue-300">{it.destination}</span>
             </p>
             <p className="text-xs mt-0.5 text-slate-400 dark:text-slate-600">
               {format(new Date(it.createdAt), 'd. MMM yyyy')}

@@ -1,36 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --indigo:      #4f46e5;
-  --indigo-2:    #6366f1;
-  --violet:      #8b5cf6;
-  --violet-2:    #a78bfa;
+  --indigo:      #2563eb;
+  --indigo-2:    #3b82f6;
+  --violet:      #3b82f6;
+  --violet-2:    #60a5fa;
   --ink:         #14122b;
   --ink-dim:     #6b6892;
   --ink-faint:   #9b98be;
   --bg:          #f7f8fc;
   --line:        rgba(20,22,50,0.07);
   --line-strong: rgba(20,22,50,0.12);
-  --accent-glow: rgba(124,92,255,0.35);
+  --accent-glow: rgba(37,99,235,0.35);
 }
 
 /* bg-aurora uses background-image (not shorthand) so it doesn't reset background-clip */
 .bg-aurora {
-  background-image: linear-gradient(135deg, #4f46e5 0%, #6366f1 35%, #8b5cf6 70%, #a78bfa 100%);
+  background-image: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
 }
 
-/* Gradient text utility — matches reference HTML exactly */
+/* Gradient text utility */
 .text-aurora {
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 35%, #8b5cf6 70%, #a78bfa 100%);
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* aurora-page-bg: near-white base so purple orbs are clearly visible */
+/* aurora-page-bg: near-white base with blue tint */
 .aurora-page-bg {
   position: relative;
-  background: #fbfaff;
+  background: #f8faff;
 }
 
 /* orb-layer: fills the page, clips overflowing blobs */
@@ -42,18 +42,17 @@
   overflow: hidden;
 }
 
-/* bg-base: the static gradient background — must be INSIDE orb-layer
-   so orbs render ON TOP of it (like reference HTML's .bg-base div) */
+/* bg-base: static gradient background */
 .aurora-bg-base {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 800px 500px at 75% -10%, rgba(139,92,246,0.14), transparent 60%),
-    radial-gradient(ellipse 700px 500px at 10% 110%, rgba(99,102,241,0.12), transparent 65%),
-    linear-gradient(180deg, #fbfaff 0%, #f4f3fc 50%, #f6f5fc 100%);
+    radial-gradient(ellipse 800px 500px at 75% -10%, rgba(59,130,246,0.14), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 10% 110%, rgba(37,99,235,0.12), transparent 65%),
+    linear-gradient(180deg, #f8faff 0%, #f0f4ff 50%, #f2f6ff 100%);
 }
 
-/* animated orbs — sit on top of bg-base, clearly visible against near-white */
+/* animated orbs — blue tones */
 .aurora-orb {
   position: absolute;
   width: 700px; height: 700px;
@@ -62,17 +61,17 @@
 }
 .aurora-orb-a {
   left: 45%; top: -80px;
-  background: radial-gradient(circle, rgba(124,92,255,0.60), transparent 65%);
+  background: radial-gradient(circle, rgba(59,130,246,0.50), transparent 65%);
   animation: orb-a 28s ease-in-out infinite alternate;
 }
 .aurora-orb-b {
   right: -100px; top: 25%;
-  background: radial-gradient(circle, rgba(139,92,246,0.50), transparent 65%);
+  background: radial-gradient(circle, rgba(37,99,235,0.40), transparent 65%);
   animation: orb-b 34s ease-in-out infinite alternate;
 }
 .aurora-orb-c {
   left: -150px; top: 50%;
-  background: radial-gradient(circle, rgba(99,102,241,0.35), transparent 65%);
+  background: radial-gradient(circle, rgba(59,130,246,0.28), transparent 65%);
   animation: orb-a 40s ease-in-out infinite alternate-reverse;
 }
 
@@ -84,8 +83,8 @@
 .text-ink-faint { color: var(--ink-faint); }
 .border-line        { border-color: var(--line); }
 .border-line-strong { border-color: var(--line-strong); }
-.shadow-card { box-shadow: 0 1px 2px rgba(20,22,50,0.04), 0 6px 24px -10px rgba(80,60,200,0.18); }
-.shadow-pop  { box-shadow: 0 1px 2px rgba(20,22,50,0.04), 0 20px 60px -20px rgba(124,92,255,0.35); }
+.shadow-card { box-shadow: 0 1px 2px rgba(20,22,50,0.04), 0 6px 24px -10px rgba(37,99,235,0.18); }
+.shadow-pop  { box-shadow: 0 1px 2px rgba(20,22,50,0.04), 0 20px 60px -20px rgba(37,99,235,0.35); }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer; opacity: 0.55; filter: hue-rotate(220deg);
@@ -111,18 +110,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   100% { width: 480px; height: 480px; opacity: 0; }
 }
 
-/* Aurora shimmer button */
+/* Aurora shimmer button — blue */
 .btn-shimmer {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 35%, #8b5cf6 70%, #a78bfa 100%);
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border: none;
   border-radius: 16px;
   padding: 18px 24px;
   font: 600 16px/1 'Space Grotesk', sans-serif;
   cursor: pointer;
-  box-shadow: 0 12px 32px -8px rgba(124,92,255,0.35), inset 0 1px 0 rgba(255,255,255,0.4);
+  box-shadow: 0 12px 32px -8px rgba(37,99,235,0.40), inset 0 1px 0 rgba(255,255,255,0.3);
 }
 .btn-shimmer::before {
   content: "";

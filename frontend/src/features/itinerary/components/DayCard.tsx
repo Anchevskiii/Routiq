@@ -24,20 +24,20 @@ export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = fal
   };
 
   return (
-    <div className="bg-white dark:bg-[#16142e] rounded-3xl shadow-sm border border-gray-100 dark:border-indigo-500/10 overflow-hidden mb-6 transition-all">
+    <div className="bg-white dark:bg-[#16142e] rounded-3xl shadow-sm border border-gray-100 dark:border-blue-600/10 overflow-hidden mb-6 transition-all">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-8 py-6 flex items-center justify-between bg-gray-50/30 dark:bg-slate-800/20 hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors border-b border-gray-100 dark:border-indigo-500/10"
+        className="w-full px-8 py-6 flex items-center justify-between bg-gray-50/30 dark:bg-slate-800/20 hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors border-b border-gray-100 dark:border-blue-600/10"
       >
         <div className="flex items-center gap-6">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-[#1e1b38] border border-gray-100 dark:border-indigo-500/20 shadow-sm flex flex-col items-center justify-center">
+          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-[#1e1b38] border border-gray-100 dark:border-blue-600/20 shadow-sm flex flex-col items-center justify-center">
             <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-tighter">Day</span>
             <span className="text-xl font-black text-primary leading-none">{day.dayNumber}</span>
           </div>
 
           <div className="text-left">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-indigo-100 leading-tight">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-blue-300 leading-tight">
               {day.theme || `Day ${day.dayNumber}: Exploration`}
             </h3>
             <p className="text-sm text-gray-500 dark:text-slate-500 font-medium">
@@ -48,7 +48,7 @@ export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = fal
 
         <div className="flex items-center gap-4">
           {day.weather && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#1e1b38] border border-gray-100 dark:border-indigo-500/20 shadow-xs">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#1e1b38] border border-gray-100 dark:border-blue-600/20 shadow-xs">
               {getWeatherIcon(day.weather.condition)}
               <span className="text-xs font-bold text-gray-700 dark:text-slate-300">
                 {day.weather.tempMax !== null && day.weather.tempMax !== undefined
