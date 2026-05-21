@@ -120,10 +120,12 @@ const savedItineraryRecord = {
 // ---------------------------------------------------------------------------
 
 function buildService(): ItineraryService {
+  const mockWeatherService = { getForecast: jest.fn().mockResolvedValue({ forecast: [] }) };
   return new ItineraryService(
     mockPrisma as unknown as PrismaService,
     mockGeminiService as unknown as GeminiService,
     mockItineraryGenerationService as unknown as ItineraryGenerationService,
+    mockWeatherService as unknown as import('../weather/weather.service').WeatherService,
   );
 }
 
