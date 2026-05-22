@@ -10,8 +10,8 @@ import { PrismaService } from '../prisma/prisma.service';
 interface IcsEvent {
   title: string;
   description: string;
-  startTime: string;
-  endTime: string;
+  startTime: Date;
+  endTime: Date;
   location: string;
 }
 
@@ -89,14 +89,16 @@ export class ExportService {
     for (const day of itinerary.days) {
       for (const activity of day.activities) {
         const startTime = activity.startTime ?? '09:00';
-        const durationHours = (activity.durationMinutes ?? 120) / 60;
+        const durationMinutes = activity.durationMinutes ?? 120;
+        const eventStart = this.combineDateTime(day.date, startTime);
+        const eventEnd = this.addMinutes(eventStart, durationMinutes);
 
         events.push({
           title: activity.title,
           description: activity.description ?? '',
           location: activity.location ?? itinerary.destination,
-          startTime: this.combineDateTime(day.date, startTime),
-          endTime: this.calculateEndTime(day.date, startTime, durationHours),
+          startTime: eventStart,
+          endTime: eventEnd,
         });
       }
     }
@@ -104,24 +106,16 @@ export class ExportService {
     return events;
   }
 
-  private combineDateTime(date: Date, time: string): string {
+  private combineDateTime(date: Date, time: string): Date {
     const [hours, minutes] = time.split(':').map(Number);
     const eventDate = new Date(date);
     eventDate.setHours(hours || 9, minutes || 0, 0, 0);
 
-    return eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    return eventDate;
   }
 
-  private calculateEndTime(
-    date: Date,
-    startTime: string,
-    durationHours: number,
-  ): string {
-    const [hours, minutes] = startTime.split(':').map(Number);
-    const eventDate = new Date(date);
-    eventDate.setHours((hours || 9) + durationHours, minutes || 0, 0, 0);
-
-    return eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  private addMinutes(date: Date, minutes: number): Date {
+    return new Date(date.getTime() + minutes * 60 * 1000);
   }
 
   private async createIcsCalendar(
@@ -149,9 +143,8 @@ export class ExportService {
   }
 
   private formatDateForIcs(
-    dateString: string,
+    date: Date,
   ): [number, number, number, number, number] {
-    const date = new Date(dateString);
     return [
       date.getFullYear(),
       date.getMonth() + 1,
