@@ -150,6 +150,12 @@ export class GroupsService {
           },
         },
         itineraries: {
+          where: {
+            deletedAt: null,
+            itinerary: {
+              deletedAt: null,
+            },
+          },
           include: {
             itinerary: {
               select: {

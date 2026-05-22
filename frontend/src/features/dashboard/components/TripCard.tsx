@@ -42,6 +42,7 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
     onSuccess: () => {
       setDeleted(true)
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.itineraries })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.groups })
     },
   })
 

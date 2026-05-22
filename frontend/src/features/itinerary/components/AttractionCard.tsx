@@ -23,7 +23,6 @@ type EditState = 'idle' | 'editing'
 
 export const AttractionCard: React.FC<AttractionCardProps> = ({
   activity,
-  isFirst,
   itineraryId,
   dragHandleProps,
   dragHandleAttributes,
@@ -31,10 +30,9 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
   onDeleted,
 }) => {
   const isMeal = activity.activityType === ActivityType.MEAL
-
   const [confirmState, setConfirmState] = useState<ConfirmState>('idle')
-  const [editState, setEditState] = useState<EditState>('idle')
-  const [editTime, setEditTime] = useState(activity.startTime ?? '')
+  const [editState, setEditState]       = useState<EditState>('idle')
+  const [editTime, setEditTime]         = useState(activity.startTime ?? '')
   const [editDuration, setEditDuration] = useState(String(activity.durationMinutes ?? 60))
 
   const deleteMutation = useMutation({
@@ -53,15 +51,8 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
         durationMinutes: editDuration ? Number(editDuration) : undefined,
       })
     },
-    onSuccess: () => {
-      setEditState('idle')
-      onUpdated?.()
-    },
+    onSuccess: () => { setEditState('idle'); onUpdated?.() },
   })
-
-  const handleDeleteConfirm = () => deleteMutation.mutate()
-
-  const handleEditSave = () => updateMutation.mutate()
 
   const openEditForm = () => {
     setEditTime(activity.startTime ?? '')
@@ -69,116 +60,108 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
     setEditState('editing')
   }
 
+  const dotBorder  = isMeal ? 'border-orange-400' : 'border-sky-400'
+  const dotShadow  = 'shadow-[0_0_0_3px_white] dark:shadow-[0_0_0_3px_rgba(8,9,26,1)]'
+  const iconEl     = isMeal ? <Utensils className="w-4 h-4 text-orange-500 dark:text-orange-400" /> : <Camera className="w-4 h-4 text-sky-500 dark:text-sky-400" />
+  const iconBg     = isMeal ? 'bg-orange-50 dark:bg-gradient-to-br dark:from-orange-500/20 dark:to-rose-500/15' : 'bg-sky-50 dark:bg-gradient-to-br dark:from-sky-500/20 dark:to-blue-500/15'
+  const catBadge   = isMeal
+    ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-400/10 border border-orange-200 dark:border-orange-400/25'
+    : 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-400/10 border border-sky-200 dark:border-sky-400/25'
+
   return (
-    <div className={`relative pl-8 before:absolute before:left-0 before:top-2 before:bottom-0 before:w-0.5 before:bg-gray-100 last:before:hidden ${isFirst ? 'mt-0' : 'mt-8'}`}>
-      <div className={`absolute left-[-4px] top-2 w-2.5 h-2.5 rounded-full ring-4 ${
-        isMeal ? 'bg-orange-500 ring-orange-500/10' : 'bg-primary ring-primary/10'
-      }`} />
+    <div className="relative grid gap-3.5 py-2.5 group/act" style={{ gridTemplateColumns: '28px 72px 1fr auto' }}>
+      {/* dot */}
+      <div className="flex justify-center pt-1.5">
+        <div className={`w-3.5 h-3.5 rounded-full bg-white dark:bg-[#08091a] border-[3px] z-10 ${dotBorder} ${dotShadow}`} />
+      </div>
 
-      <div className="bg-white dark:bg-[#1e1b38] rounded-2xl border border-gray-100 dark:border-blue-600/10 p-4 hover:shadow-md transition-shadow group">
-        <div className="flex gap-2 items-start">
-          {dragHandleProps && (
-            <div
-              {...dragHandleProps}
-              {...dragHandleAttributes}
-              className="mt-1 p-1 rounded cursor-grab active:cursor-grabbing text-gray-200 dark:text-slate-700 opacity-0 group-hover:opacity-100 hover:text-gray-400 dark:hover:text-slate-500 transition-opacity flex-shrink-0"
-            >
-              <GripVertical className="w-4 h-4" />
-            </div>
-          )}
-        <div className="flex flex-col md:flex-row gap-6 flex-1">
-          {/* Time column — clickable to edit */}
-          <div className="w-20 flex-shrink-0">
-            <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Time</span>
-            <button
-              onClick={openEditForm}
-              title="Edit time & duration"
-              className="text-sm font-bold text-gray-900 dark:text-blue-300 bg-gray-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg border border-gray-100 dark:border-slate-700 hover:border-primary/40 transition-colors cursor-pointer"
-            >
-              {activity.startTime || '--:--'}
-            </button>
+      {/* time */}
+      <div className="pt-1 text-right">
+        <button
+          onClick={openEditForm}
+          title="Edit time & duration"
+          className="font-mono text-[13px] font-semibold text-gray-800 dark:text-[#f0eeff] hover:text-sky-600 dark:hover:text-sky-400 transition-colors leading-none"
+        >
+          {activity.startTime || '--:--'}
+        </button>
+        <span className="block font-mono text-[11px] font-medium text-gray-400 dark:text-[#6e6c93] mt-1">
+          {activity.durationMinutes} min
+        </span>
+      </div>
+
+      {/* card */}
+      <div className="flex flex-col gap-2">
+        <div className="bg-gray-50 dark:bg-white/[0.025] border border-gray-200 dark:border-white/[0.07] rounded-[12px] p-3 flex items-center gap-3 hover:bg-white dark:hover:bg-white/[0.04] hover:border-gray-300 dark:hover:border-white/[0.14] hover:translate-x-0.5 cursor-pointer transition-all shadow-xs">
+          <div className={`w-10 h-10 rounded-[10px] flex-shrink-0 grid place-items-center ${iconBg}`}>
+            {iconEl}
           </div>
-
-          <div className="flex-grow">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  {isMeal ? (
-                    <Utensils className="w-4 h-4 text-orange-500" />
-                  ) : (
-                    <Camera className="w-4 h-4 text-primary" />
-                  )}
-                  <h4 className="text-lg font-bold text-gray-900 dark:text-blue-300 group-hover:text-primary transition-colors">
-                    {activity.title}
-                  </h4>
-                </div>
-                <p className="text-gray-500 dark:text-slate-500 text-sm flex items-center">
-                  <MapPin className="w-3.5 h-3.5 mr-1" />
-                  {activity.location}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1">
-                {activity.placeId && (
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : ''}&query_place_id=${activity.placeId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 text-gray-400 dark:text-slate-500 hover:text-primary transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                )}
-
-                {itineraryId && (
-                  <ActivityDeleteConfirm
-                    confirmState={confirmState}
-                    isPending={deleteMutation.isPending}
-                    onRequestConfirm={() => setConfirmState('confirming')}
-                    onConfirm={handleDeleteConfirm}
-                    onCancel={() => setConfirmState('idle')}
-                  />
-                )}
-              </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-[14px] font-semibold text-gray-900 dark:text-[#f0eeff] leading-snug tracking-[-0.005em]">
+                {activity.title}
+              </span>
+              <span className={`text-[9px] font-mono font-semibold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-[5px] ${catBadge}`}>
+                {isMeal ? 'food' : 'sight'}
+              </span>
             </div>
-
-            {activity.description && (
-              <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed mb-4 line-clamp-2">
-                {activity.description}
-              </p>
-            )}
-
-            {editState === 'editing' && itineraryId && (
-              <ActivityEditForm
-                editTime={editTime}
-                editDuration={editDuration}
-                isPending={updateMutation.isPending}
-                onTimeChange={setEditTime}
-                onDurationChange={setEditDuration}
-                onSave={handleEditSave}
-                onCancel={() => setEditState('idle')}
-              />
-            )}
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={openEditForm}
-                title="Edit duration"
-                className="flex items-center px-2.5 py-1 rounded-full bg-gray-50 dark:bg-slate-800/50 text-[10px] font-bold text-gray-500 dark:text-slate-500 border border-gray-100 dark:border-slate-700 hover:border-primary/40 transition-colors cursor-pointer"
-              >
-                <Clock className="w-3 h-3 mr-1" />
-                {activity.durationMinutes} MINS
-              </button>
-
-              {activity.tips && (
-                <div className="flex items-center px-2.5 py-1 rounded-full bg-primary/5 text-[10px] font-bold text-primary border border-primary/10">
-                  TIP: {activity.tips}
-                </div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {activity.location && (
+                <span className="flex items-center gap-1 text-[12px] text-gray-400 dark:text-[#6e6c93]">
+                  <MapPin className="w-2.5 h-2.5" /> {activity.location}
+                </span>
+              )}
+              {activity.durationMinutes && (
+                <span className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-[#6e6c93]">
+                  <Clock className="w-2.5 h-2.5" /> {activity.durationMinutes} min
+                </span>
               )}
             </div>
           </div>
         </div>
-        </div>
+
+        {editState === 'editing' && itineraryId && (
+          <ActivityEditForm
+            editTime={editTime}
+            editDuration={editDuration}
+            isPending={updateMutation.isPending}
+            onTimeChange={setEditTime}
+            onDurationChange={setEditDuration}
+            onSave={() => updateMutation.mutate()}
+            onCancel={() => setEditState('idle')}
+          />
+        )}
+      </div>
+
+      {/* tools */}
+      <div className="flex flex-col gap-1 opacity-0 group-hover/act:opacity-100 transition-opacity pt-1">
+        {dragHandleProps && (
+          <button
+            {...dragHandleProps}
+            {...dragHandleAttributes}
+            className="w-7 h-7 rounded-[8px] bg-transparent border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] cursor-grab active:cursor-grabbing hover:text-gray-700 dark:hover:text-[#f0eeff] hover:border-gray-400 dark:hover:border-white/[0.14] transition-all"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {activity.placeId && (
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : ''}&query_place_id=${activity.placeId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-7 h-7 rounded-[8px] bg-transparent border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] hover:text-gray-700 dark:hover:text-[#f0eeff] hover:border-gray-400 dark:hover:border-white/[0.14] transition-all"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
+        {itineraryId && (
+          <ActivityDeleteConfirm
+            confirmState={confirmState}
+            isPending={deleteMutation.isPending}
+            onRequestConfirm={() => setConfirmState('confirming')}
+            onConfirm={() => deleteMutation.mutate()}
+            onCancel={() => setConfirmState('idle')}
+          />
+        )}
       </div>
     </div>
   )

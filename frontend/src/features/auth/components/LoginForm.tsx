@@ -73,7 +73,7 @@ export const LoginForm: React.FC<Props> = ({ onSuccess }) => {
 
       <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
         type="submit" disabled={isSubmitting}
-        className="mt-6 w-full rounded-[14px] bg-gradient-to-r from-indigo-500 to-violet-500 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(99,102,241,0.4)] disabled:opacity-60">
+        className="mt-6 w-full rounded-[14px] bg-gradient-to-r from-blue-500 to-blue-600 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(59,130,246,0.4)] disabled:opacity-60">
         {isSubmitting ? 'Signing in…' : 'Sign in'}
       </motion.button>
 
