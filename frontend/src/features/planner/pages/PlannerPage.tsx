@@ -84,7 +84,7 @@ export const PlannerPage: React.FC = () => {
   }
 
   return (
-    <div className="relative h-full overflow-hidden bg-white dark:bg-[#0c0b1a]">
+    <div className="relative h-full overflow-hidden bg-gray-50 dark:bg-[#08091a]">
 
       {/* Orbs — pinned to container, do not scroll */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
@@ -111,20 +111,7 @@ export const PlannerPage: React.FC = () => {
       {/* Scrollable content */}
       <div className="relative z-10 h-full overflow-y-auto">
         <div className="max-w-[1400px] mx-auto px-6 py-10">
-          <div className="mb-8">
-            <p className="text-[11px] font-mono uppercase tracking-[0.14em] text-ink-faint mb-3">
-              AI · planner · v3.2
-            </p>
-            <h1 className="text-5xl font-semibold tracking-tight text-ink leading-[1.1] mb-4">
-              Plan your next{' '}
-              <em className="font-serif italic font-normal text-aurora">journey</em>
-            </h1>
-            <p className="text-base text-ink-dim max-w-md leading-relaxed">
-              Tell Routiq where you're going. Watch your trip take shape on the right while you fill it in.
-            </p>
-          </div>
-
-          {isLoading ? (
+            {isLoading ? (
             <GenerationLoading
               progress={progress}
               attractions={attractions}
