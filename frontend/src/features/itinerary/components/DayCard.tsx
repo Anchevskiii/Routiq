@@ -63,7 +63,7 @@ export const DayCard: React.FC<DayCardProps> = ({
   const activeHours = totalMinutes > 0 ? `~${Math.round(totalMinutes / 60)}h` : null
 
   return (
-    <div className="relative bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] hover:border-gray-300 dark:hover:border-white/[0.14] transition-colors">
+    <div className="relative bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200/80 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-[0_2px_12px_-4px_rgba(0,0,0,0.10),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.05)] dark:hover:border-white/[0.14] dark:hover:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] transition-all">
 
       {/* header */}
       <div className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none" onClick={() => setIsExpanded(v => !v)}>
@@ -134,7 +134,7 @@ export const DayCard: React.FC<DayCardProps> = ({
           )}
         </div>
 
-        <div className="px-5 py-4 relative">
+        <div className="px-5 py-4 relative bg-slate-50/60 dark:bg-transparent">
           {(day.activities?.length ?? 0) > 1 && (
             <div
               className="absolute w-0.5 pointer-events-none"
@@ -170,7 +170,7 @@ export const DayCard: React.FC<DayCardProps> = ({
         {onAddActivity && (
           <button
             onClick={() => onAddActivity(day.id)}
-            className="mx-5 mb-4 w-[calc(100%-40px)] flex items-center justify-center gap-2 py-3.5 rounded-[12px] border border-dashed border-gray-300 dark:border-white/[0.20] bg-sky-50/50 dark:bg-sky-400/[0.03] text-[13px] font-medium text-gray-400 dark:text-[#a3a1c8] hover:bg-sky-50 dark:hover:bg-sky-400/[0.07] hover:border-sky-400 dark:hover:border-sky-400/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
+            className="mx-5 mb-4 w-[calc(100%-40px)] flex items-center justify-center gap-2 py-3.5 rounded-[12px] border border-dashed border-sky-200 dark:border-white/[0.20] bg-white dark:bg-sky-400/[0.03] text-[13px] font-medium text-sky-500/70 dark:text-[#a3a1c8] hover:bg-sky-50 dark:hover:bg-sky-400/[0.07] hover:border-sky-400 dark:hover:border-sky-400/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
           >
             <Plus className="w-3.5 h-3.5" />
             Add activity to day {day.dayNumber}
