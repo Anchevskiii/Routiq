@@ -1,22 +1,37 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Users, MapPin, Settings } from 'lucide-react'
+import { Users, MapPin, Settings, Trash2 } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
+import { groupsApi } from '@/api/groups.api'
+import { QUERY_KEYS } from '@/constants/queryKeys'
 import { ROUTES } from '@/constants/routes'
 import type { Group, GroupMember } from '@/types/group.types'
 import { initials, avatarGrad } from '@/utils/avatar.utils'
 
 interface Props {
   group: Group
+  currentUserId?: string
 }
 
-export const GroupCard: React.FC<Props> = ({ group }) => {
+export const GroupCard: React.FC<Props> = ({ group, currentUserId: _currentUserId }) => {
   const memberCount    = group.members?.length    ?? group.memberCount    ?? 0
   const itineraryCount = group.itineraries?.length ?? group.itineraryCount ?? 0
+  const queryClient = useQueryClient()
+
+  const deleteMutation = useMutation({
+    mutationFn: () => groupsApi.deleteGroup(group.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.groups })
+      toast.success('Group deleted')
+    },
+    onError: () => toast.error('Only the group owner can delete this group'),
+  })
 
   return (
     <Link
       to={ROUTES.GROUP_DETAIL(group.id)}
-      className="grp-panel grp-card block rounded-[20px] overflow-hidden border border-gray-200 dark:border-white/[0.07] no-underline"
+      className="grp-panel grp-card block rounded-[20px] overflow-hidden border border-gray-200 dark:border-white/[0.07] no-underline group/card"
     >
       {/* Top bar */}
       <div
@@ -35,6 +50,18 @@ export const GroupCard: React.FC<Props> = ({ group }) => {
         <div className="grp-card-gear absolute top-2.5 right-2.5 w-[30px] h-[30px] rounded-lg bg-black/35 backdrop-blur-sm grid place-items-center border border-white/[0.15]">
           <Settings size={13} className="text-white" />
         </div>
+        <button
+          onClick={e => {
+            e.preventDefault()
+            e.stopPropagation()
+            deleteMutation.mutate()
+          }}
+          disabled={deleteMutation.isPending}
+          className="absolute top-2.5 left-2.5 w-[30px] h-[30px] rounded-lg backdrop-blur-sm grid place-items-center border border-white/[0.15] bg-black/35 text-white/70 hover:bg-red-500/70 hover:border-red-400/50 hover:text-white transition-all opacity-0 group-hover/card:opacity-100 disabled:opacity-50"
+          title="Delete group"
+        >
+          <Trash2 size={13} />
+        </button>
       </div>
 
       {/* Body */}

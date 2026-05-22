@@ -296,8 +296,9 @@ export class GroupsService {
   async deleteGroup(groupId: string, userId: string) {
     await this.requireRole(groupId, userId, [GroupRole.OWNER]);
 
-    await this.prisma.group.delete({
+    await this.prisma.group.update({
       where: { id: groupId },
+      data: { deletedAt: new Date() },
     });
 
     return { message: 'Group deleted successfully' };

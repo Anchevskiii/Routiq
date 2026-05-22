@@ -7,9 +7,11 @@ import { GroupCard } from '../components/GroupCard'
 import { CreateGroupModal } from '../components/CreateGroupModal'
 import toast from 'react-hot-toast'
 import type { Invitation } from '@/types/group.types'
+import { useAuth } from '@/app/Providers'
 
 export const GroupsPage: React.FC = () => {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   const { data, isLoading, error } = useQuery({
@@ -111,7 +113,7 @@ export const GroupsPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-[18px]">
-          {groups.map(group => <GroupCard key={group.id} group={group} />)}
+          {groups.map(group => <GroupCard key={group.id} group={group} currentUserId={user?.id} />)}
         </div>
       )}
 
