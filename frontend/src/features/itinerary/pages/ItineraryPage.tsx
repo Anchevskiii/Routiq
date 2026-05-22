@@ -129,18 +129,18 @@ export const ItineraryPage: React.FC = () => {
   /* ── group view ── */
   if (groupId && group) return (
     <div className="px-8 py-6 pb-16">
-      <nav className="flex items-center gap-2 mb-5 text-[13px] text-gray-400 dark:text-[#6e6c93] font-medium">
-        <Link to={ROUTES.GROUPS} className="hover:text-gray-600 dark:hover:text-[#a3a1c8] transition-colors">Groups</Link>
+      <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
+        <Link to={ROUTES.GROUPS} className="hover:text-[#a3a1c8] transition-colors">Groups</Link>
         <span className="opacity-40">/</span>
-        <Link to={ROUTES.GROUP_DETAIL(group.id)} className="hover:text-gray-600 dark:hover:text-[#a3a1c8] transition-colors">{group.name}</Link>
+        <Link to={ROUTES.GROUP_DETAIL(group.id)} className="hover:text-[#a3a1c8] transition-colors">{group.name}</Link>
         <span className="opacity-40">/</span>
-        <span className="text-gray-900 dark:text-[#f0eeff]">{itinerary.destination}</span>
+        <span className="text-[#f0eeff]">{itinerary.destination}</span>
       </nav>
       <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0">
           <ItineraryHeader itinerary={itinerary} showActions={false} compact itineraryId={id} />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-[#f0eeff] flex items-center gap-2.5 mt-6 mb-4">
-            <Compass className="w-5 h-5 text-sky-500 dark:text-sky-400" /> Daily Route
+          <h2 className="text-xl font-semibold text-[#f0eeff] flex items-center gap-2.5 mt-6 mb-4">
+            <Compass className="w-5 h-5 text-sky-400" /> Daily Route
           </h2>
           <SortableDaysList {...sharedListProps} />
         </div>
@@ -160,18 +160,18 @@ export const ItineraryPage: React.FC = () => {
   /* ── standard view ── */
   return (
     <div className="px-6 py-6 pb-16 max-w-[1400px] mx-auto">
-      <nav className="flex items-center gap-2 mb-5 text-[13px] text-gray-400 dark:text-[#6e6c93] font-medium">
-        <Link to="/dashboard" className="hover:text-gray-600 dark:hover:text-[#a3a1c8] transition-colors">Routiq</Link>
+      <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
+        <Link to="/dashboard" className="hover:text-[#a3a1c8] transition-colors">Routiq</Link>
         <span className="opacity-40">/</span>
-        <Link to="/dashboard" className="hover:text-gray-600 dark:hover:text-[#a3a1c8] transition-colors">Trips</Link>
+        <Link to="/dashboard" className="hover:text-[#a3a1c8] transition-colors">Trips</Link>
         <span className="opacity-40">/</span>
-        <span className="text-gray-900 dark:text-[#f0eeff]">{itinerary.destination}</span>
+        <span className="text-[#f0eeff]">{itinerary.destination}</span>
       </nav>
 
       <ItineraryHeader itinerary={itinerary} itineraryId={id} />
 
       {/* tabs */}
-      <div className="flex gap-1 bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[14px] p-1 w-fit mb-6 shadow-sm dark:shadow-none">
+      <div className="flex gap-1 bg-[rgba(22,24,48,0.6)] backdrop-blur-xl border border-white/[0.07] rounded-[14px] p-1 w-fit mb-6">
         {TABS.map(t => {
           const count = t.id === 'it' ? days.length : undefined
           return (
@@ -181,12 +181,12 @@ export const ItineraryPage: React.FC = () => {
               className={`flex items-center gap-2 px-4 py-2 rounded-[10px] text-[13px] font-medium transition-all ${
                 tab === t.id
                   ? 'text-white bg-gradient-to-b from-blue-500 to-blue-600 shadow-[0_4px_12px_-6px_rgba(37,99,235,0.6)]'
-                  : 'text-gray-500 dark:text-[#a3a1c8] hover:text-gray-800 dark:hover:text-[#f0eeff]'
+                  : 'text-[#a3a1c8] hover:text-[#f0eeff]'
               }`}
             >
               {t.label}
               {count != null && (
-                <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-white/25' : 'bg-gray-100 dark:bg-white/[0.08] text-gray-500 dark:text-[#a3a1c8]'}`}>
+                <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-white/25' : 'bg-white/[0.08]'}`}>
                   {count}
                 </span>
               )}
@@ -198,8 +198,8 @@ export const ItineraryPage: React.FC = () => {
       {tab === 'it' && (
         <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
           <div>
-            <h2 className="flex items-center gap-2.5 text-[16px] font-semibold text-gray-900 dark:text-[#f0eeff] mb-4" style={{ letterSpacing: '-0.01em' }}>
-              <span className="w-7 h-7 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
+            <h2 className="flex items-center gap-2.5 text-[16px] font-semibold text-[#f0eeff] mb-4" style={{ letterSpacing: '-0.01em' }}>
+              <span className="w-7 h-7 rounded-[9px] bg-sky-400/10 text-sky-400 grid place-items-center flex-shrink-0">
                 <Compass className="w-3.5 h-3.5" />
               </span>
               Daily Route
@@ -208,14 +208,14 @@ export const ItineraryPage: React.FC = () => {
           </div>
 
           <aside className="flex flex-col gap-3.5 sticky top-5 self-start">
-            <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)]">
+            <div className="bg-[rgba(22,24,48,0.6)] backdrop-blur-xl border border-white/[0.07] rounded-[18px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)]">
               <div className="flex items-center gap-2.5 px-4 py-3.5">
-                <div className="w-7 h-7 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 grid place-items-center text-sky-500 dark:text-[#22d3ee] flex-shrink-0">
+                <div className="w-7 h-7 rounded-[9px] bg-sky-400/10 grid place-items-center text-[#22d3ee] flex-shrink-0">
                   <MapPin className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[14px] font-semibold text-gray-900 dark:text-[#f0eeff]">Map</span>
+                <span className="text-[14px] font-semibold text-[#f0eeff]">Map</span>
               </div>
-              <div className="border-t border-gray-100 dark:border-white/[0.07]">
+              <div className="border-t border-white/[0.07]">
                 <ItineraryMap days={days} destination={itinerary.destination} />
               </div>
             </div>
@@ -225,7 +225,7 @@ export const ItineraryPage: React.FC = () => {
       )}
 
       {tab === 'mp' && (
-        <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-none">
+        <div className="bg-[rgba(22,24,48,0.6)] backdrop-blur-xl border border-white/[0.07] rounded-[18px] overflow-hidden">
           <ItineraryMap days={days} destination={itinerary.destination} />
         </div>
       )}
