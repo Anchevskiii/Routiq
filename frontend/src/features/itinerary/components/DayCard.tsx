@@ -26,17 +26,10 @@ function WeatherChip({ condition, tempMax }: { condition: string; tempMax?: numb
   const isSun   = lc === 'clear' || lc === 'sunny'
   const isWindy = lc === 'windy'
   const Icon = isRain ? CloudRain : isSun ? Sun : isWindy ? Wind : Cloud
-<<<<<<< HEAD
   const colorClass = isRain ? 'text-sky-500 dark:text-sky-400' : isSun ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-[#a3a1c8]'
 
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] text-[13px] font-medium text-gray-700 dark:text-[#f0eeff]">
-=======
-  const colorClass = isRain ? 'text-sky-400' : isSun ? 'text-amber-400' : 'text-[#a3a1c8]'
-
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] bg-white/[0.03] border border-white/[0.07] text-[13px] font-medium text-[#f0eeff]">
->>>>>>> fix/group-itinerary-access
       <Icon className={`w-3.5 h-3.5 ${colorClass}`} />
       {tempMax != null ? `${tempMax}°C` : '--°C'}
     </span>
@@ -70,50 +63,29 @@ export const DayCard: React.FC<DayCardProps> = ({
   const activeHours = totalMinutes > 0 ? `~${Math.round(totalMinutes / 60)}h` : null
 
   return (
-<<<<<<< HEAD
     <div className="relative bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] hover:border-gray-300 dark:hover:border-white/[0.14] transition-colors">
 
       {/* header */}
       <div className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none" onClick={() => setIsExpanded(v => !v)}>
-=======
-    <div className="relative bg-[rgba(22,24,48,0.6)] backdrop-blur-xl border border-white/[0.07] rounded-[18px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] hover:border-white/[0.14] transition-colors">
-
-      {/* header */}
-      <div
-        className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none"
-        onClick={() => setIsExpanded(v => !v)}
-      >
->>>>>>> fix/group-itinerary-access
         {dragHandleProps && (
           <div
             {...dragHandleProps}
             {...dragHandleAttributes}
             onClick={e => e.stopPropagation()}
-<<<<<<< HEAD
             className="p-1.5 rounded-[8px] text-gray-400 dark:text-[#6e6c93] cursor-grab active:cursor-grabbing hover:text-gray-600 dark:hover:text-[#a3a1c8] transition-colors flex-shrink-0"
-=======
-            className="p-1.5 rounded-[8px] text-[#6e6c93] cursor-grab active:cursor-grabbing hover:text-[#a3a1c8] transition-colors flex-shrink-0"
->>>>>>> fix/group-itinerary-access
           >
             <GripVertical className="w-4 h-4" />
           </div>
         )}
 
-<<<<<<< HEAD
         <div className="w-14 flex-shrink-0 h-16 rounded-[12px] bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 flex flex-col items-center justify-center">
           <span className="text-[9px] font-mono font-semibold uppercase tracking-[0.12em] text-sky-600 dark:text-sky-400 mb-1">Day</span>
           <span className="text-2xl font-semibold text-sky-600 dark:text-sky-400 leading-none" style={{ letterSpacing: '-0.02em' }}>
-=======
-        <div className="w-14 flex-shrink-0 h-16 rounded-[12px] bg-blue-500/10 border border-blue-500/30 flex flex-col items-center justify-center">
-          <span className="text-[9px] font-mono font-semibold uppercase tracking-[0.12em] text-sky-400 mb-1">Day</span>
-          <span className="text-2xl font-semibold text-sky-400 leading-none" style={{ letterSpacing: '-0.02em' }}>
->>>>>>> fix/group-itinerary-access
             {day.dayNumber}
           </span>
         </div>
 
         <div className="flex-1 min-w-0">
-<<<<<<< HEAD
           <h3 className="text-[18px] font-semibold text-gray-900 dark:text-[#f0eeff] leading-snug mb-1" style={{ letterSpacing: '-0.015em' }}>
             {day.theme || `Day ${day.dayNumber}`}
           </h3>
@@ -123,17 +95,6 @@ export const DayCard: React.FC<DayCardProps> = ({
               <>
                 <span className="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-[#6e6c93]" />
                 <span className="inline-flex items-center gap-1 text-gray-500 dark:text-[#a3a1c8]">
-=======
-          <h3 className="text-[18px] font-semibold text-[#f0eeff] leading-snug mb-1" style={{ letterSpacing: '-0.015em' }}>
-            {day.theme || `Day ${day.dayNumber}`}
-          </h3>
-          <div className="flex items-center gap-1.5 text-[13px] text-[#6e6c93]">
-            <span>{format(new Date(day.date), 'EEEE, MMMM d')}</span>
-            {day.activities && day.activities.length > 0 && (
-              <>
-                <span className="w-[3px] h-[3px] rounded-full bg-[#6e6c93]" />
-                <span className="inline-flex items-center gap-1 text-[#a3a1c8]">
->>>>>>> fix/group-itinerary-access
                   <MapPin className="w-2.5 h-2.5" /> {day.activities.length} stops
                 </span>
               </>
@@ -145,11 +106,7 @@ export const DayCard: React.FC<DayCardProps> = ({
           {day.weather && (
             <WeatherChip condition={day.weather.condition} tempMax={day.weather.tempMax} />
           )}
-<<<<<<< HEAD
           <div className={`w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] transition-transform duration-200 ${!isExpanded ? '-rotate-90' : ''}`}>
-=======
-          <div className={`w-8 h-8 rounded-[10px] bg-white/[0.03] border border-white/[0.07] grid place-items-center text-[#a3a1c8] transition-transform duration-200 ${!isExpanded ? '-rotate-90' : ''}`}>
->>>>>>> fix/group-itinerary-access
             <ChevronDown className="w-4 h-4" />
           </div>
         </div>
@@ -158,7 +115,6 @@ export const DayCard: React.FC<DayCardProps> = ({
       {/* body */}
       <div
         className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
-<<<<<<< HEAD
         style={{
           maxHeight: isExpanded ? '4000px' : 0,
           borderTop: isExpanded ? '1px solid' : 'none',
@@ -174,19 +130,6 @@ export const DayCard: React.FC<DayCardProps> = ({
             <span className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 dark:text-[#a3a1c8]">
               <Clock className="w-3 h-3 text-gray-400 dark:text-[#6e6c93]" />
               <strong className="text-gray-800 dark:text-[#f0eeff] font-semibold">{activeHours}</strong> active
-=======
-        style={{ maxHeight: isExpanded ? '4000px' : 0, borderTop: isExpanded ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
-      >
-        <div className="flex gap-4 px-5 py-3 border-b border-white/[0.07] bg-black/10">
-          <span className="flex items-center gap-1.5 text-[12px] font-medium text-[#a3a1c8]">
-            <MapPin className="w-3 h-3 text-[#6e6c93]" />
-            <strong className="text-[#f0eeff] font-semibold">{day.activities?.length ?? 0}</strong> stops
-          </span>
-          {activeHours && (
-            <span className="flex items-center gap-1.5 text-[12px] font-medium text-[#a3a1c8]">
-              <Clock className="w-3 h-3 text-[#6e6c93]" />
-              <strong className="text-[#f0eeff] font-semibold">{activeHours}</strong> active
->>>>>>> fix/group-itinerary-access
             </span>
           )}
         </div>
@@ -220,22 +163,14 @@ export const DayCard: React.FC<DayCardProps> = ({
               </SortableContext>
             </DndContext>
           ) : (
-<<<<<<< HEAD
             <p className="text-center text-[13px] text-gray-400 dark:text-[#6e6c93] py-6">No activities planned for this day.</p>
-=======
-            <p className="text-center text-[13px] text-[#6e6c93] py-6">No activities planned for this day.</p>
->>>>>>> fix/group-itinerary-access
           )}
         </div>
 
         {onAddActivity && (
           <button
             onClick={() => onAddActivity(day.id)}
-<<<<<<< HEAD
             className="mx-5 mb-4 w-[calc(100%-40px)] flex items-center justify-center gap-2 py-3.5 rounded-[12px] border border-dashed border-gray-300 dark:border-white/[0.20] bg-sky-50/50 dark:bg-sky-400/[0.03] text-[13px] font-medium text-gray-400 dark:text-[#a3a1c8] hover:bg-sky-50 dark:hover:bg-sky-400/[0.07] hover:border-sky-400 dark:hover:border-sky-400/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
-=======
-            className="mx-5 mb-4 w-[calc(100%-40px)] flex items-center justify-center gap-2 py-3.5 rounded-[12px] border border-dashed border-white/[0.20] bg-sky-400/[0.03] text-[13px] font-medium text-[#a3a1c8] hover:bg-sky-400/[0.07] hover:border-sky-400/50 hover:text-sky-400 transition-all"
->>>>>>> fix/group-itinerary-access
           >
             <Plus className="w-3.5 h-3.5" />
             Add activity to day {day.dayNumber}
