@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MapPin, Sparkles, ArrowRight, RotateCcw } from 'lucide-react'
 import { plannerSchema, type PlannerFormValues } from '../schemas/plannerSchema'
-import { TripPreview }    from './TripPreview'
 import { TravelTypeGrid } from './TravelTypeGrid'
 import { FieldLabel, FieldShell, DateField, MetaCell } from './PlannerFormFields'
 import { DEST_DB } from '../planner.data'
@@ -26,7 +25,6 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   const endDate     = watch('endDate')     || ''
   const experience  = watch('travelType')  || ''
 
-  const matched = DEST_DB.find(d => d.name.toLowerCase() === destination.toLowerCase())
   const dur = useMemo(() => {
     if (!startDate || !endDate) return null
     const d = Math.round((+new Date(endDate) - +new Date(startDate)) / 86400000)
@@ -43,7 +41,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   }, [destination])
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-[22px] items-start">
+    <div className="grid grid-cols-1 gap-[22px] items-start">
       <section className="relative bg-white dark:bg-[#1e1b38] border border-line rounded-[22px] shadow-card overflow-hidden">
         <div className="h-1 bg-blue-100/60 dark:bg-blue-900/30">
           <div
@@ -140,7 +138,6 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
         </div>
       </section>
 
-      <TripPreview destination={destination} startDate={startDate} endDate={endDate} experience={experience} matched={matched} dur={dur} />
     </div>
   )
 }
