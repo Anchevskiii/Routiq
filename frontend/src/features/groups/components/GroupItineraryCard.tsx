@@ -1,11 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { groupsApi } from '@/api/groups.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
 import { ROUTES } from '@/constants/routes'
 import { differenceInDays } from 'date-fns'
-import { Calendar, MapPin } from 'lucide-react'
+import { Calendar, MapPin, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getTravelTypeByValue } from '@/constants/travelTypes'
 import { initials, avatarGrad } from '@/utils/avatar.utils'
@@ -49,6 +49,8 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
   const travelType = getTravelTypeByValue(itinerary.travelType)
   const emoji = travelType?.icon ?? '📍'
 
+  const [confirmRemove, setConfirmRemove] = useState(false)
+
   const voteMutation = useMutation({
     mutationFn: (voteType: 'UPVOTE' | 'DOWNVOTE') =>
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
@@ -56,9 +58,18 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
     onError: () => toast.error('Failed to register vote'),
   })
 
+  const removeMutation = useMutation({
+    mutationFn: () => groupsApi.removeItineraryFromGroup(groupId!, groupItinerary.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+      toast.success('Removed from group')
+    },
+    onError: () => toast.error('Failed to remove'),
+  })
+
   return (
     <div
-      className="grp-panel grp-it-card grid grid-cols-[96px_1fr_auto] gap-[18px] items-center rounded-[18px] p-[18px] border border-gray-200 dark:border-white/[0.07]"
+      className="grp-panel grp-it-card relative grid grid-cols-[96px_1fr_auto] gap-[18px] items-center rounded-[18px] p-[18px] border border-gray-200 dark:border-white/[0.07] group/card"
       onClick={() => navigate(`${ROUTES.ITINERARY(itinerary.id)}?groupId=${groupId}`)}
     >
       {/* Thumb */}
@@ -119,12 +130,34 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
         )}
       </div>
 
-      <VoteWidget
-        score={score}
-        userVote={userVote}
-        isPending={voteMutation.isPending}
-        onVote={dir => voteMutation.mutate(dir)}
-      />
+      <div className="flex flex-col items-center gap-2">
+        <VoteWidget
+          score={score}
+          userVote={userVote}
+          isPending={voteMutation.isPending}
+          onVote={dir => voteMutation.mutate(dir)}
+        />
+        <button
+          onClick={e => {
+            e.stopPropagation()
+            if (confirmRemove) {
+              removeMutation.mutate()
+              setConfirmRemove(false)
+            } else {
+              setConfirmRemove(true)
+              setTimeout(() => setConfirmRemove(false), 3000)
+            }
+          }}
+          title={confirmRemove ? 'Click again to confirm' : 'Remove from group'}
+          className={`w-7 h-7 rounded-[8px] grid place-items-center transition-all opacity-0 group-hover/card:opacity-100 ${
+            confirmRemove
+              ? 'bg-red-50 dark:bg-red-500/15 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-500/30'
+              : 'bg-gray-100 dark:bg-white/[0.05] text-gray-400 dark:text-[#6e6c93] border border-gray-200 dark:border-white/[0.07] hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-400/30'
+          }`}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   )
 }

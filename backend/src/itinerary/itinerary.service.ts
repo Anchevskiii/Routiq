@@ -72,7 +72,7 @@ export class ItineraryService {
 
     const [itineraries, total] = await Promise.all([
       this.prisma.itinerary.findMany({
-        where: { userId },
+        where: { userId, deletedAt: null },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -260,10 +260,17 @@ export class ItineraryService {
       throw new NotFoundException('Itinerary not found');
     }
 
-    await this.prisma.itinerary.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.itinerary.update({
+        where: { id },
+        data: { deletedAt: now },
+      }),
+      this.prisma.groupItinerary.updateMany({
+        where: { itineraryId: id, deletedAt: null },
+        data: { deletedAt: now },
+      }),
+    ]);
 
     return { message: 'Itinerary deleted successfully' };
   }

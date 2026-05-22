@@ -152,9 +152,6 @@ export class GroupsService {
         itineraries: {
           where: {
             deletedAt: null,
-            itinerary: {
-              deletedAt: null,
-            },
           },
           include: {
             itinerary: {
@@ -166,6 +163,7 @@ export class GroupsService {
                 travelType: true,
                 totalDays: true,
                 createdAt: true,
+                deletedAt: true,
                 user: {
                   select: {
                     id: true,
@@ -205,17 +203,19 @@ export class GroupsService {
       throw new NotFoundException('Group not found');
     }
 
-    // Calculate scores for itineraries
-    const itineraries = group.itineraries.map((gi) => {
-      const upvotes = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
-      const downvotes = gi.votes.filter(
-        (v) => v.voteType === 'DOWNVOTE',
-      ).length;
-      return {
-        ...gi,
-        score: upvotes - downvotes,
-      };
-    });
+    // Calculate scores for itineraries, excluding soft-deleted itineraries
+    const itineraries = group.itineraries
+      .filter((gi) => gi.itinerary && !gi.itinerary.deletedAt)
+      .map((gi) => {
+        const upvotes = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
+        const downvotes = gi.votes.filter(
+          (v) => v.voteType === 'DOWNVOTE',
+        ).length;
+        return {
+          ...gi,
+          score: upvotes - downvotes,
+        };
+      });
 
     return {
       ...group,
@@ -749,6 +749,27 @@ export class GroupsService {
     });
 
     return groupItinerary;
+  }
+
+  async removeItineraryFromGroup(
+    groupId: string,
+    userId: string,
+    groupItineraryId: string,
+  ) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    const gi = await this.prisma.groupItinerary.findFirst({
+      where: { id: groupItineraryId, groupId, deletedAt: null },
+    });
+
+    if (!gi) throw new NotFoundException('Itinerary not found in group');
+
+    await this.prisma.groupItinerary.update({
+      where: { id: groupItineraryId },
+      data: { deletedAt: new Date() },
+    });
+
+    return { message: 'Itinerary removed from group' };
   }
 
   // ─── Comments ─────────────────────────────────────────────

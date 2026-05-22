@@ -144,6 +144,15 @@ export class GroupsController {
     );
   }
 
+  @Delete(':id/itineraries/:groupItineraryId')
+  async removeItineraryFromGroup(
+    @Param('id') id: string,
+    @Param('groupItineraryId') groupItineraryId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.removeItineraryFromGroup(id, user.sub, groupItineraryId);
+  }
+
   // ─── Voting & Comments ───────────────────────────────────
 
   @Get(':groupId/comments')

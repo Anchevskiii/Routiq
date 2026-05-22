@@ -91,6 +91,10 @@ export const groupsApi = {
     await apiClient.post(`/groups/${groupId}/itineraries`, { itineraryId })
   },
 
+  async removeItineraryFromGroup(groupId: string, groupItineraryId: string): Promise<void> {
+    await apiClient.delete(`/groups/${groupId}/itineraries/${groupItineraryId}`)
+  },
+
   async getGroupItineraries(groupId: string): Promise<Itinerary[]> {
     const response = await apiClient.get<ApiResponse<Itinerary[]>>(`/groups/${groupId}/itineraries`)
     return response.data.data
