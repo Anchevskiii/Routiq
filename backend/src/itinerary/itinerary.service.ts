@@ -18,6 +18,7 @@ import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { ItineraryGenerationService } from './itinerary-generation.service';
+import { InvitationStatus } from '@prisma/client';
 import { WeatherService } from '../weather/weather.service';
 import { GeneratedDay, GeneratedItinerary } from './types';
 
@@ -125,7 +126,28 @@ export class ItineraryService {
     const itinerary = await this.prisma.itinerary.findFirst({
       where: {
         id,
-        ...(userId && { userId }),
+        deletedAt: null,
+        ...(userId && {
+          OR: [
+            { userId },
+            {
+              groupItineraries: {
+                some: {
+                  deletedAt: null,
+                  group: {
+                    members: {
+                      some: {
+                        userId,
+                        status: InvitationStatus.ACCEPTED,
+                        deletedAt: null,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        }),
       },
       include: {
         user: {
