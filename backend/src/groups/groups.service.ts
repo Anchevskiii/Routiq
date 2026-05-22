@@ -703,16 +703,34 @@ export class GroupsService {
       throw new NotFoundException('Itinerary not found or access denied');
     }
 
-    // Check if itinerary is already in the group
+    // Check if itinerary is already in the group (active)
     const existingGroupItinerary = await this.prisma.groupItinerary.findFirst({
-      where: {
-        groupId,
-        itineraryId,
-      },
+      where: { groupId, itineraryId },
     });
 
     if (existingGroupItinerary) {
-      throw new BadRequestException('Itinerary is already in this group');
+      if (!existingGroupItinerary.deletedAt) {
+        throw new BadRequestException('Itinerary is already in this group');
+      }
+      // Was previously removed — restore it
+      const groupItinerary = await this.prisma.groupItinerary.update({
+        where: { id: existingGroupItinerary.id },
+        data: { deletedAt: null, addedById: userId, addedAt: new Date() },
+        include: {
+          itinerary: {
+            select: {
+              id: true, destination: true, startDate: true, endDate: true,
+              travelType: true, totalDays: true, createdAt: true,
+              user: { select: { id: true, name: true, avatarUrl: true } },
+            },
+          },
+        },
+      });
+      await this.logActivity(groupId, userId, 'ITINERARY_ADDED', {
+        itineraryId,
+        destination: itinerary.destination,
+      }).catch(() => {});
+      return groupItinerary;
     }
 
     const groupItinerary = await this.prisma.groupItinerary.create({
