@@ -121,7 +121,7 @@ export const DayCard: React.FC<DayCardProps> = ({
           borderTopColor: isExpanded ? 'var(--day-border, rgba(0,0,0,0.08))' : 'transparent',
         }}
       >
-        <div className="flex gap-4 px-5 py-3 border-b border-gray-100 dark:border-white/[0.07] bg-gray-50 dark:bg-black/10">
+        <div className="flex gap-4 px-5 py-3 border-b border-blue-100/80 dark:border-white/[0.07] bg-blue-50/50 dark:bg-black/10">
           <span className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 dark:text-[#a3a1c8]">
             <MapPin className="w-3 h-3 text-gray-400 dark:text-[#6e6c93]" />
             <strong className="text-gray-800 dark:text-[#f0eeff] font-semibold">{day.activities?.length ?? 0}</strong> stops
