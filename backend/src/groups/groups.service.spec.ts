@@ -255,12 +255,13 @@ describe('GroupsService', () => {
   describe('deleteGroup', () => {
     it('deletes the group when caller is OWNER', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(ownerMembership);
-      mockPrisma.group.delete.mockResolvedValue(groupRecord);
+      mockPrisma.group.update.mockResolvedValue(groupRecord);
 
       const result = await service.deleteGroup(groupId, ownerId);
 
-      expect(mockPrisma.group.delete).toHaveBeenCalledWith({
+      expect(mockPrisma.group.update).toHaveBeenCalledWith({
         where: { id: groupId },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
       });
       expect(result).toEqual({ message: 'Group deleted successfully' });
     });
@@ -272,7 +273,7 @@ describe('GroupsService', () => {
         ForbiddenException,
       );
 
-      expect(mockPrisma.group.delete).not.toHaveBeenCalled();
+      expect(mockPrisma.group.update).not.toHaveBeenCalled();
     });
   });
 
