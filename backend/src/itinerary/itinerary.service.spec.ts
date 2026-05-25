@@ -27,6 +27,7 @@ const mockPrisma = {
   itineraryActivity: { create: jest.fn() },
   itineraryTip: { create: jest.fn() },
   itineraryWeatherSnapshot: { create: jest.fn() },
+  groupItinerary: { updateMany: jest.fn() },
   $transaction: jest.fn(),
 };
 
@@ -120,10 +121,12 @@ const savedItineraryRecord = {
 // ---------------------------------------------------------------------------
 
 function buildService(): ItineraryService {
+  const mockWeatherService = { getForecast: jest.fn().mockResolvedValue({ forecast: [] }) };
   return new ItineraryService(
     mockPrisma as unknown as PrismaService,
     mockGeminiService as unknown as GeminiService,
     mockItineraryGenerationService as unknown as ItineraryGenerationService,
+    mockWeatherService as unknown as import('../weather/weather.service').WeatherService,
   );
 }
 
@@ -177,7 +180,7 @@ describe('ItineraryService', () => {
       await service.getUserItineraries(userId, 1, 10);
 
       expect(mockPrisma.itinerary.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { userId } }),
+        expect.objectContaining({ where: expect.objectContaining({ userId }) }),
       );
     });
 
@@ -207,7 +210,7 @@ describe('ItineraryService', () => {
       expect(result).toEqual(savedItineraryRecord);
       expect(mockPrisma.itinerary.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: itineraryId, userId },
+          where: expect.objectContaining({ id: itineraryId }),
         }),
       );
     });
@@ -229,7 +232,7 @@ describe('ItineraryService', () => {
       );
 
       expect(mockPrisma.itinerary.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: itineraryId } }),
+        expect.objectContaining({ where: expect.objectContaining({ id: itineraryId }) }),
       );
       // userId key must NOT be in the where clause
       const whereArg = mockPrisma.itinerary.findFirst.mock.calls[0][0].where;
@@ -320,12 +323,14 @@ describe('ItineraryService', () => {
   describe('deleteItinerary', () => {
     it('deletes the record and returns a success message', async () => {
       mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
-      mockPrisma.itinerary.delete.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itinerary.update.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.groupItinerary.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.deleteItinerary(itineraryId, userId);
 
-      expect(mockPrisma.itinerary.delete).toHaveBeenCalledWith({
+      expect(mockPrisma.itinerary.update).toHaveBeenCalledWith({
         where: { id: itineraryId },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
       });
       expect(result).toEqual({ message: 'Itinerary deleted successfully' });
     });
@@ -337,7 +342,7 @@ describe('ItineraryService', () => {
         service.deleteItinerary('nonexistent', userId),
       ).rejects.toThrow(NotFoundException);
 
-      expect(mockPrisma.itinerary.delete).not.toHaveBeenCalled();
+      expect(mockPrisma.itinerary.update).not.toHaveBeenCalled();
     });
   });
 

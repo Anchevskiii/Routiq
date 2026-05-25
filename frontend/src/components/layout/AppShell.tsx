@@ -20,7 +20,7 @@ export const AppShell: React.FC = () => {
   }, [])
 
   return (
-    <div className="h-screen overflow-hidden flex bg-gradient-to-br from-slate-100 via-indigo-50 to-sky-50 dark:from-[#0c0b1a] dark:via-[#0f0e22] dark:to-[#0c0b1a]">
+    <div className="h-screen overflow-hidden flex bg-gradient-to-br from-slate-100 via-blue-50 to-sky-50 dark:from-[#0c0b1a] dark:via-[#0f0e22] dark:to-[#0c0b1a]">
       <div className="hidden lg:flex flex-shrink-0">
         <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       </div>

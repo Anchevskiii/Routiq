@@ -1,86 +1,182 @@
-import React, { useState } from 'react';
-import { format } from 'date-fns';
-import { ChevronDown, ChevronUp, Cloud, Sun, CloudRain, Wind } from 'lucide-react';
-import { Day, Activity } from '@/types/itinerary.types';
-import { AttractionCard } from './AttractionCard';
+import React, { useState } from 'react'
+import { format } from 'date-fns'
+import { ChevronDown, Cloud, Sun, CloudRain, Wind, GripVertical, Plus, MapPin, Clock } from 'lucide-react'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import type { DraggableSyntheticListeners, DraggableAttributes } from '@dnd-kit/core'
+
+import { Day } from '@/types/itinerary.types'
+import { SortableAttractionCard } from './SortableAttractionCard'
 
 interface DayCardProps {
-  day: Day;
-  isInitiallyExpanded?: boolean;
+  day: Day
+  isInitiallyExpanded?: boolean
+  dragHandleProps?: DraggableSyntheticListeners
+  dragHandleAttributes?: DraggableAttributes
+  itineraryId?: string
+  onAddActivity?: (dayId: string) => void
+  onReorderActivities?: (dayId: string, activityIds: string[]) => void
+  onActivityUpdated?: () => void
+  onActivityDeleted?: () => void
 }
 
-export const DayCard: React.FC<DayCardProps> = ({ day, isInitiallyExpanded = false }) => {
-  const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded);
-
-  const getWeatherIcon = (condition: string) => {
-    switch (condition.toLowerCase()) {
-      case 'clear':
-      case 'sunny': return <Sun className="w-5 h-5 text-yellow-500" />;
-      case 'rain':
-      case 'showers': return <CloudRain className="w-5 h-5 text-blue-500" />;
-      case 'windy': return <Wind className="w-5 h-5 text-gray-500" />;
-      default: return <Cloud className="w-5 h-5 text-gray-400" />;
-    }
-  };
+function WeatherChip({ condition, tempMax }: { condition: string; tempMax?: number | null }) {
+  const lc = condition.toLowerCase()
+  const isRain  = lc === 'rain' || lc === 'showers'
+  const isSun   = lc === 'clear' || lc === 'sunny'
+  const isWindy = lc === 'windy'
+  const Icon = isRain ? CloudRain : isSun ? Sun : isWindy ? Wind : Cloud
+  const colorClass = isRain ? 'text-sky-500 dark:text-sky-400' : isSun ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-[#a3a1c8]'
 
   return (
-    <div className="bg-white dark:bg-[#16142e] rounded-3xl shadow-sm border border-gray-100 dark:border-indigo-500/10 overflow-hidden mb-6 transition-all">
-      {/* Header */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-8 py-6 flex items-center justify-between bg-gray-50/30 dark:bg-slate-800/20 hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors border-b border-gray-100 dark:border-indigo-500/10"
-      >
-        <div className="flex items-center gap-6">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-[#1e1b38] border border-gray-100 dark:border-indigo-500/20 shadow-sm flex flex-col items-center justify-center">
-            <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-tighter">Day</span>
-            <span className="text-xl font-black text-primary leading-none">{day.dayNumber}</span>
-          </div>
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] text-[13px] font-medium text-gray-700 dark:text-[#f0eeff]">
+      <Icon className={`w-3.5 h-3.5 ${colorClass}`} />
+      {tempMax != null ? `${tempMax}°C` : '--°C'}
+    </span>
+  )
+}
 
-          <div className="text-left">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-indigo-100 leading-tight">
-              {day.theme || `Day ${day.dayNumber}: Exploration`}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-slate-500 font-medium">
-              {format(new Date(day.date), 'EEEE, MMMM do')}
-            </p>
+export const DayCard: React.FC<DayCardProps> = ({
+  day,
+  isInitiallyExpanded = false,
+  dragHandleProps,
+  dragHandleAttributes,
+  itineraryId,
+  onAddActivity,
+  onReorderActivities,
+  onActivityUpdated,
+  onActivityDeleted,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  const handleActivityDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id || !day.activities) return
+    const oldIdx = day.activities.findIndex(a => a.id === active.id)
+    const newIdx = day.activities.findIndex(a => a.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    onReorderActivities?.(day.id, arrayMove(day.activities, oldIdx, newIdx).map(a => a.id))
+  }
+
+  const totalMinutes = day.activities?.reduce((s, a) => s + (a.durationMinutes ?? 0), 0) ?? 0
+  const activeHours = totalMinutes > 0 ? `~${Math.round(totalMinutes / 60)}h` : null
+
+  return (
+    <div className="relative bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200/80 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-[0_2px_12px_-4px_rgba(0,0,0,0.10),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.05)] dark:hover:border-white/[0.14] dark:hover:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] transition-all">
+
+      {/* header */}
+      <div className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none" onClick={() => setIsExpanded(v => !v)}>
+        {dragHandleProps && (
+          <div
+            {...dragHandleProps}
+            {...dragHandleAttributes}
+            onClick={e => e.stopPropagation()}
+            className="p-1.5 rounded-[8px] text-gray-400 dark:text-[#6e6c93] cursor-grab active:cursor-grabbing hover:text-gray-600 dark:hover:text-[#a3a1c8] transition-colors flex-shrink-0"
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+        )}
+
+        <div className="w-14 flex-shrink-0 h-16 rounded-[12px] bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 flex flex-col items-center justify-center">
+          <span className="text-[9px] font-mono font-semibold uppercase tracking-[0.12em] text-sky-600 dark:text-sky-400 mb-1">Day</span>
+          <span className="text-2xl font-semibold text-sky-600 dark:text-sky-400 leading-none" style={{ letterSpacing: '-0.02em' }}>
+            {day.dayNumber}
+          </span>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[18px] font-semibold text-gray-900 dark:text-[#f0eeff] leading-snug mb-1" style={{ letterSpacing: '-0.015em' }}>
+            {day.theme || `Day ${day.dayNumber}`}
+          </h3>
+          <div className="flex items-center gap-1.5 text-[13px] text-gray-400 dark:text-[#6e6c93]">
+            <span>{format(new Date(day.date), 'EEEE, MMMM d')}</span>
+            {day.activities && day.activities.length > 0 && (
+              <>
+                <span className="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-[#6e6c93]" />
+                <span className="inline-flex items-center gap-1 text-gray-500 dark:text-[#a3a1c8]">
+                  <MapPin className="w-2.5 h-2.5" /> {day.activities.length} stops
+                </span>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2.5 flex-shrink-0">
           {day.weather && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#1e1b38] border border-gray-100 dark:border-indigo-500/20 shadow-xs">
-              {getWeatherIcon(day.weather.condition)}
-              <span className="text-xs font-bold text-gray-700 dark:text-slate-300">
-                {day.weather.tempMax !== null && day.weather.tempMax !== undefined
-                  ? `${day.weather.tempMax}°C`
-                  : '--°C'}
-              </span>
-            </div>
+            <WeatherChip condition={day.weather.condition} tempMax={day.weather.tempMax} />
           )}
-          <div className="p-2 rounded-full bg-gray-100/50 dark:bg-slate-700/30 text-gray-400 dark:text-slate-500">
-            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          <div className={`w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] transition-transform duration-200 ${!isExpanded ? '-rotate-90' : ''}`}>
+            <ChevronDown className="w-4 h-4" />
           </div>
-        </div>
-      </button>
-
-      {/* Activities List */}
-      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="p-8 space-y-2">
-          {day.activities && day.activities.length > 0 ? (
-            day.activities.map((activity: Activity, index: number) => (
-              <AttractionCard
-                key={`${activity.id || index}-${index}`}
-                activity={activity}
-                isFirst={index === 0}
-              />
-            ))
-          ) : (
-            <div className="text-center py-12 bg-gray-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
-              <p className="text-gray-400 dark:text-slate-500 text-sm font-medium">No activities planned for this day.</p>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* body */}
+      <div
+        className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        style={{
+          maxHeight: isExpanded ? '4000px' : 0,
+          borderTop: isExpanded ? '1px solid' : 'none',
+          borderTopColor: isExpanded ? 'var(--day-border, rgba(0,0,0,0.08))' : 'transparent',
+        }}
+      >
+        <div className="flex gap-4 px-5 py-3 border-b border-blue-100/80 dark:border-white/[0.07] bg-blue-50/50 dark:bg-black/10">
+          <span className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 dark:text-[#a3a1c8]">
+            <MapPin className="w-3 h-3 text-gray-400 dark:text-[#6e6c93]" />
+            <strong className="text-gray-800 dark:text-[#f0eeff] font-semibold">{day.activities?.length ?? 0}</strong> stops
+          </span>
+          {activeHours && (
+            <span className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 dark:text-[#a3a1c8]">
+              <Clock className="w-3 h-3 text-gray-400 dark:text-[#6e6c93]" />
+              <strong className="text-gray-800 dark:text-[#f0eeff] font-semibold">{activeHours}</strong> active
+            </span>
+          )}
+        </div>
+
+        <div className="px-5 py-4 relative bg-slate-50/60 dark:bg-transparent">
+          {(day.activities?.length ?? 0) > 1 && (
+            <div
+              className="absolute w-0.5 pointer-events-none"
+              style={{
+                left: '39px',
+                top: '36px',
+                bottom: '80px',
+                background: 'linear-gradient(180deg, rgba(56,189,248,0.4) 0%, rgba(56,189,248,0.1) 100%)',
+              }}
+            />
+          )}
+
+          {day.activities && day.activities.length > 0 ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleActivityDragEnd}>
+              <SortableContext items={day.activities.map(a => a.id)} strategy={verticalListSortingStrategy}>
+                {day.activities.map((activity, index) => (
+                  <SortableAttractionCard
+                    key={activity.id}
+                    activity={activity}
+                    index={index}
+                    itineraryId={itineraryId}
+                    onUpdated={onActivityUpdated}
+                    onDeleted={onActivityDeleted}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <p className="text-center text-[13px] text-gray-400 dark:text-[#6e6c93] py-6">No activities planned for this day.</p>
+          )}
+        </div>
+
+        {onAddActivity && (
+          <button
+            onClick={() => onAddActivity(day.id)}
+            className="mx-5 mb-4 w-[calc(100%-40px)] flex items-center justify-center gap-2 py-3.5 rounded-[12px] border border-dashed border-sky-200 dark:border-white/[0.20] bg-white dark:bg-sky-400/[0.03] text-[13px] font-medium text-sky-500/70 dark:text-[#a3a1c8] hover:bg-sky-50 dark:hover:bg-sky-400/[0.07] hover:border-sky-400 dark:hover:border-sky-400/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add activity to day {day.dayNumber}
+          </button>
+        )}
+      </div>
     </div>
-  );
-};
+  )
+}

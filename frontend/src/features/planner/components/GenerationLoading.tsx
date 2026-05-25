@@ -61,7 +61,7 @@ export const GenerationLoading: React.FC<Props> = ({ progress, attractions, gene
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-6">
-          <div className="bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-2xl p-6 border border-line h-48 flex flex-col justify-center relative overflow-hidden">
+          <div className="bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-blue-900/20 dark:to-blue-50/20 rounded-2xl p-6 border border-line h-48 flex flex-col justify-center relative overflow-hidden">
             <div className="absolute top-4 left-4 text-primary/20">
               {factIndex % 2 === 0 ? <Info className="w-8 h-8" /> : <MessageCircle className="w-8 h-8" />}
             </div>

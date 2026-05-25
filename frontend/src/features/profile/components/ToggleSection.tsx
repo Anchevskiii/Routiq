@@ -37,7 +37,7 @@ export const ToggleSection: React.FC<Props> = ({ title, items, settings, onToggl
               checked={settings?.[item.key] ?? true}
               onChange={e => onToggle(item.key, e.target.checked)}
             />
-            <div className="w-10 h-5 bg-line peer-focus:ring-2 peer-focus:ring-indigo-500/30 rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-indigo-500 peer-checked:to-violet-500 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:shadow-sm after:transition-all peer-checked:after:translate-x-5" />
+            <div className="w-10 h-5 bg-line peer-focus:ring-2 peer-focus:ring-blue-600/30 rounded-full peer peer-checked:bg-blue-600 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:shadow-sm after:transition-all peer-checked:after:translate-x-5" />
           </label>
         </div>
       ))}

@@ -13,7 +13,13 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
+import { ReorderDaysDto } from './dto/reorder-days.dto';
+import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
+import { UpdateActivityDto } from './dto/update-activity.dto';
+import { CreateActivityDto } from './dto/create-activity.dto';
 import { ItineraryGenerationService } from './itinerary-generation.service';
+import { InvitationStatus } from '@prisma/client';
+import { WeatherService } from '../weather/weather.service';
 import { GeneratedDay, GeneratedItinerary } from './types';
 
 import { Prisma } from '@prisma/client';
@@ -34,6 +40,7 @@ export class ItineraryService {
     private readonly prisma: PrismaService,
     private readonly geminiService: GeminiService,
     private readonly itineraryGenerationService: ItineraryGenerationService,
+    private readonly weatherService: WeatherService,
   ) {}
 
   async generateItinerary(
@@ -65,7 +72,7 @@ export class ItineraryService {
 
     const [itineraries, total] = await Promise.all([
       this.prisma.itinerary.findMany({
-        where: { userId },
+        where: { userId, deletedAt: null },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -119,7 +126,28 @@ export class ItineraryService {
     const itinerary = await this.prisma.itinerary.findFirst({
       where: {
         id,
-        ...(userId && { userId }),
+        deletedAt: null,
+        ...(userId && {
+          OR: [
+            { userId },
+            {
+              groupItineraries: {
+                some: {
+                  deletedAt: null,
+                  group: {
+                    members: {
+                      some: {
+                        userId,
+                        status: InvitationStatus.ACCEPTED,
+                        deletedAt: null,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        }),
       },
       include: {
         user: {
@@ -130,9 +158,11 @@ export class ItineraryService {
           },
         },
         days: {
+          where: { deletedAt: null },
           orderBy: { dayNumber: 'asc' },
           include: {
             activities: {
+              where: { deletedAt: null },
               orderBy: { sortOrder: 'asc' },
             },
             weather: true,
@@ -212,6 +242,7 @@ export class ItineraryService {
       where: { id },
       data: {
         destination: updateItineraryDto.destination,
+        name: updateItineraryDto.name,
         startDate: updateItineraryDto.startDate,
         endDate: updateItineraryDto.endDate,
       },
@@ -229,9 +260,17 @@ export class ItineraryService {
       throw new NotFoundException('Itinerary not found');
     }
 
-    await this.prisma.itinerary.delete({
-      where: { id },
-    });
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.itinerary.update({
+        where: { id },
+        data: { deletedAt: now },
+      }),
+      this.prisma.groupItinerary.updateMany({
+        where: { itineraryId: id, deletedAt: null },
+        data: { deletedAt: now },
+      }),
+    ]);
 
     return { message: 'Itinerary deleted successfully' };
   }
@@ -257,6 +296,313 @@ export class ItineraryService {
     });
 
     return { shareToken: updatedItinerary.shareToken };
+  }
+
+  async reorderDays(
+    itineraryId: string,
+    userId: string,
+    dto: ReorderDaysDto,
+  ) {
+    const itinerary = await this.prisma.itinerary.findFirst({
+      where: { id: itineraryId, userId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found');
+    }
+
+    const startDate = new Date(itinerary.startDate);
+    const count = dto.dayIds.length;
+
+    // Two-phase update to avoid @@unique([itineraryId, dayNumber]) conflicts:
+    // Phase 1: move all dayNumbers to a safe temporary range (count + index)
+    // Phase 2: set final dayNumbers (1-based)
+    const phase1 = dto.dayIds.map((dayId, index) =>
+      this.prisma.itineraryDay.update({
+        where: { id: dayId },
+        data: { dayNumber: count + index + 1 },
+      }),
+    );
+
+    const phase2 = dto.dayIds.map((dayId, index) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + index);
+      return this.prisma.itineraryDay.update({
+        where: { id: dayId },
+        data: { dayNumber: index + 1, date },
+      });
+    });
+
+    await this.prisma.$transaction(phase1);
+    const result = await this.prisma.$transaction(phase2);
+
+    // Background: refresh weather snapshots for the newly assigned dates
+    this.refreshWeatherForReorderedDays(itinerary.destination, dto.dayIds, startDate).catch(
+      (err: unknown) => this.logger.warn(`Weather refresh after reorder failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
+
+    return result;
+  }
+
+  async reorderActivities(
+    itineraryId: string,
+    dayId: string,
+    userId: string,
+    dto: ReorderActivitiesDto,
+  ) {
+    const itinerary = await this.prisma.itinerary.findFirst({
+      where: { id: itineraryId, userId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found');
+    }
+
+    const updates = dto.activityIds.map((activityId, index) =>
+      this.prisma.itineraryActivity.update({
+        where: { id: activityId },
+        data: { sortOrder: index + 1 },
+      }),
+    );
+
+    await this.prisma.$transaction(updates);
+    await this.cascadeActivityTimes(dayId);
+
+    return this.prisma.itineraryActivity.findMany({
+      where: { dayId, deletedAt: null },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async updateActivity(
+    itineraryId: string,
+    activityId: string,
+    userId: string,
+    dto: UpdateActivityDto,
+  ) {
+    const itinerary = await this.prisma.itinerary.findFirst({
+      where: { id: itineraryId, userId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found');
+    }
+
+    const activity = await this.prisma.itineraryActivity.findFirst({
+      where: { id: activityId, deletedAt: null },
+    });
+    if (!activity) {
+      throw new NotFoundException('Activity not found');
+    }
+
+    const updated = await this.prisma.itineraryActivity.update({
+      where: { id: activityId },
+      data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.startTime !== undefined && { startTime: dto.startTime }),
+        ...(dto.durationMinutes !== undefined && {
+          durationMinutes: dto.durationMinutes,
+        }),
+      },
+    });
+
+    if (dto.startTime !== undefined || dto.durationMinutes !== undefined) {
+      await this.cascadeActivityTimes(activity.dayId);
+    }
+
+    return updated;
+  }
+
+  async addActivity(
+    itineraryId: string,
+    dayId: string,
+    userId: string,
+    dto: CreateActivityDto,
+  ) {
+    const itinerary = await this.prisma.itinerary.findFirst({
+      where: { id: itineraryId, userId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found');
+    }
+
+    const existing = await this.prisma.itineraryActivity.findMany({
+      where: { dayId, deletedAt: null },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    let insertAt = existing.length; // 0-based index to insert at (append)
+
+    if (dto.startTime) {
+      const newTime = this.parseTime(dto.startTime);
+      insertAt = existing.findIndex(
+        (a) => a.startTime !== null && a.startTime !== undefined && this.parseTime(a.startTime) > newTime,
+      );
+      if (insertAt === -1) insertAt = existing.length;
+    }
+
+    // Shift sortOrders for activities after insert position
+    if (insertAt < existing.length) {
+      await this.prisma.$transaction(
+        existing.slice(insertAt).map((a) =>
+          this.prisma.itineraryActivity.update({
+            where: { id: a.id },
+            data: { sortOrder: a.sortOrder + 1 },
+          }),
+        ),
+      );
+    }
+
+    const created = await this.prisma.itineraryActivity.create({
+      data: {
+        dayId,
+        title: dto.title,
+        location: dto.location,
+        address: dto.address,
+        placeId: dto.placeId,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        description: dto.description,
+        durationMinutes: dto.durationMinutes,
+        startTime: dto.startTime,
+        sortOrder: insertAt + 1,
+      },
+    });
+
+    await this.cascadeActivityTimes(dayId);
+    return created;
+  }
+
+  async deleteActivity(
+    itineraryId: string,
+    activityId: string,
+    userId: string,
+  ) {
+    const itinerary = await this.prisma.itinerary.findFirst({
+      where: { id: itineraryId, userId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException('Itinerary not found');
+    }
+
+    const activity = await this.prisma.itineraryActivity.findFirst({
+      where: { id: activityId, deletedAt: null },
+    });
+    if (!activity) {
+      throw new NotFoundException('Activity not found');
+    }
+
+    await this.prisma.itineraryActivity.update({
+      where: { id: activityId },
+      data: { deletedAt: new Date() },
+    });
+
+    // Renumber remaining sortOrders to be contiguous
+    const remaining = await this.prisma.itineraryActivity.findMany({
+      where: { dayId: activity.dayId, deletedAt: null },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    await this.prisma.$transaction(
+      remaining.map((a, index) =>
+        this.prisma.itineraryActivity.update({
+          where: { id: a.id },
+          data: { sortOrder: index + 1 },
+        }),
+      ),
+    );
+
+    return { message: 'Activity deleted successfully' };
+  }
+
+  private async refreshWeatherForReorderedDays(
+    destination: string,
+    dayIds: string[],
+    startDate: Date,
+  ): Promise<void> {
+    const forecast = await this.weatherService.getForecast(
+      destination,
+      startDate.toISOString().split('T')[0],
+      dayIds.length,
+    );
+    await Promise.all(
+      dayIds.map((dayId, index) => {
+        const forecastDay = forecast.forecast[index];
+        if (!forecastDay) return Promise.resolve();
+        return this.prisma.itineraryWeatherSnapshot.upsert({
+          where: { dayId },
+          update: {
+            condition: forecastDay.condition,
+            tempMin: forecastDay.temperature.min,
+            tempMax: forecastDay.temperature.max,
+            humidity: forecastDay.humidity,
+            windSpeed: forecastDay.windSpeed,
+            precipitation: forecastDay.precipitation,
+            fetchedAt: new Date(),
+          },
+          create: {
+            dayId,
+            condition: forecastDay.condition,
+            tempMin: forecastDay.temperature.min,
+            tempMax: forecastDay.temperature.max,
+            humidity: forecastDay.humidity,
+            windSpeed: forecastDay.windSpeed,
+            precipitation: forecastDay.precipitation,
+          },
+        });
+      }),
+    );
+  }
+
+  private async cascadeActivityTimes(dayId: string): Promise<void> {
+    const activities = await this.prisma.itineraryActivity.findMany({
+      where: { dayId, deletedAt: null },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const updates: { id: string; startTime: string }[] = [];
+    let prevStartTime: string | null = null;
+    let prevDuration: number | null = null;
+
+    for (const activity of activities) {
+      if (prevStartTime !== null && prevDuration !== null) {
+        const prevEndMinutes = this.parseTime(prevStartTime) + prevDuration;
+        const currentMinutes =
+          activity.startTime !== null && activity.startTime !== undefined
+            ? this.parseTime(activity.startTime)
+            : null;
+
+        if (currentMinutes !== null && currentMinutes < prevEndMinutes) {
+          const newStartTime = this.formatTime(prevEndMinutes);
+          updates.push({ id: activity.id, startTime: newStartTime });
+          prevStartTime = newStartTime;
+        } else {
+          prevStartTime = activity.startTime ?? null;
+        }
+      } else {
+        prevStartTime = activity.startTime ?? null;
+      }
+      prevDuration = activity.durationMinutes ?? null;
+    }
+
+    if (updates.length > 0) {
+      await this.prisma.$transaction(
+        updates.map((u) =>
+          this.prisma.itineraryActivity.update({
+            where: { id: u.id },
+            data: { startTime: u.startTime },
+          }),
+        ),
+      );
+    }
+  }
+
+  private parseTime(time: string): number {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+
+  private formatTime(totalMinutes: number): string {
+    const hours = Math.floor(totalMinutes / 60) % 24;
+    const minutes = totalMinutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
 
   private generateRandomToken(): string {

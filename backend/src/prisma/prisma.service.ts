@@ -208,6 +208,9 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get comment() {
     return this.extendedClient.comment;
   }
+  get commentReaction() {
+    return this.extendedClient.commentReaction;
+  }
   get vote() {
     return this.extendedClient.vote;
   }

@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
     <aside
       className={cn(
         'flex flex-col h-screen sticky top-0 overflow-hidden',
-        'bg-white dark:bg-[#16142e] border-r border-indigo-500/10 dark:border-indigo-500/20',
+        'bg-white dark:bg-[#16142e] border-r border-blue-600/10 dark:border-blue-600/20',
         'transition-[width,min-width] duration-[250ms] ease-in-out will-change-[width] transform-gpu',
         collapsed ? 'w-[68px] min-w-[68px]' : 'w-[220px] min-w-[220px]',
       )}
@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       {/* New trip button */}
       <div className="px-3 mb-5">
         <Link to={ROUTES.PLANNER}>
-          <button className="flex items-center justify-center gap-2 w-full h-[38px] rounded-xl font-semibold text-sm text-white hover:opacity-90 active:scale-95 transition-opacity shadow-[0_4px_14px_rgba(99,102,241,0.28)] gradient-aurora">
+          <button className="flex items-center justify-center gap-2 w-full h-[38px] rounded-xl font-semibold text-sm text-white hover:opacity-90 active:scale-95 transition-opacity shadow-[0_4px_14px_rgba(37,99,235,0.35)] gradient-aurora">
             <Plus strokeWidth={2.5} className="w-[15px] h-[15px] shrink-0" />
             {!collapsed && <span>New trip</span>}
           </button>
@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
 
       {!collapsed && (
         <div className="px-4 mb-1">
-          <span className="text-[10px] font-bold tracking-widest text-indigo-200 dark:text-indigo-700">MENU</span>
+          <span className="text-[10px] font-bold tracking-widest text-slate-400 dark:text-slate-500">MENU</span>
         </div>
       )}
 
@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
                 collapsed ? 'gap-0' : 'gap-2.5',
                 navPad,
                 active
-                  ? 'bg-indigo-50/80 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400'
+                  ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                   : 'text-secondary-500 dark:text-slate-400 hover:bg-secondary-50 dark:hover:bg-slate-800/50',
               )}
             >
@@ -99,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
                 <>
                   <span className="flex-1 text-sm font-medium">{item.label}</span>
                   {item.badge > 0 && (
-                    <span className="text-[11px] font-bold rounded-full px-[7px] py-[2px] bg-indigo-500/10 text-indigo-500 leading-none">
+                    <span className="text-[11px] font-bold rounded-full px-[7px] py-[2px] bg-blue-500/10 text-blue-600 leading-none">
                       {item.badge}
                     </span>
                   )}
@@ -113,7 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       <div className="mt-5">
         {!collapsed && (
           <div className="px-4 mb-1">
-            <span className="text-[10px] font-bold tracking-widest text-indigo-200 dark:text-indigo-700">OTHER</span>
+            <span className="text-[10px] font-bold tracking-widest text-slate-400 dark:text-slate-500">OTHER</span>
           </div>
         )}
         <nav className="flex flex-col gap-px px-2">
@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
                 className={cn(
                   'flex items-center gap-2.5 rounded-xl hover:bg-secondary-50 dark:hover:bg-slate-800/50 transition-colors',
                   navPad,
-                  active ? 'text-indigo-500 dark:text-indigo-400' : 'text-secondary-400 dark:text-slate-500',
+                  active ? 'text-blue-600 dark:text-blue-400' : 'text-secondary-400 dark:text-slate-500',
                 )}
               >
                 <ItemIcon strokeWidth={1.75} className="w-[18px] h-[18px] shrink-0" />

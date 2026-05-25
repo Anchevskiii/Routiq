@@ -17,7 +17,7 @@ function infoHtml(a: PlacedActivity) {
     <div style="font-size:10px;font-weight:700;color:${a.color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Day ${a.dayNumber}</div>
     <div style="font-size:13px;font-weight:600;color:#14122b;line-height:1.3">${a.title}</div>
     ${a.startTime ? `<div style="font-size:11px;color:#9b98be;margin-top:2px">${a.startTime}</div>` : ''}
-    <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:600;color:#6366f1;text-decoration:none">View on Google Maps ↗</a>
+    <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:600;color:#2563eb;text-decoration:none">View on Google Maps ↗</a>
   </div>`
 }
 
@@ -94,11 +94,11 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination }) => {
   const daysWithPlaces = [...new Set(placed.map(a => a.dayNumber))].sort()
 
   return (
-    <div className="rounded-2xl overflow-hidden shadow-sm border border-indigo-500/10">
+    <div className="rounded-2xl overflow-hidden shadow-sm border border-blue-600/10">
       {daysWithPlaces.length > 1 && (
         <MapDayTabs days={daysWithPlaces} selectedDay={selectedDay} expanded={expanded} onSelectDay={setSelectedDay} onToggleExpand={toggleExpand} />
       )}
-      <div className="relative transition-[height] duration-300" style={{ height: expanded ? 520 : 320 }}>
+      <div className={`relative transition-[height] duration-300 ${expanded ? 'h-[520px]' : 'h-[320px]'}`}>
         <div ref={mapRef} className="h-full w-full" />
         {daysWithPlaces.length <= 1 && (
           <button onClick={toggleExpand} title={expanded ? 'Collapse' : 'Expand'} className="absolute top-2 right-2 z-10 bg-white dark:bg-[#1e1b38] border border-line rounded-lg p-1.5 shadow-sm text-ink-faint hover:text-ink transition-colors">
@@ -106,14 +106,14 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination }) => {
           </button>
         )}
         {(loading || !isLoaded) && (
-          <div className="absolute inset-0 bg-indigo-50/80 dark:bg-[#0c0b1a]/80 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
-            <p className="text-xs font-medium text-indigo-400">Loading locations…</p>
+          <div className="absolute inset-0 bg-blue-50/80 dark:bg-[#0c0b1a]/80 flex flex-col items-center justify-center gap-2">
+            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+            <p className="text-xs font-medium text-blue-600">Loading locations…</p>
           </div>
         )}
         {isLoaded && !loading && placed.length === 0 && (
-          <div className="absolute inset-0 bg-indigo-50/60 dark:bg-[#0c0b1a]/60 flex flex-col items-center justify-center gap-2">
-            <MapPin className="w-7 h-7 text-indigo-300" />
+          <div className="absolute inset-0 bg-blue-50/60 dark:bg-[#0c0b1a]/60 flex flex-col items-center justify-center gap-2">
+            <MapPin className="w-7 h-7 text-blue-600" />
             <p className="text-sm font-medium text-ink-dim">No locations to display</p>
           </div>
         )}

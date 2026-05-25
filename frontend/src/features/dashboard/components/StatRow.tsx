@@ -4,7 +4,7 @@ import { TrendingUp, Calendar, Users, Heart } from 'lucide-react'
 import { fadeUp, stagger } from '../animations'
 
 const STATS = [
-  { key: 'total',  label: 'Total trips', icon: TrendingUp, cls: 'bg-indigo-50 dark:bg-indigo-900/30  text-indigo-500'  },
+  { key: 'total',  label: 'Total trips', icon: TrendingUp, cls: 'bg-blue-50  dark:bg-blue-900/30  text-blue-600'  },
   { key: 'recent', label: 'Recent',      icon: Calendar,   cls: 'bg-violet-50 dark:bg-violet-900/30  text-violet-500'  },
   { key: 'groups', label: 'Groups',      icon: Users,      cls: 'bg-sky-50    dark:bg-sky-900/30     text-sky-500'     },
   { key: 'shared', label: 'Shared',      icon: Heart,      cls: 'bg-pink-50   dark:bg-pink-900/30    text-pink-500'    },
@@ -32,7 +32,7 @@ export const StatRow: React.FC<Props> = ({ total, recent, groups, shared }) => {
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${cls}`}>
             <Icon className="w-[15px] h-[15px]" />
           </div>
-          <div className="text-2xl font-bold leading-none text-indigo-950 dark:text-indigo-100">{values[key]}</div>
+          <div className="text-2xl font-bold leading-none text-blue-600 dark:text-blue-300">{values[key]}</div>
           <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</div>
         </motion.div>
       ))}

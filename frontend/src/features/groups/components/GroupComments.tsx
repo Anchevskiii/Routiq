@@ -1,9 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groupsApi } from '@/api/groups.api'
-import { Send, MessageCircle } from 'lucide-react'
+import { Send, Smile, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
+import { useAuth } from '@/app/Providers'
+import { initials, avatarGrad } from '@/utils/avatar.utils'
+import { CommentItem } from './CommentItem'
+import { EmojiPickerPanel } from './EmojiPickerPanel'
 
 interface Props {
   groupId: string
@@ -11,7 +14,12 @@ interface Props {
 
 export const GroupComments: React.FC<Props> = ({ groupId }) => {
   const [content, setContent] = useState('')
+  const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null)
+  const [showInputEmoji, setShowInputEmoji] = useState(false)
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const listRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const { data: comments, isLoading } = useQuery({
     queryKey: ['group-comments', groupId],
@@ -19,78 +27,114 @@ export const GroupComments: React.FC<Props> = ({ groupId }) => {
   })
 
   const commentMutation = useMutation({
-    mutationFn: (text: string) => groupsApi.addComment(groupId, text),
+    mutationFn: ({ text, parentId }: { text: string; parentId?: string }) =>
+      groupsApi.addComment(groupId, text, parentId),
     onSuccess: () => {
       setContent('')
+      setReplyTo(null)
       queryClient.invalidateQueries({ queryKey: ['group-comments', groupId] })
-      toast.success('Comment added')
     },
     onError: () => toast.error('Failed to add comment'),
   })
 
+  const reactionMutation = useMutation({
+    mutationFn: ({ commentId, emoji }: { commentId: string; emoji: string }) =>
+      groupsApi.toggleReaction(groupId, commentId, emoji),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['group-comments', groupId] }),
+    onError: () => toast.error('Failed to update reaction'),
+  })
+
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+  }, [comments])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!content.trim()) return
-    commentMutation.mutate(content)
+    commentMutation.mutate({ text: content, parentId: replyTo?.id })
+  }
+
+  const handleReply = (commentId: string, userName: string) => {
+    setReplyTo({ id: commentId, name: userName })
+    inputRef.current?.focus()
+  }
+
+  const handleInputEmoji = (emoji: string) => {
+    setContent(v => v + emoji)
+    setShowInputEmoji(false)
+    inputRef.current?.focus()
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="p-8 border-b border-gray-50 flex items-center gap-3">
-        <MessageCircle className="w-6 h-6 text-primary" />
-        <h2 className="text-2xl font-bold text-gray-900">Group Discussion</h2>
-      </div>
-
-      <div className="p-8 space-y-6 max-h-[500px] overflow-y-auto bg-gray-50/30">
+    <>
+      <div ref={listRef} className="px-3.5 pt-2.5 pb-1 max-h-80 overflow-y-auto">
         {isLoading ? (
-          <div className="animate-pulse space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-100 rounded-2xl" />
-            ))}
-          </div>
-        ) : !comments || comments.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-400 font-medium">No messages yet. Start the conversation!</p>
-          </div>
+          <p className="py-5 text-center text-xs text-gray-400 dark:text-[#6e6c93]">Loading…</p>
+        ) : !comments?.length ? (
+          <p className="py-6 text-center text-xs text-gray-400 dark:text-[#6e6c93]">No messages yet. Start the conversation!</p>
         ) : (
-          comments.map((comment) => (
-            <div key={comment.id} className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                {comment.user.avatarUrl 
-                  ? <img src={comment.user.avatarUrl} alt={comment.user.name} className="w-full h-full object-cover" />
-                  : <span className="text-xs font-bold text-gray-400">{comment.user.name.charAt(0)}</span>
-                }
-              </div>
-              <div className="flex-1">
-                <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-black text-gray-900">{comment.user.name}</span>
-                    <span className="text-[10px] text-gray-400 font-bold">{format(new Date(comment.createdAt), 'HH:mm')}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">{comment.content}</p>
-                </div>
-              </div>
-            </div>
+          comments.map(comment => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              currentUserId={user?.id}
+              onReply={handleReply}
+              onToggleReact={(commentId, emoji) => reactionMutation.mutate({ commentId, emoji })}
+            />
           ))
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 bg-white border-t border-gray-50 flex gap-4">
-        <input
-          type="text"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Type your message..."
-          className="flex-1 px-6 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/5 outline-none transition-all"
-        />
-        <button
-          type="submit"
-          disabled={!content.trim() || commentMutation.isPending}
-          className="p-3 bg-primary text-white rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-all shadow-md"
-        >
-          <Send className="w-5 h-5" />
-        </button>
+      <form
+        onSubmit={handleSubmit}
+        className="border-t border-gray-200 dark:border-white/[0.07] px-3.5 py-3 bg-gray-50 dark:bg-black/[0.15]"
+      >
+        {replyTo && (
+          <div className="flex items-center gap-1.5 mb-2 px-1">
+            <span className="text-[11px] text-gray-400 dark:text-[#6e6c93]">Replying to <strong className="text-gray-700 dark:text-[#d8d4ff]">{replyTo.name}</strong></span>
+            <button type="button" onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {showInputEmoji && (
+          <div className="mb-2">
+            <EmojiPickerPanel onSelect={handleInputEmoji} />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2.5">
+          {user?.avatarUrl ? (
+            <img src={user.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+          ) : (
+            <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${avatarGrad(user?.name ?? 'Me')} flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
+              {initials(user?.name ?? 'Me')}
+            </div>
+          )}
+          <input
+            ref={inputRef}
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            placeholder={replyTo ? `Reply to ${replyTo.name}…` : 'Write a message…'}
+            className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-[#f0eeff] text-[13px] placeholder:text-gray-400 dark:placeholder:text-[#6e6c93]"
+          />
+          <button
+            type="button"
+            onClick={() => setShowInputEmoji(v => !v)}
+            className={`transition-colors ${showInputEmoji ? 'text-primary' : 'text-gray-400 dark:text-[#6e6c93] hover:text-primary'}`}
+          >
+            <Smile className="w-4 h-4" />
+          </button>
+          <button
+            type="submit"
+            disabled={!content.trim() || commentMutation.isPending}
+            className="w-[30px] h-[30px] rounded-[9px] grp-aurora flex items-center justify-center border-none cursor-pointer disabled:opacity-50 shrink-0"
+          >
+            <Send size={13} className="text-white" />
+          </button>
+        </div>
       </form>
-    </div>
+    </>
   )
 }

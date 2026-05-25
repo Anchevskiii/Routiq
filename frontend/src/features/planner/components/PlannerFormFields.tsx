@@ -4,7 +4,7 @@ import { Calendar } from 'lucide-react'
 export function FieldLabel({ num, text, required }: { num: string; text: string; required?: boolean }) {
   return (
     <label className="flex items-center gap-2 mb-2.5 text-[11px] font-mono uppercase tracking-[0.1em] text-ink-dim">
-      <span className="inline-grid place-items-center w-[18px] h-[18px] rounded-[5px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] font-semibold">
+      <span className="inline-grid place-items-center w-[18px] h-[18px] rounded-[5px] bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] font-semibold">
         {num}
       </span>
       {text}
@@ -23,7 +23,7 @@ export function FieldShell({ children, focused, filled, error }: {
     <div className={[
       'relative rounded-[14px] bg-white dark:bg-[#1e1b38] transition-all border-[1.5px]',
       error   ? 'border-red-400' :
-      focused ? 'border-transparent shadow-[0_0_0_1.5px_theme(colors.indigo.500),0_0_0_5px_rgba(99,102,241,0.12),0_12px_30px_-10px_var(--accent-glow)]' :
+      focused ? 'border-transparent shadow-[0_0_0_1.5px_theme(colors.blue.600),0_0_0_5px_rgba(37,99,235,0.12),0_12px_30px_-10px_var(--accent-glow)]' :
       filled  ? 'border-line-strong' : 'border-line',
     ].join(' ')}>
       {children}
@@ -49,7 +49,7 @@ export function DateField({ id, num, label, focused, filled, onFocus, onBlur, re
         <Calendar
           className={[
             'absolute left-[18px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] pointer-events-none transition-colors',
-            focused ? 'text-indigo-500' : 'text-ink-faint',
+            focused ? 'text-blue-600' : 'text-ink-faint',
           ].join(' ')}
         />
         <input

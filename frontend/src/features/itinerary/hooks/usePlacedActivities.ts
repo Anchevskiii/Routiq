@@ -9,8 +9,8 @@ export interface PlacedActivity extends Activity {
 }
 
 const COLORS = [
-  '#6366f1', '#0ea5e9', '#10b981', '#f59e0b',
-  '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16',
+  '#2563eb', '#0ea5e9', '#10b981', '#f59e0b',
+  '#ef4444', '#3b82f6', '#06b6d4', '#84cc16',
 ]
 
 async function geocode(query: string): Promise<{ lat: number; lng: number } | null> {

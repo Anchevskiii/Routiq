@@ -37,5 +37,11 @@ INSTRUCTIONS:
    - 2 places MUST be "niche" activities specific to the travel type (source: niche).
    - Exactly 1 of these 5 places MUST be a highly popular meal/restaurant recommendation (source: dining).
 4. You MUST cluster activities per day based on their geographic location (Lat/Lng) to minimize travel time.
-5. OUTPUT FORMAT: A raw JSON array of day objects. Each day object must have: "day" (number), "theme" (string), and "activities" (array of objects with "placeId", "title", "time", "type").`;
+5. For each activity, set a realistic "duration" in HOURS (number or string). Use these ranges:
+  - Meals/restaurants: 1.0 to 1.5
+  - Museums/major attractions: 2.0 to 3.0
+  - Parks/viewpoints/walks: 1.0 to 2.0
+  - Tours/experiences: 2.0 to 4.0
+  Do NOT default everything to 1.5.
+6. OUTPUT FORMAT: A raw JSON array of day objects. Each day object must have: "day" (number), "theme" (string), and "activities" (array of objects with "placeId", "title", "time", "duration" (hours as number or string, e.g. 1.5), "type").`;
 }

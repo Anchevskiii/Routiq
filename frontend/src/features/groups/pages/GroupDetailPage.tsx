@@ -1,22 +1,25 @@
-import React, { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import React, { useState, useMemo } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groupsApi } from '@/api/groups.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
 import { ROUTES } from '@/constants/routes'
-import { format } from 'date-fns'
 import toast from 'react-hot-toast'
-import { Users, Plus, User, MapPin, Calendar, Trash2 } from 'lucide-react'
-import { GroupItineraryCard }  from '@/features/groups/components/GroupItineraryCard'
-import { GroupDetailSidebar }  from '@/features/groups/components/GroupDetailSidebar'
-import { GroupComments } from '@/features/groups/components/GroupComments'
+import { useAuth } from '@/app/Providers'
+import { GroupDetailSidebar } from '@/features/groups/components/GroupDetailSidebar'
+import { GroupHeader } from '@/features/groups/components/GroupHeader'
+import { GroupItinerariesTab } from '@/features/groups/components/GroupItinerariesTab'
 import { AddItineraryModal } from '@/features/groups/components/AddItineraryModal'
+import type { GroupRole } from '@/types/group.types'
 
 export const GroupDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [isAddItineraryOpen, setIsAddItineraryOpen] = useState(false)
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [inviteEmail, setInviteEmail]           = useState('')
+  const [isAddItineraryOpen, setAddItinerary]   = useState(false)
+  const [toastDismissed, setToastDismissed]     = useState(false)
 
   const { data: group, isLoading, error } = useQuery({
     queryKey: QUERY_KEYS.group(id!),
@@ -27,7 +30,7 @@ export const GroupDetailPage: React.FC = () => {
   const inviteMutation = useMutation({
     mutationFn: (email: string) => groupsApi.inviteMember(id!, email),
     onSuccess: () => {
-      toast.success('Invitation sent successfully')
+      toast.success('Invitation sent')
       setInviteEmail('')
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(id!) })
     },
@@ -37,8 +40,8 @@ export const GroupDetailPage: React.FC = () => {
   const addItineraryMutation = useMutation({
     mutationFn: (itineraryId: string) => groupsApi.addItineraryToGroup(id!, itineraryId),
     onSuccess: () => {
-      toast.success('Itinerary added to group')
-      setIsAddItineraryOpen(false)
+      toast.success('Itinerary added')
+      setAddItinerary(false)
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(id!) })
     },
     onError: () => toast.error('Failed to add itinerary'),
@@ -53,99 +56,73 @@ export const GroupDetailPage: React.FC = () => {
     onError: () => toast.error('Failed to remove member'),
   })
 
-  if (isLoading) return <div className="max-w-7xl mx-auto px-4 py-12 animate-pulse space-y-8">
-    <div className="h-40 bg-gray-100 rounded-3xl" />
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 h-96 bg-gray-50 rounded-3xl" />
-      <div className="h-96 bg-gray-50 rounded-3xl" />
-    </div>
-  </div>
+  const currentMember    = group?.members.find(m => m.userId === user?.id)
+  const currentUserRole: GroupRole = currentMember?.role ?? 'MEMBER'
+  const sortedItineraries = useMemo(
+    () => [...(group?.itineraries ?? [])].sort((a, b) => b.score - a.score),
+    [group?.itineraries],
+  )
 
-  if (error || !group) return <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-    <h2 className="text-2xl font-bold text-gray-900 mb-4">Group not found</h2>
-    <Link to={ROUTES.GROUPS} className="text-primary font-bold hover:underline">Back to Groups</Link>
-  </div>
+  if (isLoading) return <GroupDetailSkeleton />
+
+  if (error || !group) return (
+    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] flex flex-col items-center justify-center gap-4 py-20">
+      <span className="text-lg font-semibold text-gray-900 dark:text-[#f0eeff]">Group not found</span>
+      <Link to={ROUTES.GROUPS} className="text-[#3b82f6] text-sm no-underline">← Back to Groups</Link>
+    </div>
+  )
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Group Header */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-8 overflow-hidden relative">
-        {group.imageUrl && (
-          <div className="absolute inset-0 z-0">
-             <img src={group.imageUrl} alt={group.name} className="w-full h-full object-cover opacity-20 blur-sm" />
-             <div className="absolute inset-0 bg-white/60" />
-          </div>
-        )}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-6">
-            <div 
-              className="w-20 h-20 rounded-2xl flex items-center justify-center text-white shadow-xl"
-              style={{ backgroundColor: group.themeColor || '#10b981' }}
-            >
-              <Users className="w-10 h-10" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-extrabold text-gray-900">{group.name}</h1>
-              <p className="text-gray-500 mt-1 max-w-xl">{group.description || 'No description provided.'}</p>
-              <div className="flex items-center gap-4 mt-3 text-sm text-gray-400 font-medium">
-                <span className="flex items-center"><User className="w-4 h-4 mr-1" /> {group.members.length} members</span>
-                <span className="flex items-center"><Calendar className="w-4 h-4 mr-1" /> Created {format(new Date(group.createdAt), 'MMM yyyy')}</span>
-              </div>
-            </div>
-          </div>
-          <button className="flex items-center px-6 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg">
-            <Trash2 className="w-5 h-5 mr-2 text-red-400" />
-            Delete Group
-          </button>
-        </div>
-      </div>
+    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] text-gray-900 dark:text-[#f0eeff] px-8 py-6 pb-16">
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Section: Shared Itineraries */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">Shared Itineraries</h2>
-            <button 
-              onClick={() => setIsAddItineraryOpen(true)}
-              className="flex items-center text-sm font-bold text-primary hover:underline bg-primary/5 px-4 py-2 rounded-lg"
-            >
-              <Plus className="w-4 h-4 mr-1" /> Add Itinerary
-            </button>
-          </div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 mb-[18px] text-[13px] text-gray-400 dark:text-[#6e6c93] font-medium">
+        <Link to={ROUTES.GROUPS} className="text-gray-400 dark:text-[#6e6c93] no-underline hover:text-gray-500 dark:text-[#a3a1c8] transition-colors">Groups</Link>
+        <span className="opacity-40">/</span>
+        <span className="text-gray-900 dark:text-[#f0eeff]">{group.name}</span>
+      </nav>
 
-          {!group.itineraries || group.itineraries.length === 0 ? (
-            <div className="bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 p-12 text-center">
-              <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-gray-900">No itineraries shared yet</h3>
-              <p className="text-gray-500 mt-1">Start collaborating by adding your first itinerary to this group.</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {group.itineraries.map((groupItinerary) => (
-                <GroupItineraryCard key={groupItinerary.id} groupItinerary={groupItinerary} />
-              ))}
-            </div>
-          )}
+      <GroupHeader
+        group={group}
+        onImport={() => setAddItinerary(true)}
+        onGenerate={() => navigate(`${ROUTES.PLANNER}?groupId=${id}`)}
+      />
 
-          {/* Group Discussion Section */}
-          <GroupComments groupId={group.id} />
+      {/* Main layout */}
+      <div className="flex gap-6 items-start">
+
+        {/* Left — content */}
+        <div className="flex-1 min-w-0">
+          <GroupItinerariesTab
+            itineraries={sortedItineraries}
+            currentUserRole={currentUserRole}
+            currentUserId={user?.id}
+            toastDismissed={toastDismissed}
+            onDismissToast={() => setToastDismissed(true)}
+            onAddItinerary={() => setAddItinerary(true)}
+          />
         </div>
 
-        <GroupDetailSidebar
-          members={group.members}
-          inviteEmail={inviteEmail}
-          isInviting={inviteMutation.isPending}
-          isRemoving={removeMemberMutation.isPending}
-          onEmailChange={setInviteEmail}
-          onInvite={() => inviteMutation.mutate(inviteEmail)}
-          onRemoveMember={(userId) => removeMemberMutation.mutate(userId)}
-        />
+        {/* Right rail */}
+        <div className="w-80 shrink-0 sticky top-6 self-start">
+          <GroupDetailSidebar
+            groupId={group.id}
+            members={group.members}
+            currentUserRole={currentUserRole}
+            inviteEmail={inviteEmail}
+            isInviting={inviteMutation.isPending}
+            isRemoving={removeMemberMutation.isPending}
+            onEmailChange={setInviteEmail}
+            onInvite={() => inviteMutation.mutate(inviteEmail)}
+            onRemoveMember={userId => removeMemberMutation.mutate(userId)}
+          />
+        </div>
       </div>
 
       {isAddItineraryOpen && (
         <AddItineraryModal
-          onClose={() => setIsAddItineraryOpen(false)}
-          onAdd={(itineraryId) => addItineraryMutation.mutate(itineraryId)}
+          onClose={() => setAddItinerary(false)}
+          onAdd={itineraryId => addItineraryMutation.mutate(itineraryId)}
           isSubmitting={addItineraryMutation.isPending}
         />
       )}
@@ -153,4 +130,15 @@ export const GroupDetailPage: React.FC = () => {
   )
 }
 
+function GroupDetailSkeleton() {
+  return (
+    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] px-8 py-6 pb-16">
+      <div className="h-[220px] rounded-[22px] bg-[rgba(22,24,48,0.4)] mb-[22px] animate-pulse" />
+      <div className="flex gap-6">
+        <div className="flex-1 h-96 rounded-[18px] bg-[rgba(22,24,48,0.4)] animate-pulse" />
+        <div className="w-80 h-96 rounded-[18px] bg-[rgba(22,24,48,0.4)] animate-pulse" />
+      </div>
+    </div>
+  )
+}
 

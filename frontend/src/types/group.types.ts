@@ -52,6 +52,11 @@ export interface GroupItinerary {
   }
 }
 
+export interface CommentReaction {
+  emoji: string
+  userId: string
+}
+
 export interface Comment {
   id: string
   groupId: string
@@ -65,6 +70,7 @@ export interface Comment {
     avatarUrl?: string
   }
   replies?: Comment[]
+  reactions?: CommentReaction[]
 }
 
 export interface Vote {

@@ -12,7 +12,7 @@ import { fadeUp } from '../animations'
 import type { Itinerary } from '@/types/itinerary.types'
 
 const PALETTES = [
-  ['#6366f1', '#8b5cf6'],
+  ['#2563eb', '#3b82f6'],
   ['#0ea5e9', '#38bdf8'],
   ['#10b981', '#34d399'],
   ['#f59e0b', '#fbbf24'],
@@ -42,6 +42,7 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
     onSuccess: () => {
       setDeleted(true)
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.itineraries })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.groups })
     },
   })
 
@@ -59,8 +60,8 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
             transition={{ duration: 0.15 }}
             className="rounded-2xl bg-white dark:bg-[#16142e] shadow-sm border border-red-100 dark:border-red-900/30 p-4 flex flex-col items-center gap-3"
           >
-            <p className="text-sm font-semibold text-indigo-950 dark:text-indigo-100 text-center">
-              Delete <span className="text-indigo-500">{trip.destination}</span>?
+            <p className="text-sm font-semibold text-blue-600 dark:text-blue-300 text-center">
+              Delete <span className="text-blue-600">{trip.destination}</span>?
             </p>
             <div className="flex gap-2 w-full">
               <button
@@ -108,7 +109,7 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
                 <div className="p-3">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="min-w-0">
-                      <div className="font-bold text-sm truncate text-indigo-950 dark:text-indigo-100">{trip.destination}</div>
+                      <div className="font-bold text-sm truncate text-blue-600 dark:text-blue-300">{trip.destination}</div>
                       <div className="text-xs truncate text-secondary-400 dark:text-slate-500">
                         {travelType?.icon} {travelType?.label ?? trip.travelType}
                       </div>
@@ -130,7 +131,7 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
                     </span>
                   </div>
 
-                  <div className="h-1 rounded-full overflow-hidden bg-indigo-500/[0.09]">
+                  <div className="h-1 rounded-full overflow-hidden bg-blue-600/[0.09]">
                     <div className="h-full rounded-full w-[55%]" style={{ background: grad }} />
                   </div>
                 </div>

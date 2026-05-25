@@ -10,6 +10,7 @@ export interface Itinerary {
   id: string
   userId: string
   destination: string
+  name?: string
   startDate: string
   endDate: string
   travelType: TravelTypeValue
@@ -107,8 +108,27 @@ export interface CreateItineraryDto {
 
 export interface UpdateItineraryDto {
   destination?: string
+  name?: string
   startDate?: string
   endDate?: string
+}
+
+export interface UpdateActivityDto {
+  title?: string
+  startTime?: string
+  durationMinutes?: number
+}
+
+export interface AddActivityDto {
+  title: string
+  location?: string
+  address?: string
+  placeId?: string
+  latitude?: number
+  longitude?: number
+  description?: string
+  durationMinutes?: number
+  startTime?: string
 }
 
 export interface ItinerarySummary {

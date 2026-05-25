@@ -10,6 +10,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +23,10 @@ import { JwtPayload } from '../common/types/jwt-payload.type';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { ItineraryThrottlerGuard } from './guards/itinerary-throttler.guard';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
+import { ReorderDaysDto } from './dto/reorder-days.dto';
+import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
+import { UpdateActivityDto } from './dto/update-activity.dto';
+import { CreateActivityDto } from './dto/create-activity.dto';
 import { ItineraryService } from './itinerary.service';
 
 @Controller('itinerary')
@@ -141,5 +146,69 @@ export class ItineraryController {
   @Get('shared/:shareToken')
   async getSharedItinerary(@Param('shareToken') shareToken: string) {
     return this.itineraryService.getItineraryByShareToken(shareToken);
+  }
+
+  @Put(':id/days/reorder')
+  async reorderDays(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() reorderDaysDto: ReorderDaysDto,
+  ) {
+    return this.itineraryService.reorderDays(id, user.sub, reorderDaysDto);
+  }
+
+  @Put(':id/days/:dayId/activities/reorder')
+  async reorderActivities(
+    @Param('id') id: string,
+    @Param('dayId') dayId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() reorderActivitiesDto: ReorderActivitiesDto,
+  ) {
+    return this.itineraryService.reorderActivities(
+      id,
+      dayId,
+      user.sub,
+      reorderActivitiesDto,
+    );
+  }
+
+  @Patch(':id/activities/:activityId')
+  async updateActivity(
+    @Param('id') id: string,
+    @Param('activityId') activityId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() updateActivityDto: UpdateActivityDto,
+  ) {
+    return this.itineraryService.updateActivity(
+      id,
+      activityId,
+      user.sub,
+      updateActivityDto,
+    );
+  }
+
+  @Post(':id/days/:dayId/activities')
+  async addActivity(
+    @Param('id') id: string,
+    @Param('dayId') dayId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() createActivityDto: CreateActivityDto,
+  ) {
+    return this.itineraryService.addActivity(
+      id,
+      dayId,
+      user.sub,
+      createActivityDto,
+    );
+  }
+
+  @Delete(':id/activities/:activityId')
+  @HttpCode(HttpStatus.OK)
+  async deleteActivity(
+    @Param('id') id: string,
+    @Param('activityId') activityId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.itineraryService.deleteActivity(id, activityId, user.sub);
   }
 }

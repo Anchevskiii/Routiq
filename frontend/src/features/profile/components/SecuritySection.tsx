@@ -45,7 +45,7 @@ export const SecuritySection: React.FC<Props> = ({ isChanging, onSubmit }) => {
             </label>
             <div className={[
               'relative rounded-[14px] border-[1.5px] transition-all bg-white dark:bg-[#16142e]',
-              errors[field.key] ? 'border-red-400' : 'border-line focus-within:border-transparent focus-within:shadow-[0_0_0_1.5px_theme(colors.indigo.500),0_0_0_5px_rgba(99,102,241,0.12)]',
+              errors[field.key] ? 'border-red-400' : 'border-line focus-within:border-transparent focus-within:shadow-[0_0_0_1.5px_theme(colors.blue.600),0_0_0_5px_rgba(37,99,235,0.12)]',
             ].join(' ')}>
               <Lock className="absolute left-[18px] top-1/2 -translate-y-1/2 w-[17px] h-[17px] text-ink-faint" />
               <input
@@ -68,7 +68,7 @@ export const SecuritySection: React.FC<Props> = ({ isChanging, onSubmit }) => {
         <button
           type="submit"
           disabled={isChanging}
-          className="mt-2 px-6 py-[13px] bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-[14px] text-sm font-semibold shadow-[0_8px_24px_-8px_rgba(99,102,241,0.5)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(99,102,241,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          className="mt-2 px-6 py-[13px] gradient-aurora text-white rounded-[14px] text-sm font-semibold shadow-[0_8px_24px_-8px_rgba(37,99,235,0.5)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(37,99,235,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
           {isChanging ? 'Changing…' : 'Change Password'}
         </button>

@@ -1,72 +1,109 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Users, ArrowRight, Shield } from 'lucide-react'
+import { Users, MapPin, Settings, Trash2 } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
+import { groupsApi } from '@/api/groups.api'
+import { QUERY_KEYS } from '@/constants/queryKeys'
 import { ROUTES } from '@/constants/routes'
 import type { Group, GroupMember } from '@/types/group.types'
+import { initials, avatarGrad } from '@/utils/avatar.utils'
 
 interface Props {
   group: Group
+  currentUserId?: string
 }
 
-export const GroupCard: React.FC<Props> = ({ group }) => {
-  const memberCount = group.members?.length || 0
-  const owner = group.members?.find((m: GroupMember) => m.role === 'OWNER')?.user
+export const GroupCard: React.FC<Props> = ({ group, currentUserId: _currentUserId }) => {
+  const memberCount    = group.members?.length    ?? group.memberCount    ?? 0
+  const itineraryCount = group.itineraries?.length ?? group.itineraryCount ?? 0
+  const queryClient = useQueryClient()
+
+  const deleteMutation = useMutation({
+    mutationFn: () => groupsApi.deleteGroup(group.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.groups })
+      toast.success('Group deleted')
+    },
+    onError: () => toast.error('Only the group owner can delete this group'),
+  })
 
   return (
     <Link
       to={ROUTES.GROUP_DETAIL(group.id)}
-      className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all transform hover:-translate-y-1 flex flex-col"
+      className="grp-panel grp-card block rounded-[20px] overflow-hidden border border-gray-200 dark:border-white/[0.07] no-underline group/card"
     >
-      {group.imageUrl && (
-        <div className="h-32 w-full relative">
-          <img src={group.imageUrl} alt={group.name} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+      {/* Top bar */}
+      <div
+        className={`h-20 relative overflow-hidden${!group.imageUrl && !group.themeColor ? ' grp-aurora' : ''}`}
+        style={
+          group.imageUrl
+            ? { backgroundImage: `url(${group.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+            : group.themeColor
+              ? { background: group.themeColor }
+              : undefined
+        }
+      >
+        {group.imageUrl && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        )}
+        <div className="grp-card-gear absolute top-2.5 right-2.5 w-[30px] h-[30px] rounded-lg bg-black/35 backdrop-blur-sm grid place-items-center border border-white/[0.15]">
+          <Settings size={13} className="text-white" />
         </div>
-      )}
-      
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div 
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-inner"
-            style={{ backgroundColor: group.themeColor || '#10b981' }}
-          >
-            <Users className="w-6 h-6" />
-          </div>
-          <div className="flex -space-x-2">
-            {group.members?.slice(0, 3).map((member: GroupMember, i: number) => (
-              <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
-                {member.user.avatarUrl ? (
-                  <img src={member.user.avatarUrl} alt={member.user.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-400">
-                    {member.user.name.charAt(0)}
-                  </div>
-                )}
-              </div>
-            ))}
-            {memberCount > 3 && (
-              <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400 shadow-sm">
-                +{memberCount - 3}
-              </div>
-            )}
-          </div>
+        <button
+          onClick={e => {
+            e.preventDefault()
+            e.stopPropagation()
+            deleteMutation.mutate()
+          }}
+          disabled={deleteMutation.isPending}
+          className="absolute top-2.5 left-2.5 w-[30px] h-[30px] rounded-lg backdrop-blur-sm grid place-items-center border border-white/[0.15] bg-black/35 text-white/70 hover:bg-red-500/70 hover:border-red-400/50 hover:text-white transition-all opacity-0 group-hover/card:opacity-100 disabled:opacity-50"
+          title="Delete group"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="px-[18px] pt-4 pb-[18px]">
+        {/* Avatar stack */}
+        <div className="flex mb-3">
+          {(group.members ?? []).slice(0, 4).map((m: GroupMember, i: number) => (
+            <div
+              key={m.id}
+              title={m.user.name}
+              className={`w-7 h-7 rounded-full border-2 border-gray-100 dark:border-[#161830] ${m.user.avatarUrl ? '' : `bg-gradient-to-br ${avatarGrad(m.user.name)}`} flex items-center justify-center text-[9px] font-bold text-white overflow-hidden${i === 0 ? '' : ' -ml-2'}`}
+            >
+              {m.user.avatarUrl
+                ? <img src={m.user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                : initials(m.user.name)
+              }
+            </div>
+          ))}
+          {memberCount > 4 && (
+            <div
+              className="w-7 h-7 rounded-full border-2 border-gray-100 dark:border-[#161830] bg-gray-200/60 dark:bg-white/[0.08] flex items-center justify-center text-[9px] text-gray-500 dark:text-[#a3a1c8] -ml-2"
+            >
+              +{memberCount - 4}
+            </div>
+          )}
         </div>
 
-        <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors mb-2">
+        <p className="text-[17px] font-semibold text-gray-900 dark:text-[#f0eeff] tracking-[-0.015em] truncate mb-1 m-0">
           {group.name}
-        </h3>
-        <p className="text-gray-500 text-sm mb-6 line-clamp-2 min-h-[2.5rem]">
-          {group.description || 'No description provided for this group.'}
         </p>
 
-        <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
-          <div className="flex items-center text-xs text-gray-400 font-medium">
-            <Shield className="w-3.5 h-3.5 mr-1 text-primary/60" />
-            Admin: {owner?.name || 'Unknown'}
-          </div>
-          <div className="text-primary font-bold text-sm flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-            View <ArrowRight className="w-4 h-4 ml-1" />
-          </div>
+        {group.description && (
+          <p className="text-[13px] text-gray-400 dark:text-[#6e6c93] mb-3 line-clamp-2 m-0">{group.description}</p>
+        )}
+
+        <div className="flex gap-3.5 mt-3">
+          <span className="inline-flex items-center gap-1 text-xs font-mono text-gray-400 dark:text-[#6e6c93]">
+            <Users size={11} strokeWidth={1.8} /> {memberCount}
+          </span>
+          <span className="inline-flex items-center gap-1 text-xs font-mono text-gray-400 dark:text-[#6e6c93]">
+            <MapPin size={11} strokeWidth={1.8} /> {itineraryCount}
+          </span>
         </div>
       </div>
     </Link>

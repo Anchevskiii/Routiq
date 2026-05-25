@@ -296,15 +296,88 @@
   }
   input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
-  /* aurora gradient utilities — replaces inline style={{ background }} */
-  .gradient-aurora      { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
-  .gradient-aurora-v    { background: linear-gradient(180deg, #6366f1, #8b5cf6); }
-  .gradient-aurora-soft { background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(139,92,246,0.10)); }
+  /* aurora gradient utilities — blue (#3b82f6 → #2563eb) */
+  .gradient-aurora      { background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%); }
+  .gradient-aurora-v    { background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%); }
+  .gradient-aurora-soft { background: linear-gradient(135deg, rgba(59,130,246,0.10), rgba(37,99,235,0.10)); }
   .gradient-aurora-text {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /* ── Groups feature — solid blue (#3b82f6 → #2563eb) ─────────────────
+     Replaces the cyan/aurora gradient. Uses the btn-blue palette.       */
+  .grp-aurora {
+    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  }
+  .grp-aurora-text {
+    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  /* Panel — light mode: white card; dark mode: glass */
+  .grp-panel {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .dark .grp-panel {
+    background: rgba(22, 24, 48, 0.65);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 32px -12px rgba(0,0,0,0.6);
+  }
+  /* Cover gradient for group header — blue tones */
+  .grp-cover {
+    background:
+      radial-gradient(ellipse 80% 100% at 100% 100%, rgba(59,130,246,0.45), transparent 60%),
+      radial-gradient(ellipse 70% 80% at 20% 0%,    rgba(37,99,235,0.55),  transparent 60%),
+      linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%);
+  }
+  /* Itinerary card hover lift */
+  .grp-it-card { transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; cursor: pointer; }
+  .grp-it-card:hover { transform: translateY(-2px); box-shadow: 0 14px 32px -16px rgba(37,99,235,0.25); border-color: rgba(37,99,235,0.25) !important; }
+  .dark .grp-it-card:hover { box-shadow: 0 14px 32px -16px rgba(37,99,235,0.45); border-color: rgba(255,255,255,0.14) !important; }
+  /* Group listing card hover */
+  .grp-card { transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
+  .grp-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px -16px rgba(37,99,235,0.2); border-color: rgba(37,99,235,0.2) !important; }
+  .dark .grp-card:hover { box-shadow: 0 16px 40px -16px rgba(37,99,235,0.4); border-color: rgba(255,255,255,0.14) !important; }
+  .grp-card:hover .grp-card-gear { opacity: 1; }
+  .grp-card-gear { opacity: 0; transition: opacity 0.15s; }
+  /* Role badges */
+  .grp-role-owner  { color: #fbbf24; background: rgba(251,191,36,0.12);  border: 1px solid rgba(251,191,36,0.3); }
+  .grp-role-admin  { color: #3b82f6; background: rgba(59,130,246,0.12);  border: 1px solid rgba(59,130,246,0.3); }
+  .grp-role-mod    { color: #a855f7; background: rgba(168,85,247,0.12);  border: 1px solid rgba(168,85,247,0.3); }
+  .grp-role-member { color: #6e6c93; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); }
+  /* Vote buttons */
+  .grp-vote-btn { transition: all 0.15s; }
+  .grp-vote-btn:hover { color: #f0eeff; border-color: rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); }
+  .grp-vote-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .grp-vote-up-active   { color: #10b981 !important; background: rgba(16,185,129,0.12) !important; border-color: rgba(16,185,129,0.4) !important; box-shadow: 0 0 0 2px rgba(16,185,129,0.1); }
+  .grp-vote-down-active { color: #ef4444 !important; background: rgba(239,68,68,0.12) !important;  border-color: rgba(239,68,68,0.4) !important; }
+  /* Rail collapse animation */
+  .grp-rail-body { max-height: 800px; opacity: 1; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s; border-top: 1px solid rgba(0,0,0,0.07); }
+  .dark .grp-rail-body { border-top: 1px solid rgba(255,255,255,0.07); }
+  .grp-rail-body.collapsed { max-height: 0; opacity: 0; border-top: none; }
+  /* Active tab — blue */
+  .grp-tab-active { color: white !important; background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%) !important; box-shadow: 0 4px 12px -6px rgba(37,99,235,0.6); }
+  /* Member row hover */
+  .grp-member-row { transition: background 0.12s; }
+  .grp-member-row:hover { background: rgba(255,255,255,0.03); }
+  /* Comment separator */
+  .grp-comment { border-bottom: 1px dashed rgba(0,0,0,0.06); }
+  .dark .grp-comment { border-bottom: 1px dashed rgba(255,255,255,0.05); }
+  .grp-comment:last-child, .dark .grp-comment:last-child { border-bottom: none; }
+  /* HeroCard blue gradient background */
+  .hero-card-bg {
+    background: linear-gradient(135deg, #3730a3 0%, #2563eb 45%, #3b82f6 100%);
+  }
+  /* HeroCard progress bar gradient */
+  .hero-bar-bg {
+    background: linear-gradient(90deg, #a5b4fc, #e879f9);
   }
   /* TripPreview sky hero — 3-layer gradient too complex for Tailwind arbitrary */
   .trip-hero-bg {

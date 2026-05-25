@@ -33,15 +33,15 @@ export const TravelTypeGrid: React.FC<Props> = ({ experience, setValue, error })
               'relative overflow-hidden text-center rounded-[16px] border-[1.5px] bg-white dark:bg-[#1e1b38] px-3.5 pt-[18px] pb-3.5',
               'flex flex-col items-center gap-2.5 transition-all',
               selected
-                ? 'border-transparent shadow-[0_0_0_1.5px_theme(colors.indigo.500),0_14px_28px_-16px_var(--accent-glow)]'
-                : 'border-line hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20 hover:shadow-[0_10px_22px_-16px_var(--accent-glow)]',
+                ? 'border-transparent shadow-[0_0_0_1.5px_theme(colors.blue.600),0_14px_28px_-16px_var(--accent-glow)]'
+                : 'border-line hover:-translate-y-0.5 hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 hover:shadow-[0_10px_22px_-16px_var(--accent-glow)]',
             ].join(' ')}
           >
             <span className={[
               'grid place-items-center w-[38px] h-[38px] rounded-[11px] transition-all',
               selected
                 ? 'bg-aurora text-white shadow-[0_6px_16px_-4px_var(--accent-glow)] animate-glyph-float'
-                : 'bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/40 dark:to-violet-900/40 text-ink-dim',
+                : 'bg-blue-50 dark:bg-blue-900/40 text-ink-dim',
             ].join(' ')}>
               <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                 <path d={opt.glyph} />

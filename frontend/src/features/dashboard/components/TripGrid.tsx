@@ -37,24 +37,19 @@ export const TripGrid: React.FC<Props> = ({ itineraries, isLoading }) => {
   return (
     <motion.section>
       <div className="flex items-center justify-between mb-3.5">
-        <h2 className="text-base font-bold text-indigo-950 dark:text-indigo-100">Your trips</h2>
+        <h2 className="text-base font-bold text-blue-950 dark:text-blue-100">Your trips</h2>
         <div className="flex items-center gap-1">
           {TABS.map(t => (
             <button
               key={t.value}
               onClick={() => setTab(t.value)}
-              className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
-              style={
-                tab === t.value
-                  ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white' }
-                  : { background: 'rgba(99,102,241,0.07)', color: '#6366f1' }
-              }
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${tab === t.value ? 'gradient-aurora text-white' : 'bg-blue-600/[0.07] text-blue-600'}`}
             >
               {t.label}
             </button>
           ))}
         </div>
-        <Link to={ROUTES.DASHBOARD} className="flex items-center gap-1 text-xs font-semibold text-indigo-500">
+        <Link to={ROUTES.DASHBOARD} className="flex items-center gap-1 text-xs font-semibold text-blue-600">
           All <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
@@ -62,7 +57,7 @@ export const TripGrid: React.FC<Props> = ({ itineraries, isLoading }) => {
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-44 rounded-2xl animate-pulse bg-indigo-500/[0.07]" />
+            <div key={i} className="h-44 rounded-2xl animate-pulse bg-blue-500/[0.07]" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
@@ -84,7 +79,7 @@ export const TripGrid: React.FC<Props> = ({ itineraries, isLoading }) => {
 const EmptyTrips: React.FC = () => (
   <Link to={ROUTES.PLANNER}>
     <motion.div
-      className="flex flex-col items-center rounded-2xl p-8 text-center border-2 border-dashed border-indigo-500/20"
+      className="flex flex-col items-center rounded-2xl p-8 text-center border-2 border-dashed border-blue-500/20"
       whileHover={{ scale: 1.01 }}
     >
       <motion.div
@@ -94,7 +89,7 @@ const EmptyTrips: React.FC = () => (
       >
         ✈️
       </motion.div>
-      <p className="font-bold text-sm mb-1 text-indigo-950 dark:text-indigo-100">No trips yet</p>
+      <p className="font-bold text-sm mb-1 text-blue-950 dark:text-blue-100">No trips yet</p>
       <p className="text-xs text-slate-400 dark:text-slate-500">Click to plan your first trip</p>
     </motion.div>
   </Link>

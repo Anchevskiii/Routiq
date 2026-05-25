@@ -52,7 +52,7 @@ export const GeneralSection: React.FC<Props> = ({ user, isSaving, isUploading, o
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="absolute -bottom-2 -right-2 w-8 h-8 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-violet-500 text-white rounded-[10px] shadow-[0_4px_12px_rgba(99,102,241,0.4)] hover:scale-110 transition-transform disabled:opacity-50"
+              className="absolute -bottom-2 -right-2 w-8 h-8 flex items-center justify-center gradient-aurora text-white rounded-[10px] shadow-[0_4px_12px_rgba(37,99,235,0.4)] hover:scale-110 transition-transform disabled:opacity-50"
             >
               <Camera className="w-4 h-4" />
             </button>
@@ -98,7 +98,7 @@ export const GeneralSection: React.FC<Props> = ({ user, isSaving, isUploading, o
           <button
             type="submit"
             disabled={!isDirty || isSaving}
-            className="mt-2 px-6 py-[13px] bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-[14px] text-sm font-semibold shadow-[0_8px_24px_-8px_rgba(99,102,241,0.5)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(99,102,241,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="mt-2 px-6 py-[13px] gradient-aurora text-white rounded-[14px] text-sm font-semibold shadow-[0_8px_24px_-8px_rgba(37,99,235,0.5)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(37,99,235,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
             {isSaving ? 'Saving…' : 'Save Changes'}
           </button>
@@ -117,7 +117,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
       <div className={[
         'relative rounded-[14px] border-[1.5px] transition-all',
         'bg-white dark:bg-[#16142e]',
-        error ? 'border-red-400' : 'border-line focus-within:border-transparent focus-within:shadow-[0_0_0_1.5px_theme(colors.indigo.500),0_0_0_5px_rgba(99,102,241,0.12)]',
+        error ? 'border-red-400' : 'border-line focus-within:border-transparent focus-within:shadow-[0_0_0_1.5px_theme(colors.blue.600),0_0_0_5px_rgba(37,99,235,0.12)]',
       ].join(' ')}>
         {children}
       </div>

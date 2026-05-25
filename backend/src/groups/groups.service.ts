@@ -13,6 +13,13 @@ import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { MailService } from '../mail/mail.service';
 
+const ROLE_HIERARCHY: Record<GroupRole, number> = {
+  [GroupRole.OWNER]: 4,
+  [GroupRole.ADMIN]: 3,
+  [GroupRole.MODERATOR]: 2,
+  [GroupRole.MEMBER]: 1,
+};
+
 @Injectable()
 export class GroupsService {
   private readonly logger = new Logger(GroupsService.name);
@@ -143,6 +150,9 @@ export class GroupsService {
           },
         },
         itineraries: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             itinerary: {
               select: {
@@ -153,6 +163,7 @@ export class GroupsService {
                 travelType: true,
                 totalDays: true,
                 createdAt: true,
+                deletedAt: true,
                 user: {
                   select: {
                     id: true,
@@ -166,6 +177,13 @@ export class GroupsService {
               select: {
                 voteType: true,
                 userId: true,
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    avatarUrl: true,
+                  },
+                },
               },
             },
             _count: {
@@ -185,17 +203,19 @@ export class GroupsService {
       throw new NotFoundException('Group not found');
     }
 
-    // Calculate scores for itineraries
-    const itineraries = group.itineraries.map((gi) => {
-      const upvotes = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
-      const downvotes = gi.votes.filter(
-        (v) => v.voteType === 'DOWNVOTE',
-      ).length;
-      return {
-        ...gi,
-        score: upvotes - downvotes,
-      };
-    });
+    // Calculate scores for itineraries, excluding soft-deleted itineraries
+    const itineraries = group.itineraries
+      .filter((gi) => gi.itinerary && !gi.itinerary.deletedAt)
+      .map((gi) => {
+        const upvotes = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
+        const downvotes = gi.votes.filter(
+          (v) => v.voteType === 'DOWNVOTE',
+        ).length;
+        return {
+          ...gi,
+          score: upvotes - downvotes,
+        };
+      });
 
     return {
       ...group,
@@ -276,8 +296,9 @@ export class GroupsService {
   async deleteGroup(groupId: string, userId: string) {
     await this.requireRole(groupId, userId, [GroupRole.OWNER]);
 
-    await this.prisma.group.delete({
+    await this.prisma.group.update({
       where: { id: groupId },
+      data: { deletedAt: new Date() },
     });
 
     return { message: 'Group deleted successfully' };
@@ -567,12 +588,7 @@ export class GroupsService {
       throw new NotFoundException('Member not found in this group');
     }
 
-    const roleHierarchy: Record<GroupRole, number> = {
-      [GroupRole.OWNER]: 4,
-      [GroupRole.ADMIN]: 3,
-      [GroupRole.MODERATOR]: 2,
-      [GroupRole.MEMBER]: 1,
-    };
+    const roleHierarchy = ROLE_HIERARCHY;
 
     if (
       removerId !== memberToRemoveId &&
@@ -631,12 +647,7 @@ export class GroupsService {
       throw new NotFoundException('Active member not found in this group');
     }
 
-    const roleHierarchy: Record<GroupRole, number> = {
-      [GroupRole.OWNER]: 4,
-      [GroupRole.ADMIN]: 3,
-      [GroupRole.MODERATOR]: 2,
-      [GroupRole.MEMBER]: 1,
-    };
+    const roleHierarchy = ROLE_HIERARCHY;
 
     if (
       updaterMembership.role === GroupRole.ADMIN &&
@@ -693,16 +704,34 @@ export class GroupsService {
       throw new NotFoundException('Itinerary not found or access denied');
     }
 
-    // Check if itinerary is already in the group
+    // Check if itinerary is already in the group (active)
     const existingGroupItinerary = await this.prisma.groupItinerary.findFirst({
-      where: {
-        groupId,
-        itineraryId,
-      },
+      where: { groupId, itineraryId },
     });
 
     if (existingGroupItinerary) {
-      throw new BadRequestException('Itinerary is already in this group');
+      if (!existingGroupItinerary.deletedAt) {
+        throw new BadRequestException('Itinerary is already in this group');
+      }
+      // Was previously removed — restore it
+      const groupItinerary = await this.prisma.groupItinerary.update({
+        where: { id: existingGroupItinerary.id },
+        data: { deletedAt: null, addedById: userId, addedAt: new Date() },
+        include: {
+          itinerary: {
+            select: {
+              id: true, destination: true, startDate: true, endDate: true,
+              travelType: true, totalDays: true, createdAt: true,
+              user: { select: { id: true, name: true, avatarUrl: true } },
+            },
+          },
+        },
+      });
+      await this.logActivity(groupId, userId, 'ITINERARY_ADDED', {
+        itineraryId,
+        destination: itinerary.destination,
+      }).catch(() => {});
+      return groupItinerary;
     }
 
     const groupItinerary = await this.prisma.groupItinerary.create({
@@ -739,6 +768,27 @@ export class GroupsService {
     });
 
     return groupItinerary;
+  }
+
+  async removeItineraryFromGroup(
+    groupId: string,
+    userId: string,
+    groupItineraryId: string,
+  ) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    const gi = await this.prisma.groupItinerary.findFirst({
+      where: { id: groupItineraryId, groupId, deletedAt: null },
+    });
+
+    if (!gi) throw new NotFoundException('Itinerary not found in group');
+
+    await this.prisma.groupItinerary.update({
+      where: { id: groupItineraryId },
+      data: { deletedAt: new Date() },
+    });
+
+    return { message: 'Itinerary removed from group' };
   }
 
   // ─── Comments ─────────────────────────────────────────────
@@ -803,24 +853,49 @@ export class GroupsService {
   async getComments(groupId: string, userId: string) {
     await this.requireAcceptedMember(groupId, userId);
 
+    const reactionSelect = {
+      select: { emoji: true, userId: true },
+    };
+
     return this.prisma.comment.findMany({
-      where: {
-        groupId,
-        parentId: null,
-        deletedAt: null,
-      },
+      where: { groupId, parentId: null, deletedAt: null },
       include: {
         user: { select: { id: true, name: true, avatarUrl: true } },
+        reactions: reactionSelect,
         replies: {
           where: { deletedAt: null },
           include: {
             user: { select: { id: true, name: true, avatarUrl: true } },
+            reactions: reactionSelect,
           },
           orderBy: { createdAt: 'asc' },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
+  }
+
+  async toggleReaction(groupId: string, commentId: string, userId: string, emoji: string) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    const comment = await this.prisma.comment.findFirst({
+      where: { id: commentId, groupId },
+    });
+    if (!comment) throw new NotFoundException('Comment not found');
+
+    const existing = await this.prisma.commentReaction.findUnique({
+      where: { commentId_userId_emoji: { commentId, userId, emoji } },
+    });
+
+    if (existing) {
+      await this.prisma.commentReaction.delete({
+        where: { commentId_userId_emoji: { commentId, userId, emoji } },
+      });
+      return { removed: true };
+    }
+
+    await this.prisma.commentReaction.create({ data: { commentId, userId, emoji } });
+    return { removed: false };
   }
 
   async getVotes(groupId: string, groupItineraryId: string, userId: string) {
