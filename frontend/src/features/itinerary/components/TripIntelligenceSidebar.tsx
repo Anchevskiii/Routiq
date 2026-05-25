@@ -1,6 +1,12 @@
 import React from 'react'
-import { Compass, Wallet, Printer, Sparkles, ShoppingBag } from 'lucide-react'
+import { Calendar, Compass, Printer, Sparkles, Wallet, ShoppingBag } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { pdf } from '@react-pdf/renderer'
+import { saveAs } from 'file-saver'
+
+import { exportApi } from '@/api/export.api'
 import { Itinerary } from '@/types/itinerary.types'
+import { ItineraryPdfDocument } from '../pdf/ItineraryPdfDocument'
 
 interface TripIntelligenceSidebarProps {
   itinerary: Itinerary
@@ -31,6 +37,24 @@ function TIItem({ icon, label, value, darkColorClass, lightColorClass }: {
 }
 
 export const TripIntelligenceSidebar: React.FC<TripIntelligenceSidebarProps> = ({ itinerary }) => {
+  const handleDownloadPdf = async () => {
+    try {
+      const pdfDocument = <ItineraryPdfDocument itinerary={itinerary} />
+      const pdfBlob = await pdf(pdfDocument).toBlob()
+      saveAs(pdfBlob, `itinerary-${itinerary.id}.pdf`)
+    } catch {
+      toast.error('Failed to generate PDF itinerary')
+    }
+  }
+
+  const handleDownloadIcs = async () => {
+    try {
+      await exportApi.exportIcs(itinerary.id)
+    } catch {
+      toast.error('Failed to download ICS file')
+    }
+  }
+
   return (
     <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)]">
       <div className="flex items-center gap-2.5 px-4 py-3.5">
@@ -99,15 +123,31 @@ export const TripIntelligenceSidebar: React.FC<TripIntelligenceSidebarProps> = (
 
       <div className="h-px bg-gray-100 dark:bg-white/[0.07] mx-4" />
 
-      <div className="mx-3.5 my-3.5 p-3.5 rounded-[12px] bg-sky-50 dark:bg-sky-400/[0.04] border border-sky-200 dark:border-sky-400/15">
-        <h4 className="text-[13px] font-semibold text-gray-900 dark:text-[#f0eeff] mb-1.5">Export your itinerary</h4>
-        <p className="text-[12px] text-gray-500 dark:text-[#a3a1c8] leading-snug mb-2.5">
-          Download a print-ready PDF with maps and activity details.
-        </p>
-        <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[11px] bg-gradient-to-b from-blue-500 to-blue-600 text-white text-[13px] font-semibold shadow-[0_6px_16px_-8px_rgba(37,99,235,0.6),inset_0_1px_0_rgba(255,255,255,0.2)] hover:-translate-y-px transition-transform">
-          <Printer className="w-3.5 h-3.5" /> Download PDF
-        </button>
+      <div className="mx-3.5 my-3.5 p-3.5 rounded-[12px] bg-sky-50 dark:bg-sky-400/[0.04] border border-sky-200 dark:border-sky-400/15 space-y-3">
+        <div>
+          <h4 className="text-[13px] font-semibold text-gray-900 dark:text-[#f0eeff] mb-1.5">Export your itinerary</h4>
+          <p className="text-[12px] text-gray-500 dark:text-[#a3a1c8] leading-snug">
+            Download a print-ready PDF or add to your calendar.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 pt-1">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[11px] bg-gradient-to-b from-blue-500 to-blue-600 text-white text-[13px] font-semibold shadow-[0_6px_16px_-8px_rgba(37,99,235,0.6),inset_0_1px_0_rgba(255,255,255,0.2)] hover:-translate-y-px transition-transform active:translate-y-0"
+          >
+            <Printer className="w-3.5 h-3.5" /> Download PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadIcs}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[11px] bg-white dark:bg-white/[0.03] text-gray-800 dark:text-[#d8d4ff] text-[13px] font-semibold border border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:-translate-y-px transition-all active:translate-y-0"
+          >
+            <Calendar className="w-3.5 h-3.5" /> Add to Calendar
+          </button>
+        </div>
       </div>
     </div>
   )
 }
+
