@@ -2,6 +2,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MapPin, Sparkles, ArrowRight, RotateCcw, Minus, Plus as PlusIcon, Calendar } from 'lucide-react'
+import { addMonths, subMonths, startOfMonth, getDaysInMonth, getDay, isSameDay, isToday, isBefore, parseISO, format, startOfToday, differenceInCalendarDays } from 'date-fns'
+import { cn } from '@/utils/cn'
 import { plannerSchema, type PlannerFormValues } from '../schemas/plannerSchema'
 import { DEST_DB } from '../planner.data'
 
@@ -102,6 +104,108 @@ function OkBadge() {
   )
 }
 
+const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+
+function CalendarPopup({ value, minDate, onChange, onClose }: {
+  value: string
+  minDate?: string
+  onChange: (val: string) => void
+  onClose: () => void
+}) {
+  const today      = startOfToday()
+  const initDate   = value ? parseISO(value) : today
+  const [viewDate, setViewDate] = React.useState(startOfMonth(initDate))
+
+  const selected = value ? parseISO(value) : null
+  const min      = minDate ? parseISO(minDate) : null
+
+  const firstDow = (getDay(viewDate) + 6) % 7 // Mon=0
+  const numDays  = getDaysInMonth(viewDate)
+  const cells: (number | null)[] = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({ length: numDays }, (_, i) => i + 1),
+  ]
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-cal]')) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  return (
+    <div data-cal className="absolute top-[calc(100%+8px)] left-0 z-50 w-[272px] rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-[#13111f] shadow-xl dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.7)] overflow-hidden">
+
+      {/* Month nav */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
+        <button type="button" onClick={() => setViewDate(d => subMonths(d, 1))}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-[#6e6c93] hover:text-gray-700 dark:hover:text-[#f0eeff] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span className="text-[14px] font-semibold text-gray-900 dark:text-[#f0eeff] tracking-tight">
+          {format(viewDate, 'MMMM yyyy')}
+        </span>
+        <button type="button" onClick={() => setViewDate(d => addMonths(d, 1))}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-[#6e6c93] hover:text-gray-700 dark:hover:text-[#f0eeff] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <div className="px-3 pt-2 pb-3">
+        {/* Day-of-week headers */}
+        <div className="grid grid-cols-7 mb-1">
+          {DAYS.map(d => (
+            <div key={d} className="text-center text-[10px] font-mono font-semibold uppercase tracking-wider text-gray-400 dark:text-[#4e4c6a] py-1.5">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Day grid */}
+        <div className="grid grid-cols-7">
+          {cells.map((day, i) => {
+            if (!day) return <div key={i} />
+            const date       = new Date(viewDate.getFullYear(), viewDate.getMonth(), day)
+            const iso        = format(date, 'yyyy-MM-dd')
+            const isSel      = !!selected && isSameDay(date, selected)
+            const isTodayDay = isToday(date)
+            const isDisabled = !!min && isBefore(date, min)
+            return (
+              <button key={i} type="button" disabled={isDisabled} onClick={() => onChange(iso)}
+                className={cn(
+                  'relative h-8 w-full rounded-lg text-[13px] font-medium transition-all',
+                  isDisabled  && 'text-gray-300 dark:text-[#2e2c45] cursor-not-allowed',
+                  isSel       && 'bg-blue-600 text-white font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.45)] dark:shadow-[0_2px_12px_rgba(37,99,235,0.55)]',
+                  isTodayDay && !isSel && 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20',
+                  !isDisabled && !isSel && !isTodayDay && 'text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-100 dark:hover:bg-white/[0.06]',
+                )}
+              >
+                {day}
+                {isTodayDay && !isSel && (
+                  <span className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[3px] h-[3px] rounded-full bg-blue-500 dark:bg-blue-400" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-white/[0.06]">
+          <button type="button" onClick={() => onChange(format(today, 'yyyy-MM-dd'))}
+            className="w-full text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors tracking-wide"
+          >
+            Today
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function FieldLabel({ n, text, req, ok }: { n: string; text: string; req?: boolean; ok?: boolean }) {
   return (
     <div className="flex items-center gap-2 mb-2.5 text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-[#6e6c93]">
@@ -123,6 +227,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   const [budget,    setBudget]    = useState('Mid-range')
   const [pace,      setPace]      = useState('Balanced')
   const [travelers, setTravelers] = useState(2)
+  const [openCal,   setOpenCal]   = useState<'start' | 'end' | null>(null)
 
   const destination = watch('destination') || ''
   const startDate   = watch('startDate')   || ''
@@ -132,7 +237,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
   const dur = useMemo(() => {
     if (!startDate || !endDate) return null
-    const d = Math.round((+new Date(endDate) - +new Date(startDate)) / 86400000)
+    const d = differenceInCalendarDays(parseISO(endDate), parseISO(startDate))
     return d > 0 ? d : null
   }, [startDate, endDate])
 
@@ -232,43 +337,53 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                 {/* Start */}
                 <div>
                   <FieldLabel n="02" text="Start date" ok={fields.startDate} />
-                  <label className="relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] px-3.5 py-3 hover:border-sky-300 dark:hover:border-sky-400/40 focus-within:border-sky-400/80 focus-within:ring-2 focus-within:ring-sky-400/15 dark:focus-within:border-sky-400/50 transition-all cursor-pointer">
-                    <div className="w-8 h-8 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
-                      <Calendar className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-[#6e6c93] mb-1">Departure</div>
-                      <div className={`text-[13px] font-medium ${startDate ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-400 dark:text-[#6e6c93]'}`}>
-                        {startDate || 'Pick a date'}
+                  <div className="relative">
+                    <label className="relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] px-3.5 py-3 hover:border-sky-300 dark:hover:border-sky-400/40 focus-within:border-sky-400/80 focus-within:ring-2 focus-within:ring-sky-400/15 dark:focus-within:border-sky-400/50 transition-all cursor-pointer" onClick={() => setOpenCal(openCal === 'start' ? null : 'start')}>
+                      <div className="w-8 h-8 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
+                        <Calendar className="w-3.5 h-3.5" />
                       </div>
-                    </div>
-                    <input
-                      {...register('startDate')}
-                      type="date"
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                    />
-                  </label>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-[#6e6c93] mb-1">Departure</div>
+                        <div className={`text-[13px] font-medium ${startDate ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-400 dark:text-[#6e6c93]'}`}>
+                          {startDate ? format(parseISO(startDate), 'd MMM yyyy') : 'Pick a date'}
+                        </div>
+                      </div>
+                    </label>
+                    {openCal === 'start' && (
+                      <CalendarPopup
+                        value={startDate}
+                        minDate={undefined}
+                        onChange={val => { setValue('startDate', val, { shouldValidate: true }); setOpenCal(null) }}
+                        onClose={() => setOpenCal(null)}
+                      />
+                    )}
+                  </div>
                   {errors.startDate && <p className="mt-1 text-xs text-red-500">{errors.startDate.message}</p>}
                 </div>
                 {/* End */}
                 <div>
                   <FieldLabel n="03" text="End date" ok={fields.endDate} />
-                  <label className="relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] px-3.5 py-3 hover:border-sky-300 dark:hover:border-sky-400/40 focus-within:border-sky-400/80 focus-within:ring-2 focus-within:ring-sky-400/15 dark:focus-within:border-sky-400/50 transition-all cursor-pointer">
-                    <div className="w-8 h-8 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
-                      <Calendar className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-[#6e6c93] mb-1">Return</div>
-                      <div className={`text-[13px] font-medium ${endDate ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-400 dark:text-[#6e6c93]'}`}>
-                        {endDate || 'Pick a date'}
+                  <div className="relative">
+                    <label className="relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] px-3.5 py-3 hover:border-sky-300 dark:hover:border-sky-400/40 focus-within:border-sky-400/80 focus-within:ring-2 focus-within:ring-sky-400/15 dark:focus-within:border-sky-400/50 transition-all cursor-pointer" onClick={() => setOpenCal(openCal === 'end' ? null : 'end')}>
+                      <div className="w-8 h-8 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
+                        <Calendar className="w-3.5 h-3.5" />
                       </div>
-                    </div>
-                    <input
-                      {...register('endDate')}
-                      type="date"
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                    />
-                  </label>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-[#6e6c93] mb-1">Return</div>
+                        <div className={`text-[13px] font-medium ${endDate ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-400 dark:text-[#6e6c93]'}`}>
+                          {endDate ? format(parseISO(endDate), 'd MMM yyyy') : 'Pick a date'}
+                        </div>
+                      </div>
+                    </label>
+                    {openCal === 'end' && (
+                      <CalendarPopup
+                        value={endDate}
+                        minDate={startDate || undefined}
+                        onChange={val => { setValue('endDate', val, { shouldValidate: true }); setOpenCal(null) }}
+                        onClose={() => setOpenCal(null)}
+                      />
+                    )}
+                  </div>
                   {errors.endDate && <p className="mt-1 text-xs text-red-500">{errors.endDate.message}</p>}
                 </div>
               </div>
