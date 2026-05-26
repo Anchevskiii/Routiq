@@ -9,13 +9,17 @@ export const apiClient = axios.create({
   withCredentials: true,
 })
 
-apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  const { data: { session } } = await supabase.auth.getSession()
+let cachedToken: string | null = null
 
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`
+// Keep token in sync with auth state changes (also initializes token on startup)
+supabase.auth.onAuthStateChange((_event, session) => {
+  cachedToken = session?.access_token ?? null
+})
+
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (cachedToken) {
+    config.headers.Authorization = `Bearer ${cachedToken}`
   }
-
   return config
 })
 

@@ -43,29 +43,71 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoginAnimating, setIsLoginAnimating] = useState(false)
 
   useEffect(() => {
-    // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        authApi.getMe().then(setUser).catch(() => setUser(null))
-      } else {
-        setUser(null)
-      }
-      setIsLoading(false)
-    })
+    let isMounted = true
 
-    // Listen for changes on auth state (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          authApi.getMe().then(setUser).catch(() => setUser(null))
+          const u = await authApi.getMe()
+          if (isMounted) {
+            setUser(u)
+          }
         } else {
+          if (isMounted) {
+            setUser(null)
+          }
+        }
+      } catch {
+        if (isMounted) {
           setUser(null)
         }
-        setIsLoading(false)
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    initAuth()
+
+    // Listen for subsequent changes on auth state
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'INITIAL_SESSION') {
+          // Already handled by initAuth
+          return
+        }
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          if (!user) {
+            setIsLoading(true)
+          }
+          try {
+            const u = await authApi.getMe()
+            if (isMounted) {
+              setUser(u)
+            }
+          } catch {
+            if (isMounted) {
+              setUser(null)
+            }
+          } finally {
+            if (isMounted) {
+              setIsLoading(false)
+            }
+          }
+        } else if (event === 'SIGNED_OUT') {
+          if (isMounted) {
+            setUser(null)
+            setIsLoading(false)
+          }
+        }
       }
     )
 
     return () => {
+      isMounted = false
       subscription.unsubscribe()
     }
   }, [])

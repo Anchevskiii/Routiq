@@ -13,6 +13,7 @@ import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { PlannerPage } from '@/features/planner/pages/PlannerPage'
 import { ItineraryPage } from '@/features/itinerary/pages/ItineraryPage'
 import { ItineraryEditPage } from '@/features/itinerary/pages/ItineraryEditPage'
+import { TripsPage } from '@/features/itinerary/pages/TripsPage'
 import { GroupsPage } from '@/features/groups/pages/GroupsPage'
 import { GroupDetailPage } from '@/features/groups/pages/GroupDetailPage'
 import { NotificationsPage } from '@/features/groups/pages/NotificationsPage'
@@ -71,6 +72,7 @@ export const AppRouter: React.FC = () => {
         <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
         <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
         <Route path={ROUTES.PLANNER} element={<PlannerPage />} />
+        <Route path={ROUTES.TRIPS} element={<TripsPage />} />
         <Route path={ROUTES.ITINERARY(':id')} element={<ItineraryPage />} />
         <Route path={ROUTES.ITINERARY_EDIT(':id')} element={<ItineraryEditPage />} />
         <Route path={ROUTES.GROUPS} element={<GroupsPage />} />

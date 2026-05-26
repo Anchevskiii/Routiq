@@ -38,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
 
   const isActive = (id: string) => {
     if (id === 'home')     return location.pathname === ROUTES.DASHBOARD
+    if (id === 'trips')    return location.pathname === ROUTES.TRIPS
     if (id === 'groups')   return location.pathname.startsWith(ROUTES.GROUPS)
     if (id === 'ai')       return location.pathname === ROUTES.PLANNER
     if (id === 'settings') return location.pathname === ROUTES.PROFILE
@@ -140,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       </div>
 
       <div className="flex-1" />
-      <SidebarProfile collapsed={collapsed} name={user?.name} avatarUrl={user?.avatarUrl} />
+      <SidebarProfile collapsed={collapsed} name={user?.name} avatarUrl={user?.avatarUrl} email={user?.email} />
     </aside>
   )
 }

@@ -37,12 +37,22 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
       return
     }
 
-    // Check if script is already loaded or being loaded
+    // Define the global callback
+    window.initGoogleMaps = () => {
+      setIsLoaded(true)
+      setLoadError(null)
+    }
+
+    if (window.google?.maps) {
+      setIsLoaded(true)
+      return
+    }
+
     const SCRIPT_ID = 'google-maps-sdk'
     const existingScript = document.getElementById(SCRIPT_ID)
     
-    if (window.google?.maps || existingScript) {
-      setIsLoaded(true)
+    if (existingScript) {
+      // If script exists but google.maps is not yet loaded, wait for the callback
       return
     }
 
@@ -53,24 +63,16 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
     script.async = true
     script.defer = true
 
-    // Define the global callback
-    window.initGoogleMaps = () => {
-      setIsLoaded(true)
-      setLoadError(null)
-    }
-
     const handleError = () => {
       setLoadError(new Error('Failed to load Google Maps API'))
       setIsLoaded(false)
     }
 
     script.addEventListener('error', handleError)
-
     document.head.appendChild(script)
 
     return () => {
       script.removeEventListener('error', handleError)
-      delete window.initGoogleMaps
     }
   }, [])
 

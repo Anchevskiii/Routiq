@@ -1,27 +1,25 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { TrendingUp, Calendar, Users, Heart } from 'lucide-react'
+import { TrendingUp, Users, Heart } from 'lucide-react'
 import { fadeUp, stagger } from '../animations'
 
 const STATS = [
   { key: 'total',  label: 'Total trips', icon: TrendingUp, cls: 'bg-blue-50  dark:bg-blue-900/30  text-blue-600'  },
-  { key: 'recent', label: 'Recent',      icon: Calendar,   cls: 'bg-violet-50 dark:bg-violet-900/30  text-violet-500'  },
   { key: 'groups', label: 'Groups',      icon: Users,      cls: 'bg-sky-50    dark:bg-sky-900/30     text-sky-500'     },
   { key: 'shared', label: 'Shared',      icon: Heart,      cls: 'bg-pink-50   dark:bg-pink-900/30    text-pink-500'    },
 ]
 
 interface Props {
   total: number
-  recent: number
   groups: number
   shared: number
 }
 
-export const StatRow: React.FC<Props> = ({ total, recent, groups, shared }) => {
-  const values: Record<string, number> = { total, recent, groups, shared }
+export const StatRow: React.FC<Props> = ({ total, groups, shared }) => {
+  const values: Record<string, number> = { total, groups, shared }
 
   return (
-    <motion.div variants={stagger} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <motion.div variants={stagger} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {STATS.map(({ key, label, icon: Icon, cls }) => (
         <motion.div
           key={key}

@@ -1,4 +1,4 @@
-import { Home, Map, Users, Sparkles, Globe, Bookmark, Settings, HelpCircle } from 'lucide-react'
+import { Home, Map, Users, Sparkles, Bookmark, Settings, HelpCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 
@@ -16,9 +16,8 @@ export const NAV_BOTTOM: NavItem[] = [
 
 export const NAV_MAIN_STATIC = [
   { id: 'home',   label: 'Home',        icon: Home,     href: ROUTES.DASHBOARD },
-  { id: 'trips',  label: 'Trips',       icon: Map,      href: ROUTES.DASHBOARD },
+  { id: 'trips',  label: 'Trips',       icon: Map,      href: ROUTES.TRIPS     },
   { id: 'groups', label: 'Groups',      icon: Users,    href: ROUTES.GROUPS    },
   { id: 'ai',     label: 'AI Planner',  icon: Sparkles, href: ROUTES.PLANNER   },
-  { id: 'places', label: 'Destinations',icon: Globe,    href: ROUTES.DASHBOARD },
-  { id: 'saved',  label: 'Saved',       icon: Bookmark, href: ROUTES.DASHBOARD },
+  { id: 'saved',  label: 'Saved',       icon: Bookmark, href: ROUTES.TRIPS     },
 ] as const
