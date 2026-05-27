@@ -5,7 +5,6 @@ import { ROUTES } from '@/constants/routes'
 import { fadeUp, stagger } from '../animations'
 import { GroupCard } from './GroupCard'
 import { ActivityFeed } from './ActivityFeed'
-import { InspirationCard } from './InspirationCard'
 import type { Group } from '@/types/group.types'
 import type { Itinerary } from '@/types/itinerary.types'
 
@@ -35,14 +34,6 @@ export const SidePanel: React.FC<Props> = ({ groups, itineraries }) => (
     <motion.section variants={fadeUp} className="rounded-2xl p-4 bg-white dark:bg-[#16142e] shadow-sm">
       <h3 className="text-sm font-bold mb-3.5 text-blue-950 dark:text-blue-100">Activity</h3>
       <ActivityFeed itineraries={itineraries.slice(0, 4)} />
-    </motion.section>
-
-    <motion.section variants={fadeUp}>
-      <div className="flex items-center justify-between mb-3.5">
-        <h3 className="text-sm font-bold text-blue-950 dark:text-blue-100">Inspiration</h3>
-        <button className="text-xs font-semibold text-blue-600">More</button>
-      </div>
-      <InspirationCard />
     </motion.section>
   </motion.div>
 )

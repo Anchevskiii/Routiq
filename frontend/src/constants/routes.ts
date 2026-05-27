@@ -11,6 +11,7 @@ export const ROUTES = {
   GROUP_DETAIL: (id: string) => `/groups/${id}`,
   NOTIFICATIONS: '/notifications',
   PROFILE: '/profile',
+  TRIPS: '/trips',
 } as const
 
 export type RouteKey = keyof typeof ROUTES

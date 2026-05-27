@@ -27,6 +27,12 @@ export interface Itinerary {
     name: string
     avatarUrl?: string
   }
+  groupItineraries?: Array<{
+    groupId: string
+    group: {
+      name: string
+    }
+  }>
 }
 
 export interface Day {
