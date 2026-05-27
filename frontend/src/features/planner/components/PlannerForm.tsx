@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MapPin, Sparkles, ArrowRight, RotateCcw, Minus, Plus as PlusIcon, Calendar } from 'lucide-react'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { plannerSchema, type PlannerFormValues } from '../schemas/plannerSchema'
 import { DEST_DB } from '../planner.data'
 
@@ -132,7 +133,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
   const dur = useMemo(() => {
     if (!startDate || !endDate) return null
-    const d = Math.round((+new Date(endDate) - +new Date(startDate)) / 86400000)
+    const d = differenceInCalendarDays(parseISO(endDate), parseISO(startDate))
     return d > 0 ? d : null
   }, [startDate, endDate])
 

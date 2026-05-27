@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from 'react'
 import { authApi } from '@/api/auth.api'
 import { supabase } from '@/api/supabase'
@@ -41,6 +42,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoginAnimating, setIsLoginAnimating] = useState(false)
+
+  const userRef = useRef(user)
+  userRef.current = user
 
   useEffect(() => {
     let isMounted = true
@@ -80,7 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (event === 'SIGNED_IN' && session?.user) {
-          if (!user) {
+          if (!userRef.current) {
             setIsLoading(true)
           }
           try {
