@@ -17,3 +17,7 @@ export type {
 
 // Filters
 export { AllExceptionsFilter } from './filters/all-exceptions.filter';
+
+// Utils
+export { withRetry } from './utils/retry.util';
+export type { RetryOptions } from './utils/retry.util';

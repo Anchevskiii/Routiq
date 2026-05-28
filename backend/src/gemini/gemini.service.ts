@@ -6,6 +6,7 @@ import {
 import axios from 'axios';
 import { Observable, Subject, timeout } from 'rxjs';
 import { AppConfigService } from '../config/config.service';
+import { withRetry } from '../common';
 
 export type GeminiStreamEvent =
   | { type: 'chunk'; content: string }
@@ -60,11 +61,22 @@ export class GeminiService {
     };
 
     try {
-      const response = await axios.post(url, requestBody, {
-        headers: { 'Content-Type': 'application/json' },
-        responseType: 'stream',
-        timeout: GeminiService.STREAM_TIMEOUT_MS,
-      });
+      const response = await withRetry(
+        () =>
+          axios.post(url, requestBody, {
+            headers: { 'Content-Type': 'application/json' },
+            responseType: 'stream',
+            timeout: GeminiService.STREAM_TIMEOUT_MS,
+          }),
+        {
+          shouldRetry: (error) => {
+            if (axios.isAxiosError(error)) {
+              return !error.response || error.response.status === 429 || error.response.status >= 500;
+            }
+            return true;
+          },
+        },
+      );
 
       let rawBuffer = '';
 
@@ -130,12 +142,23 @@ export class GeminiService {
     };
 
     try {
-      const response = await axios.post(url, requestBody, {
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await withRetry(
+        () =>
+          axios.post(url, requestBody, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            timeout: GeminiService.STREAM_TIMEOUT_MS,
+          }),
+        {
+          shouldRetry: (error) => {
+            if (axios.isAxiosError(error)) {
+              return !error.response || error.response.status === 429 || error.response.status >= 500;
+            }
+            return true;
+          },
         },
-        timeout: GeminiService.STREAM_TIMEOUT_MS,
-      });
+      );
 
       if (
         response.data.candidates &&
