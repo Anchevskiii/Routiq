@@ -12,6 +12,14 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -33,21 +41,30 @@ interface MulterFile {
   buffer?: Buffer;
 }
 
+@ApiTags('Users')
+@ApiBearerAuth()
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Returns the user profile.' })
   @Get('profile')
   async getProfile(@CurrentUser() user: JwtPayload) {
     return this.usersService.findById(user.sub);
   }
 
+  @ApiOperation({ summary: 'Get current user settings' })
+  @ApiResponse({ status: 200, description: 'Returns the user settings.' })
   @Get('settings')
   async getSettings(@CurrentUser() user: JwtPayload) {
     return this.usersService.getSettings(user.sub);
   }
 
+  @ApiOperation({ summary: 'Update user settings' })
+  @ApiBody({ type: UpdateSettingsDto })
+  @ApiResponse({ status: 200, description: 'Settings updated successfully.' })
   @Patch('settings')
   async updateSettings(
     @CurrentUser() user: JwtPayload,
@@ -56,6 +73,9 @@ export class UsersController {
     return this.usersService.updateSettings(user.sub, dto);
   }
 
+  @ApiOperation({ summary: 'Update user profile' })
+  @ApiBody({ type: UpdateProfileDto })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully.' })
   @Patch('profile')
   async updateProfile(
     @CurrentUser() user: JwtPayload,
@@ -64,6 +84,21 @@ export class UsersController {
     return this.usersService.updateProfile(user.sub, updateProfileDto);
   }
 
+  @ApiOperation({ summary: 'Upload user avatar image' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        avatar: {
+          type: 'string',
+          format: 'binary',
+          description: 'Avatar image file (max 5MB, JPEG/PNG/WebP/GIF)',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Avatar uploaded and updated successfully.' })
   @Post('avatar')
   @UseInterceptors(
     FileInterceptor('avatar', {
@@ -111,6 +146,8 @@ export class UsersController {
     );
   }
 
+  @ApiOperation({ summary: 'Delete user account (GDPR)' })
+  @ApiResponse({ status: 200, description: 'Account deleted successfully.' })
   @Delete('account')
   async deleteAccount(@CurrentUser() user: JwtPayload) {
     return this.usersService.deleteAccount(user.sub);

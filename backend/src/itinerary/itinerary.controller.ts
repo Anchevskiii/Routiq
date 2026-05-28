@@ -14,6 +14,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -29,11 +38,19 @@ import { UpdateActivityDto } from './dto/update-activity.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { ItineraryService } from './itinerary.service';
 
+@ApiTags('Itinerary')
+@ApiBearerAuth()
 @Controller('itinerary')
 @UseGuards(JwtAuthGuard)
 export class ItineraryController {
   constructor(private readonly itineraryService: ItineraryService) {}
 
+  @ApiOperation({
+    summary: 'Generate a travel itinerary',
+    description: 'Generates an itinerary using Gemini and streams updates via SSE.',
+  })
+  @ApiBody({ type: CreateItineraryDto })
+  @ApiResponse({ status: 200, description: 'Itinerary generated and streamed successfully.' })
   @Throttle({ 'itinerary-generate': { limit: 5, ttl: 60000 } })
   @UseGuards(ItineraryThrottlerGuard)
   @Post('generate')
@@ -83,6 +100,10 @@ export class ItineraryController {
     });
   }
 
+  @ApiOperation({ summary: 'Get current user itineraries' })
+  @ApiQuery({ name: 'page', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Returns a paginated list of itineraries.' })
   @Get()
   async getUserItineraries(
     @CurrentUser() user: JwtPayload,
@@ -104,6 +125,10 @@ export class ItineraryController {
     };
   }
 
+  @ApiOperation({ summary: 'Get itinerary by ID' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiResponse({ status: 200, description: 'Returns the itinerary details.' })
+  @ApiResponse({ status: 404, description: 'Itinerary not found.' })
   @Get(':id')
   async getItineraryById(
     @Param('id') id: string,
@@ -112,6 +137,11 @@ export class ItineraryController {
     return this.itineraryService.getItineraryById(id, user.sub);
   }
 
+  @ApiOperation({ summary: 'Update itinerary details' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiBody({ type: UpdateItineraryDto })
+  @ApiResponse({ status: 200, description: 'Itinerary updated successfully.' })
+  @ApiResponse({ status: 404, description: 'Itinerary not found.' })
   @Patch(':id')
   async updateItinerary(
     @Param('id') id: string,
@@ -125,6 +155,10 @@ export class ItineraryController {
     );
   }
 
+  @ApiOperation({ summary: 'Delete itinerary (soft delete)' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiResponse({ status: 200, description: 'Itinerary deleted successfully.' })
+  @ApiResponse({ status: 404, description: 'Itinerary not found.' })
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async deleteItinerary(
@@ -134,6 +168,10 @@ export class ItineraryController {
     return this.itineraryService.deleteItinerary(id, user.sub);
   }
 
+  @ApiOperation({ summary: 'Generate share token for itinerary' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiResponse({ status: 200, description: 'Returns the share token.' })
+  @ApiResponse({ status: 404, description: 'Itinerary not found.' })
   @Post(':id/share')
   async generateShareToken(
     @Param('id') id: string,
@@ -142,12 +180,20 @@ export class ItineraryController {
     return this.itineraryService.generateShareToken(id, user.sub);
   }
 
+  @ApiOperation({ summary: 'Get shared itinerary by share token' })
+  @ApiParam({ name: 'shareToken', description: 'Itinerary share token' })
+  @ApiResponse({ status: 200, description: 'Returns the shared itinerary details.' })
+  @ApiResponse({ status: 404, description: 'Itinerary not found.' })
   @Public()
   @Get('shared/:shareToken')
   async getSharedItinerary(@Param('shareToken') shareToken: string) {
     return this.itineraryService.getItineraryByShareToken(shareToken);
   }
 
+  @ApiOperation({ summary: 'Reorder days in itinerary' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiBody({ type: ReorderDaysDto })
+  @ApiResponse({ status: 200, description: 'Days reordered successfully.' })
   @Put(':id/days/reorder')
   async reorderDays(
     @Param('id') id: string,
@@ -157,6 +203,11 @@ export class ItineraryController {
     return this.itineraryService.reorderDays(id, user.sub, reorderDaysDto);
   }
 
+  @ApiOperation({ summary: 'Reorder activities within a specific day' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiParam({ name: 'dayId', description: 'Day ID' })
+  @ApiBody({ type: ReorderActivitiesDto })
+  @ApiResponse({ status: 200, description: 'Activities reordered successfully.' })
   @Put(':id/days/:dayId/activities/reorder')
   async reorderActivities(
     @Param('id') id: string,
@@ -172,6 +223,11 @@ export class ItineraryController {
     );
   }
 
+  @ApiOperation({ summary: 'Update specific activity details' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiParam({ name: 'activityId', description: 'Activity ID' })
+  @ApiBody({ type: UpdateActivityDto })
+  @ApiResponse({ status: 200, description: 'Activity updated successfully.' })
   @Patch(':id/activities/:activityId')
   async updateActivity(
     @Param('id') id: string,
@@ -187,6 +243,11 @@ export class ItineraryController {
     );
   }
 
+  @ApiOperation({ summary: 'Add a new activity to a specific day' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiParam({ name: 'dayId', description: 'Day ID' })
+  @ApiBody({ type: CreateActivityDto })
+  @ApiResponse({ status: 201, description: 'Activity added successfully.' })
   @Post(':id/days/:dayId/activities')
   async addActivity(
     @Param('id') id: string,
@@ -202,6 +263,10 @@ export class ItineraryController {
     );
   }
 
+  @ApiOperation({ summary: 'Delete activity from a specific day' })
+  @ApiParam({ name: 'id', description: 'Itinerary ID' })
+  @ApiParam({ name: 'activityId', description: 'Activity ID' })
+  @ApiResponse({ status: 200, description: 'Activity deleted successfully.' })
   @Delete(':id/activities/:activityId')
   @HttpCode(HttpStatus.OK)
   async deleteActivity(

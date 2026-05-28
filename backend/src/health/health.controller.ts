@@ -1,16 +1,20 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from '../common/decorators/public.decorator';
 
 /**
  * Health check endpoint for monitoring and load balancers.
  * Returns basic application status information.
  */
+@ApiTags('Health')
 @Controller('health')
 export class HealthController {
   /**
    * Basic health check endpoint.
    * Returns 200 OK when the application is running.
    */
+  @ApiOperation({ summary: 'Check API service health status' })
+  @ApiResponse({ status: 200, description: 'Service is healthy.' })
   @Public()
   @Get()
   check() {
