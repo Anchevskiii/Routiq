@@ -35,7 +35,7 @@ INSTRUCTIONS:
    - 2 mainstream attractions (Source: mainstream).
    - 2 niche activities specific to the ${travelType} theme (Source: niche).
    - 1 dining location (Source: dining).
-3. Cluster activities geographically using their Lat/Lng to minimize daily transit time.
+3. Cluster activities geographically using their Lat/Lng to minimize daily transit/travel time.
 4. Assign realistic durations (in hours as number/string) based on type:
    - Meals: 1.0 to 1.5
    - Museums/major sights: 2.0 to 3.0
