@@ -19,7 +19,7 @@ export function buildItineraryPrompt(params: PromptParams): string {
   const serializedAttractions = attractions
     .map(
       (attr) =>
-        `- ID: ${attr.id} | Name: ${attr.name} | Type: ${attr.type} | Source: ${attr.sourceType || 'unknown'} | Lat: ${attr.location.lat}, Lng: ${attr.location.lng}`,
+        `- ${attr.id}: ${attr.name} (${attr.type}) | Source: ${attr.sourceType || 'unknown'} | Lat/Lng: ${attr.location.lat},${attr.location.lng}`,
     )
     .join('\n');
 
@@ -30,18 +30,15 @@ AVAILABLE PLACES:
 ${serializedAttractions}
 
 INSTRUCTIONS:
-1. Use ONLY the provided place IDs.
-2. NO descriptions, NO tips, NO markdown code fences, NO prose.
-3. For each day, you MUST select EXACTLY 5 places:
-   - 2 places MUST be "mainstream" attractions (source: mainstream).
-   - 2 places MUST be "niche" activities specific to the travel type (source: niche).
-   - Exactly 1 of these 5 places MUST be a highly popular meal/restaurant recommendation (source: dining).
-4. You MUST cluster activities per day based on their geographic location (Lat/Lng) to minimize travel time.
-5. For each activity, set a realistic "duration" in HOURS (number or string). Use these ranges:
-  - Meals/restaurants: 1.0 to 1.5
-  - Museums/major attractions: 2.0 to 3.0
-  - Parks/viewpoints/walks: 1.0 to 2.0
-  - Tours/experiences: 2.0 to 4.0
-  Do NOT default everything to 1.5.
-6. OUTPUT FORMAT: A raw JSON array of day objects. Each day object must have: "day" (number), "theme" (string), and "activities" (array of objects with "placeId", "title", "time", "duration" (hours as number or string, e.g. 1.5), "type").`;
+1. Use ONLY the provided place IDs for the activities.
+2. For each day, select EXACTLY 5 places:
+   - 2 mainstream attractions (Source: mainstream).
+   - 2 niche activities specific to the ${travelType} theme (Source: niche).
+   - 1 dining location (Source: dining).
+3. Cluster activities geographically using their Lat/Lng to minimize daily transit time.
+4. Assign realistic durations (in hours as number/string) based on type:
+   - Meals: 1.0 to 1.5
+   - Museums/major sights: 2.0 to 3.0
+   - Parks/walks: 1.0 to 2.0
+   - Tours/experiences: 2.0 to 4.0`;
 }

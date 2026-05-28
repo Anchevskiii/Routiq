@@ -30,7 +30,7 @@ export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private readonly apiKey: string;
   private readonly baseUrl =
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent';
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent';
   private static readonly STREAM_TIMEOUT_MS = 60_000; // Adjusted from 180s to 60s to align better with ARCHITECTURE (20s) while allowing for long streams
 
   constructor(private readonly configService: AppConfigService) {
