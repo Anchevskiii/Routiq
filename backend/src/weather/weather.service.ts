@@ -95,20 +95,21 @@ export class WeatherService {
       try {
         const response = await withRetry(
           () =>
-            axios.get(
-              'https://maps.googleapis.com/maps/api/geocode/json',
-              {
-                params: {
-                  address: destination,
-                  key: googleKey,
-                },
-                timeout: 10000,
+            axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+              params: {
+                address: destination,
+                key: googleKey,
               },
-            ),
+              timeout: 10000,
+            }),
           {
             shouldRetry: (error) => {
               if (axios.isAxiosError(error)) {
-                return !error.response || error.response.status === 429 || error.response.status >= 500;
+                return (
+                  !error.response ||
+                  error.response.status === 429 ||
+                  error.response.status >= 500
+                );
               }
               return true;
             },
@@ -140,21 +141,22 @@ export class WeatherService {
     // Current conditions
     const currentRes = await withRetry(
       () =>
-        axios.get(
-          `${this.googleWeatherBaseUrl}/currentConditions:lookup`,
-          {
-            params: {
-              key: this.googleWeatherApiKey,
-              'location.latitude': lat,
-              'location.longitude': lng,
-            },
-            timeout: 10000,
+        axios.get(`${this.googleWeatherBaseUrl}/currentConditions:lookup`, {
+          params: {
+            key: this.googleWeatherApiKey,
+            'location.latitude': lat,
+            'location.longitude': lng,
           },
-        ),
+          timeout: 10000,
+        }),
       {
         shouldRetry: (error) => {
           if (axios.isAxiosError(error)) {
-            return !error.response || error.response.status === 429 || error.response.status >= 500;
+            return (
+              !error.response ||
+              error.response.status === 429 ||
+              error.response.status >= 500
+            );
           }
           return true;
         },
@@ -164,22 +166,23 @@ export class WeatherService {
     // Forecast (Google supports up to 10 days)
     const forecastRes = await withRetry(
       () =>
-        axios.get(
-          `${this.googleWeatherBaseUrl}/forecast/days:lookup`,
-          {
-            params: {
-              key: this.googleWeatherApiKey,
-              'location.latitude': lat,
-              'location.longitude': lng,
-              days: 10,
-            },
-            timeout: 10000,
+        axios.get(`${this.googleWeatherBaseUrl}/forecast/days:lookup`, {
+          params: {
+            key: this.googleWeatherApiKey,
+            'location.latitude': lat,
+            'location.longitude': lng,
+            days: 10,
           },
-        ),
+          timeout: 10000,
+        }),
       {
         shouldRetry: (error) => {
           if (axios.isAxiosError(error)) {
-            return !error.response || error.response.status === 429 || error.response.status >= 500;
+            return (
+              !error.response ||
+              error.response.status === 429 ||
+              error.response.status >= 500
+            );
           }
           return true;
         },

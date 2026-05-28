@@ -47,10 +47,14 @@ export class ItineraryController {
 
   @ApiOperation({
     summary: 'Generate a travel itinerary',
-    description: 'Generates an itinerary using Gemini and streams updates via SSE.',
+    description:
+      'Generates an itinerary using Gemini and streams updates via SSE.',
   })
   @ApiBody({ type: CreateItineraryDto })
-  @ApiResponse({ status: 200, description: 'Itinerary generated and streamed successfully.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Itinerary generated and streamed successfully.',
+  })
   @Throttle({ 'itinerary-generate': { limit: 5, ttl: 60000 } })
   @UseGuards(ItineraryThrottlerGuard)
   @Post('generate')
@@ -103,7 +107,10 @@ export class ItineraryController {
   @ApiOperation({ summary: 'Get current user itineraries' })
   @ApiQuery({ name: 'page', required: false, type: String })
   @ApiQuery({ name: 'limit', required: false, type: String })
-  @ApiResponse({ status: 200, description: 'Returns a paginated list of itineraries.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns a paginated list of itineraries.',
+  })
   @Get()
   async getUserItineraries(
     @CurrentUser() user: JwtPayload,
@@ -182,7 +189,10 @@ export class ItineraryController {
 
   @ApiOperation({ summary: 'Get shared itinerary by share token' })
   @ApiParam({ name: 'shareToken', description: 'Itinerary share token' })
-  @ApiResponse({ status: 200, description: 'Returns the shared itinerary details.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the shared itinerary details.',
+  })
   @ApiResponse({ status: 404, description: 'Itinerary not found.' })
   @Public()
   @Get('shared/:shareToken')
@@ -207,7 +217,10 @@ export class ItineraryController {
   @ApiParam({ name: 'id', description: 'Itinerary ID' })
   @ApiParam({ name: 'dayId', description: 'Day ID' })
   @ApiBody({ type: ReorderActivitiesDto })
-  @ApiResponse({ status: 200, description: 'Activities reordered successfully.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Activities reordered successfully.',
+  })
   @Put(':id/days/:dayId/activities/reorder')
   async reorderActivities(
     @Param('id') id: string,

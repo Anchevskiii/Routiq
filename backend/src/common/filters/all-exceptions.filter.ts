@@ -44,8 +44,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       code = exception.constructor.name.replace('Exception', '').toUpperCase();
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
-      this.logger.warn(`Prisma error caught: ${exception.code} - ${exception.message}`);
-      
+      this.logger.warn(
+        `Prisma error caught: ${exception.code} - ${exception.message}`,
+      );
+
       switch (exception.code) {
         case 'P2002': // Unique constraint violation
           status = HttpStatus.CONFLICT;

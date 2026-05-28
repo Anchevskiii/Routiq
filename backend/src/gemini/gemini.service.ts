@@ -71,7 +71,11 @@ export class GeminiService {
         {
           shouldRetry: (error) => {
             if (axios.isAxiosError(error)) {
-              return !error.response || error.response.status === 429 || error.response.status >= 500;
+              return (
+                !error.response ||
+                error.response.status === 429 ||
+                error.response.status >= 500
+              );
             }
             return true;
           },
@@ -153,7 +157,11 @@ export class GeminiService {
         {
           shouldRetry: (error) => {
             if (axios.isAxiosError(error)) {
-              return !error.response || error.response.status === 429 || error.response.status >= 500;
+              return (
+                !error.response ||
+                error.response.status === 429 ||
+                error.response.status >= 500
+              );
             }
             return true;
           },
@@ -326,7 +334,9 @@ export class GeminiService {
           const chunks: Buffer[] = [];
           err.response.data.on('data', (c: Buffer) => chunks.push(c));
           err.response.data.on('end', () => {
-            this.logger.error(`Gemini error body: ${Buffer.concat(chunks).toString()}`);
+            this.logger.error(
+              `Gemini error body: ${Buffer.concat(chunks).toString()}`,
+            );
           });
         }
         subject.error(this.handleGeminiError(err));

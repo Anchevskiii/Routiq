@@ -298,11 +298,7 @@ export class ItineraryService {
     return { shareToken: updatedItinerary.shareToken };
   }
 
-  async reorderDays(
-    itineraryId: string,
-    userId: string,
-    dto: ReorderDaysDto,
-  ) {
+  async reorderDays(itineraryId: string, userId: string, dto: ReorderDaysDto) {
     const itinerary = await this.prisma.itinerary.findFirst({
       where: { id: itineraryId, userId },
     });
@@ -336,8 +332,14 @@ export class ItineraryService {
     const result = await this.prisma.$transaction(phase2);
 
     // Background: refresh weather snapshots for the newly assigned dates
-    this.refreshWeatherForReorderedDays(itinerary.destination, dto.dayIds, startDate).catch(
-      (err: unknown) => this.logger.warn(`Weather refresh after reorder failed: ${err instanceof Error ? err.message : String(err)}`),
+    this.refreshWeatherForReorderedDays(
+      itinerary.destination,
+      dto.dayIds,
+      startDate,
+    ).catch((err: unknown) =>
+      this.logger.warn(
+        `Weather refresh after reorder failed: ${err instanceof Error ? err.message : String(err)}`,
+      ),
     );
 
     return result;
@@ -433,7 +435,10 @@ export class ItineraryService {
     if (dto.startTime) {
       const newTime = this.parseTime(dto.startTime);
       insertAt = existing.findIndex(
-        (a) => a.startTime !== null && a.startTime !== undefined && this.parseTime(a.startTime) > newTime,
+        (a) =>
+          a.startTime !== null &&
+          a.startTime !== undefined &&
+          this.parseTime(a.startTime) > newTime,
       );
       if (insertAt === -1) insertAt = existing.length;
     }

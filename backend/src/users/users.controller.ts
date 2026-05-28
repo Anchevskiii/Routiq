@@ -98,7 +98,10 @@ export class UsersController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Avatar uploaded and updated successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Avatar uploaded and updated successfully.',
+  })
   @Post('avatar')
   @UseInterceptors(
     FileInterceptor('avatar', {

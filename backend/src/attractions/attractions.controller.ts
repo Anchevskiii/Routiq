@@ -29,11 +29,26 @@ import { FormattedPlace } from './types';
 export class AttractionsController {
   constructor(private readonly attractionsService: AttractionsService) {}
 
-  @ApiOperation({ summary: 'Search for attractions based on queries/locations' })
+  @ApiOperation({
+    summary: 'Search for attractions based on queries/locations',
+  })
   @ApiQuery({ name: 'query', type: String, description: 'Search keywords' })
-  @ApiQuery({ name: 'location', required: false, type: String, description: 'Location' })
-  @ApiQuery({ name: 'radius', required: false, type: Number, description: 'Radius in meters' })
-  @ApiResponse({ status: 200, description: 'Returns matching formatted places.' })
+  @ApiQuery({
+    name: 'location',
+    required: false,
+    type: String,
+    description: 'Location',
+  })
+  @ApiQuery({
+    name: 'radius',
+    required: false,
+    type: Number,
+    description: 'Radius in meters',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns matching formatted places.',
+  })
   @Get('search')
   async searchAttractions(
     @Query() searchDto: SearchAttractionsDto,
@@ -57,7 +72,10 @@ export class AttractionsController {
   @ApiOperation({ summary: 'Get alternative attractions' })
   @ApiParam({ name: 'id', description: 'Original Place ID' })
   @ApiBody({ type: GetAlternativesDto })
-  @ApiResponse({ status: 200, description: 'Returns a list of alternative places.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns a list of alternative places.',
+  })
   @Post(':id/alternatives')
   async getAlternatives(
     @Param('id') id: string,

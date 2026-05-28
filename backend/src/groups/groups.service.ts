@@ -720,8 +720,13 @@ export class GroupsService {
         include: {
           itinerary: {
             select: {
-              id: true, destination: true, startDate: true, endDate: true,
-              travelType: true, totalDays: true, createdAt: true,
+              id: true,
+              destination: true,
+              startDate: true,
+              endDate: true,
+              travelType: true,
+              totalDays: true,
+              createdAt: true,
               user: { select: { id: true, name: true, avatarUrl: true } },
             },
           },
@@ -875,7 +880,12 @@ export class GroupsService {
     });
   }
 
-  async toggleReaction(groupId: string, commentId: string, userId: string, emoji: string) {
+  async toggleReaction(
+    groupId: string,
+    commentId: string,
+    userId: string,
+    emoji: string,
+  ) {
     await this.requireAcceptedMember(groupId, userId);
 
     const comment = await this.prisma.comment.findFirst({
@@ -894,7 +904,9 @@ export class GroupsService {
       return { removed: true };
     }
 
-    await this.prisma.commentReaction.create({ data: { commentId, userId, emoji } });
+    await this.prisma.commentReaction.create({
+      data: { commentId, userId, emoji },
+    });
     return { removed: false };
   }
 

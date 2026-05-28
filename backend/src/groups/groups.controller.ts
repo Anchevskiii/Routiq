@@ -48,7 +48,10 @@ export class GroupsController {
   }
 
   @ApiOperation({ summary: 'Get pending invitations for the current user' })
-  @ApiResponse({ status: 200, description: 'Returns a list of pending invitations.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns a list of pending invitations.',
+  })
   @Get('invitations')
   async getPendingInvitations(@CurrentUser() user: JwtPayload) {
     return this.groupsService.getPendingInvitations(user.sub);
@@ -210,7 +213,11 @@ export class GroupsController {
     @Param('groupItineraryId') groupItineraryId: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.groupsService.removeItineraryFromGroup(id, user.sub, groupItineraryId);
+    return this.groupsService.removeItineraryFromGroup(
+      id,
+      user.sub,
+      groupItineraryId,
+    );
   }
 
   // ─── Voting & Comments ───────────────────────────────────
@@ -285,6 +292,11 @@ export class GroupsController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: AddReactionDto,
   ) {
-    return this.groupsService.toggleReaction(groupId, commentId, user.sub, dto.emoji);
+    return this.groupsService.toggleReaction(
+      groupId,
+      commentId,
+      user.sub,
+      dto.emoji,
+    );
   }
 }

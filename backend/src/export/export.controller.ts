@@ -1,5 +1,11 @@
 import { Controller, Get, Param, UseGuards, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -12,7 +18,9 @@ import { JwtPayload } from '../common/types/jwt-payload.type';
 export class ExportController {
   constructor(private readonly exportService: ExportService) {}
 
-  @ApiOperation({ summary: 'Export private itinerary to an .ics Calendar file' })
+  @ApiOperation({
+    summary: 'Export private itinerary to an .ics Calendar file',
+  })
   @ApiBearerAuth()
   @ApiParam({ name: 'id', description: 'Itinerary ID' })
   @ApiResponse({ status: 200, description: 'Calendar file download stream.' })
@@ -44,7 +52,9 @@ export class ExportController {
     }
   }
 
-  @ApiOperation({ summary: 'Export shared public itinerary to an .ics Calendar file' })
+  @ApiOperation({
+    summary: 'Export shared public itinerary to an .ics Calendar file',
+  })
   @ApiParam({ name: 'id', description: 'Itinerary ID' })
   @ApiResponse({ status: 200, description: 'Calendar file download stream.' })
   @Public()

@@ -139,7 +139,11 @@ export class AttractionsService {
         {
           shouldRetry: (error) => {
             if (axios.isAxiosError(error)) {
-              return !error.response || error.response.status === 429 || error.response.status >= 500;
+              return (
+                !error.response ||
+                error.response.status === 429 ||
+                error.response.status >= 500
+              );
             }
             return true;
           },
@@ -194,7 +198,11 @@ export class AttractionsService {
         {
           shouldRetry: (error) => {
             if (axios.isAxiosError(error)) {
-              return !error.response || error.response.status === 429 || error.response.status >= 500;
+              return (
+                !error.response ||
+                error.response.status === 429 ||
+                error.response.status >= 500
+              );
             }
             return true;
           },

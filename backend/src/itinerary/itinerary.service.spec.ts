@@ -121,7 +121,9 @@ const savedItineraryRecord = {
 // ---------------------------------------------------------------------------
 
 function buildService(): ItineraryService {
-  const mockWeatherService = { getForecast: jest.fn().mockResolvedValue({ forecast: [] }) };
+  const mockWeatherService = {
+    getForecast: jest.fn().mockResolvedValue({ forecast: [] }),
+  };
   return new ItineraryService(
     mockPrisma as unknown as PrismaService,
     mockGeminiService as unknown as GeminiService,
@@ -232,7 +234,9 @@ describe('ItineraryService', () => {
       );
 
       expect(mockPrisma.itinerary.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ id: itineraryId }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({ id: itineraryId }),
+        }),
       );
       // userId key must NOT be in the where clause
       const whereArg = mockPrisma.itinerary.findFirst.mock.calls[0][0].where;
