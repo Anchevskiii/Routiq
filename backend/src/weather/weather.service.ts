@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { AppConfigService } from '../config/config.service';
+import { withRetry } from '../common';
 import { ForecastDay, WeatherData } from './types';
 
 interface GoogleForecastDay {
@@ -92,14 +93,25 @@ export class WeatherService {
       this.googleWeatherApiKey || this.configService.getGooglePlacesApiKey();
     if (googleKey) {
       try {
-        const response = await axios.get(
-          'https://maps.googleapis.com/maps/api/geocode/json',
+        const response = await withRetry(
+          () =>
+            axios.get(
+              'https://maps.googleapis.com/maps/api/geocode/json',
+              {
+                params: {
+                  address: destination,
+                  key: googleKey,
+                },
+                timeout: 10000,
+              },
+            ),
           {
-            params: {
-              address: destination,
-              key: googleKey,
+            shouldRetry: (error) => {
+              if (axios.isAxiosError(error)) {
+                return !error.response || error.response.status === 429 || error.response.status >= 500;
+              }
+              return true;
             },
-            timeout: 10000,
           },
         );
 
@@ -126,29 +138,51 @@ export class WeatherService {
     days: number,
   ): Promise<WeatherData> {
     // Current conditions
-    const currentRes = await axios.get(
-      `${this.googleWeatherBaseUrl}/currentConditions:lookup`,
+    const currentRes = await withRetry(
+      () =>
+        axios.get(
+          `${this.googleWeatherBaseUrl}/currentConditions:lookup`,
+          {
+            params: {
+              key: this.googleWeatherApiKey,
+              'location.latitude': lat,
+              'location.longitude': lng,
+            },
+            timeout: 10000,
+          },
+        ),
       {
-        params: {
-          key: this.googleWeatherApiKey,
-          'location.latitude': lat,
-          'location.longitude': lng,
+        shouldRetry: (error) => {
+          if (axios.isAxiosError(error)) {
+            return !error.response || error.response.status === 429 || error.response.status >= 500;
+          }
+          return true;
         },
-        timeout: 10000,
       },
     );
 
     // Forecast (Google supports up to 10 days)
-    const forecastRes = await axios.get(
-      `${this.googleWeatherBaseUrl}/forecast/days:lookup`,
+    const forecastRes = await withRetry(
+      () =>
+        axios.get(
+          `${this.googleWeatherBaseUrl}/forecast/days:lookup`,
+          {
+            params: {
+              key: this.googleWeatherApiKey,
+              'location.latitude': lat,
+              'location.longitude': lng,
+              days: 10,
+            },
+            timeout: 10000,
+          },
+        ),
       {
-        params: {
-          key: this.googleWeatherApiKey,
-          'location.latitude': lat,
-          'location.longitude': lng,
-          days: 10,
+        shouldRetry: (error) => {
+          if (axios.isAxiosError(error)) {
+            return !error.response || error.response.status === 429 || error.response.status >= 500;
+          }
+          return true;
         },
-        timeout: 10000,
       },
     );
 

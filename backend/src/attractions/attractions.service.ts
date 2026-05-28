@@ -6,6 +6,7 @@ import {
 import { TravelType } from '@prisma/client';
 import axios from 'axios';
 import { AppConfigService } from '../config/config.service';
+import { withRetry } from '../common';
 import { FormattedPlace } from './types';
 
 interface GooglePlaceLegacy {
@@ -125,14 +126,25 @@ export class AttractionsService {
     radius?: number,
   ): Promise<FormattedPlace[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/textsearch/json`, {
-        params: {
-          query,
-          key: this.getApiKeyOrThrow(),
-          ...(radius ? { radius } : {}),
+      const response = await withRetry(
+        () =>
+          axios.get(`${this.baseUrl}/textsearch/json`, {
+            params: {
+              query,
+              key: this.getApiKeyOrThrow(),
+              ...(radius ? { radius } : {}),
+            },
+            timeout: 10000,
+          }),
+        {
+          shouldRetry: (error) => {
+            if (axios.isAxiosError(error)) {
+              return !error.response || error.response.status === 429 || error.response.status >= 500;
+            }
+            return true;
+          },
         },
-        timeout: 10000,
-      });
+      );
 
       if (
         response.data.status !== 'OK' &&
@@ -168,15 +180,26 @@ export class AttractionsService {
 
   async getAttractionDetails(placeId: string): Promise<FormattedPlace> {
     try {
-      const response = await axios.get(`${this.baseUrl}/details/json`, {
-        params: {
-          place_id: placeId,
-          key: this.getApiKeyOrThrow(),
-          fields:
-            'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,photos,editorial_summary',
+      const response = await withRetry(
+        () =>
+          axios.get(`${this.baseUrl}/details/json`, {
+            params: {
+              place_id: placeId,
+              key: this.getApiKeyOrThrow(),
+              fields:
+                'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,photos,editorial_summary',
+            },
+            timeout: 10000,
+          }),
+        {
+          shouldRetry: (error) => {
+            if (axios.isAxiosError(error)) {
+              return !error.response || error.response.status === 429 || error.response.status >= 500;
+            }
+            return true;
+          },
         },
-        timeout: 10000,
-      });
+      );
 
       if (response.data.status !== 'OK') {
         throw new Error(`API status: ${response.data.status}`);
