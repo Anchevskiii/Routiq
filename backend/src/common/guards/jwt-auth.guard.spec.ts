@@ -160,6 +160,44 @@ describe('JwtAuthGuard', () => {
   });
 
   // =========================================================================
+  // Test-mode bypass
+  // =========================================================================
+
+  describe('test-mode bypass', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it('returns true when NODE_ENV is test and request.user is already set', async () => {
+      process.env.NODE_ENV = 'test';
+      const { ctx, request } = buildContextWithRequest();
+      request.user = { sub: 'test-user', email: 'test@example.com' } as JwtPayload;
+
+      const result = await guard.canActivate(ctx);
+
+      expect(result).toBe(true);
+      expect(mockSupabaseService.getClient).not.toHaveBeenCalled();
+      expect(mockExtractToken).not.toHaveBeenCalled();
+    });
+
+    it('does not bypass when NODE_ENV is not test', async () => {
+      process.env.NODE_ENV = 'development';
+      const { ctx, request } = buildContextWithRequest();
+      request.user = { sub: 'test-user', email: 'test@example.com' } as JwtPayload;
+      mockSupabaseClient.auth.getUser.mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+
+      await guard.canActivate(ctx);
+
+      expect(mockSupabaseService.getClient).toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
   // Missing / malformed token
   // =========================================================================
 
