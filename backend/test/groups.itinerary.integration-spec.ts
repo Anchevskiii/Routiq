@@ -15,7 +15,7 @@ describe('GroupsService (integration)', () => {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          envFilePath: '.env',
+          envFilePath: '.env.test',
         }),
         PrismaModule,
       ],

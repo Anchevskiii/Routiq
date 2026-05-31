@@ -29,7 +29,7 @@ describe('Regression (e2e)', () => {
       .send({ name: `Regression Group ${Date.now()}` })
       .expect(201);
 
-    const groupId = groupRes.body.id as string;
+    const groupId = groupRes.body.data.id as string;
     const itinerary = await createTestItinerary(prisma, userId, {
       destination: 'Rome',
     });

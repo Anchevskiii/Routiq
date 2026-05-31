@@ -22,7 +22,13 @@ describe('App (e2e)', () => {
   });
 
   it('/api/health (GET) returns health status', () => {
-    return request(app.getHttpServer()).get('/api/health').expect(200);
+    return request(app.getHttpServer())
+      .get('/api/health')
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.status).toBe('healthy');
+      });
   });
 
   it('/api/users/profile (GET) returns the current user', () => {
@@ -30,8 +36,9 @@ describe('App (e2e)', () => {
       .get('/api/users/profile')
       .expect(200)
       .expect((res) => {
-        expect(res.body.id).toBeDefined();
-        expect(res.body.email).toBeDefined();
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.id).toBeDefined();
+        expect(res.body.data.email).toBeDefined();
       });
   });
 
@@ -43,7 +50,8 @@ describe('App (e2e)', () => {
       })
       .expect(200)
       .expect((res) => {
-        expect(res.body.name).toBe('Updated Name');
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.name).toBe('Updated Name');
       });
   });
 });

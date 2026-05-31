@@ -5,16 +5,6 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { createTestApp } from './test-app';
 import { createTestItinerary, createTestUser } from './test-data';
 
-interface ItineraryListResponse {
-  data: Array<{ id: string; destination: string }>;
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-
 describe('Itinerary + Groups (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -67,8 +57,9 @@ describe('Itinerary + Groups (e2e)', () => {
       .get('/api/itinerary')
       .expect(200);
 
-    const listBody = listRes.body as ItineraryListResponse;
-    const ids = listBody.data.map((item) => item.id);
+    // TransformInterceptor maps paginated data as body.data array directly
+    const listData = listRes.body.data as Array<{ id: string; destination: string }>;
+    const ids = listData.map((item) => item.id);
     expect(ids).toContain(itinerary.id);
 
     await request(app.getHttpServer())
@@ -76,14 +67,16 @@ describe('Itinerary + Groups (e2e)', () => {
       .send({ destination: 'Lisbon Updated' })
       .expect(200)
       .expect((res) => {
-        expect(res.body.destination).toBe('Lisbon Updated');
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.destination).toBe('Lisbon Updated');
       });
 
     await request(app.getHttpServer())
       .delete(`/api/itinerary/${itinerary.id}`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.message).toBe('Itinerary deleted successfully');
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.message).toBe('Itinerary deleted successfully');
       });
   });
 
@@ -93,7 +86,7 @@ describe('Itinerary + Groups (e2e)', () => {
       .send({ name: `Group ${Date.now()}` })
       .expect(201);
 
-    const groupId = groupRes.body.id as string;
+    const groupId = groupRes.body.data.id as string;
 
     const itinerary = await createTestItinerary(prisma, userId, {
       destination: 'Berlin',
@@ -104,14 +97,16 @@ describe('Itinerary + Groups (e2e)', () => {
       .send({ itineraryId: itinerary.id })
       .expect(201)
       .expect((res) => {
-        expect(res.body.itinerary.id).toBe(itinerary.id);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.itinerary.id).toBe(itinerary.id);
       });
 
     await request(app.getHttpServer())
       .get(`/api/groups/${groupId}`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.itineraries.length).toBe(1);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.itineraries.length).toBe(1);
       });
   });
 });

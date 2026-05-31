@@ -18,6 +18,7 @@ import { MailService } from '../src/mail/mail.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { WeatherService } from '../src/weather/weather.service';
 import { WeatherData } from '../src/weather/types';
+import { AllExceptionsFilter, TransformInterceptor } from '../src/common';
 
 export interface TestAuthUser {
   sub: string;
@@ -168,6 +169,8 @@ export async function createTestApp(): Promise<TestAppContext> {
       forbidNonWhitelisted: true,
     }),
   );
+  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalInterceptors(new TransformInterceptor());
   app.use(cookieParser());
   app.use((req: Request & { user?: TestAuthUser }, _res: Response, next: NextFunction) => {
     req.user = currentUser;
