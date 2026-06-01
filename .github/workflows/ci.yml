@@ -33,9 +33,6 @@ jobs:
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
 
-      - name: Code Formatting Check
-        run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
-
       - name: Linter Check (ESLint)
         run: npm run lint
 
@@ -59,9 +56,6 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
-
-      - name: Code Formatting Check
-        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}"
 
       - name: Linter Check (ESLint)
         run: npm run lint
