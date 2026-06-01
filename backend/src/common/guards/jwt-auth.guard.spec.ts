@@ -173,7 +173,10 @@ describe('JwtAuthGuard', () => {
     it('returns true when NODE_ENV is test and request.user is already set', async () => {
       process.env.NODE_ENV = 'test';
       const { ctx, request } = buildContextWithRequest();
-      request.user = { sub: 'test-user', email: 'test@example.com' } as JwtPayload;
+      request.user = {
+        sub: 'test-user',
+        email: 'test@example.com',
+      } as JwtPayload;
 
       const result = await guard.canActivate(ctx);
 
@@ -185,7 +188,10 @@ describe('JwtAuthGuard', () => {
     it('does not bypass when NODE_ENV is not test', async () => {
       process.env.NODE_ENV = 'development';
       const { ctx, request } = buildContextWithRequest();
-      request.user = { sub: 'test-user', email: 'test@example.com' } as JwtPayload;
+      request.user = {
+        sub: 'test-user',
+        email: 'test@example.com',
+      } as JwtPayload;
       mockSupabaseClient.auth.getUser.mockResolvedValue({
         data: { user: supabaseUser },
         error: null,

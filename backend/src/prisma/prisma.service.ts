@@ -101,14 +101,18 @@ function createExtendedClient(pool: Pool) {
         async delete({ model, args, query }) {
           if (SOFT_DELETE_MODELS.has(model)) {
             const client = Prisma.getExtensionContext(this) as PrismaClient;
-            const delegateKey =
-              model.charAt(0).toLowerCase() + model.slice(1);
-            const ctx = (client as unknown as Record<string, {
-              updateMany(updateArgs: {
-                where: Record<string, unknown>;
-                data: { deletedAt: Date };
-              }): Prisma.PrismaPromise<{ count: number }>;
-            }>)[delegateKey];
+            const delegateKey = model.charAt(0).toLowerCase() + model.slice(1);
+            const ctx = (
+              client as unknown as Record<
+                string,
+                {
+                  updateMany(updateArgs: {
+                    where: Record<string, unknown>;
+                    data: { deletedAt: Date };
+                  }): Prisma.PrismaPromise<{ count: number }>;
+                }
+              >
+            )[delegateKey];
             if (!ctx?.updateMany) {
               return query(args);
             }
@@ -125,14 +129,18 @@ function createExtendedClient(pool: Pool) {
         async deleteMany({ model, args, query }) {
           if (SOFT_DELETE_MODELS.has(model)) {
             const client = Prisma.getExtensionContext(this) as PrismaClient;
-            const delegateKey =
-              model.charAt(0).toLowerCase() + model.slice(1);
-            const ctx = (client as unknown as Record<string, {
-              updateMany(updateArgs: {
-                where: Record<string, unknown>;
-                data: { deletedAt: Date };
-              }): Prisma.PrismaPromise<{ count: number }>;
-            }>)[delegateKey];
+            const delegateKey = model.charAt(0).toLowerCase() + model.slice(1);
+            const ctx = (
+              client as unknown as Record<
+                string,
+                {
+                  updateMany(updateArgs: {
+                    where: Record<string, unknown>;
+                    data: { deletedAt: Date };
+                  }): Prisma.PrismaPromise<{ count: number }>;
+                }
+              >
+            )[delegateKey];
             if (!ctx?.updateMany) {
               return query(args);
             }

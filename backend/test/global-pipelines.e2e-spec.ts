@@ -1,4 +1,8 @@
-import { ExecutionContext, INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  ExecutionContext,
+  INestApplication,
+  ValidationPipe,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import cookieParser from 'cookie-parser';
@@ -85,7 +89,9 @@ describe('Global Pipelines (e2e)', () => {
         .useValue(testAuthGuard)
         .overrideProvider(GeminiService)
         .useValue({
-          generateStream: () => ({ subscribe: (obs: { complete: () => void }) => obs.complete() }),
+          generateStream: () => ({
+            subscribe: (obs: { complete: () => void }) => obs.complete(),
+          }),
           streamGenerate: async () => [],
         })
         .overrideProvider(AttractionsService)
@@ -104,10 +110,16 @@ describe('Global Pipelines (e2e)', () => {
       rateApp.useGlobalInterceptors(new TransformInterceptor());
       rateApp.use(cookieParser());
       // Replicate the express middleware that registers req.user to satisfy JwtAuthGuard testing logic
-      rateApp.use((req: Request & { user?: typeof currentUser }, _res: Response, next: NextFunction) => {
-        req.user = currentUser;
-        next();
-      });
+      rateApp.use(
+        (
+          req: Request & { user?: typeof currentUser },
+          _res: Response,
+          next: NextFunction,
+        ) => {
+          req.user = currentUser;
+          next();
+        },
+      );
       rateApp.setGlobalPrefix('api');
       await rateApp.init();
     });
@@ -141,7 +153,9 @@ describe('Global Pipelines (e2e)', () => {
 
       expect(response.body.success).toBe(false);
       expect(response.body.error.code).toBe('THROTTLER');
-      expect(response.body.error.message).toBe('ThrottlerException: Too Many Requests');
+      expect(response.body.error.message).toBe(
+        'ThrottlerException: Too Many Requests',
+      );
     });
   });
 });

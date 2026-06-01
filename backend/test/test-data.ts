@@ -41,10 +41,8 @@ export async function createTestItinerary(
   userId: string,
   overrides: TestItineraryInput = {},
 ) {
-  const startDate =
-    overrides.startDate ?? new Date('2026-06-01T00:00:00.000Z');
-  const endDate =
-    overrides.endDate ?? new Date('2026-06-03T00:00:00.000Z');
+  const startDate = overrides.startDate ?? new Date('2026-06-01T00:00:00.000Z');
+  const endDate = overrides.endDate ?? new Date('2026-06-03T00:00:00.000Z');
 
   return prisma.itinerary.create({
     data: {
