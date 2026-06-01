@@ -35,7 +35,15 @@ export const LoadingAttractionsPanel: React.FC<Props> = ({ attractions }) => (
               className="flex gap-3 p-3 bg-gray-50 dark:bg-[#16142e] rounded-xl border border-line hover:border-primary/20 transition-colors"
             >
               {place.photos?.[0] ? (
-                <img src={place.photos[0]} alt={place.name} className="w-16 h-16 rounded-lg object-cover bg-gray-200 dark:bg-[#2a2650]" />
+                <img
+                  src={
+                    place.photos[0].startsWith('http')
+                      ? place.photos[0]
+                      : `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${place.photos[0]}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
+                  }
+                  alt={place.name}
+                  className="w-16 h-16 rounded-lg object-cover bg-gray-200 dark:bg-[#2a2650]"
+                />
               ) : (
                 <div className="w-16 h-16 rounded-lg bg-gray-200 dark:bg-[#2a2650] flex items-center justify-center text-ink-faint">
                   <MapPin className="w-6 h-6" />
