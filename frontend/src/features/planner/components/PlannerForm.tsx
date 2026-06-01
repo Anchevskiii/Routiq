@@ -304,6 +304,9 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
         {/* Form card */}
         <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[20px] p-[26px] shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)]">
           <form onSubmit={handleSubmit(onSubmit)}>
+            <input type="hidden" {...register('startDate')} />
+            <input type="hidden" {...register('endDate')} />
+            <input type="hidden" {...register('travelType')} />
 
             {/* 01 Destination */}
             <div className="mb-[22px]">
