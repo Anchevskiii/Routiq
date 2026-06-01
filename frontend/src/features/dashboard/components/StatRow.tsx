@@ -1,0 +1,39 @@
+import React from 'react'
+import { motion } from 'framer-motion'
+import { TrendingUp, Users, Heart } from 'lucide-react'
+import { fadeUp, stagger } from '../animations'
+
+const STATS = [
+  { key: 'total',  label: 'Total trips', icon: TrendingUp, cls: 'bg-blue-50  dark:bg-blue-900/30  text-blue-600'  },
+  { key: 'groups', label: 'Groups',      icon: Users,      cls: 'bg-sky-50    dark:bg-sky-900/30     text-sky-500'     },
+  { key: 'shared', label: 'Shared',      icon: Heart,      cls: 'bg-pink-50   dark:bg-pink-900/30    text-pink-500'    },
+]
+
+interface Props {
+  total: number
+  groups: number
+  shared: number
+}
+
+export const StatRow: React.FC<Props> = ({ total, groups, shared }) => {
+  const values: Record<string, number> = { total, groups, shared }
+
+  return (
+    <motion.div variants={stagger} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {STATS.map(({ key, label, icon: Icon, cls }) => (
+        <motion.div
+          key={key}
+          variants={fadeUp}
+          whileHover={{ y: -3, scale: 1.03 }}
+          className="rounded-2xl p-4 flex flex-col gap-2 bg-white dark:bg-[#16142e] shadow-sm"
+        >
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${cls}`}>
+            <Icon className="w-[15px] h-[15px]" />
+          </div>
+          <div className="text-2xl font-bold leading-none text-blue-600 dark:text-blue-300">{values[key]}</div>
+          <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</div>
+        </motion.div>
+      ))}
+    </motion.div>
+  )
+}

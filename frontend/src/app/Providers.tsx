@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from 'react'
 import { authApi } from '@/api/auth.api'
 import { supabase } from '@/api/supabase'
@@ -19,6 +20,8 @@ interface AuthContextType {
   logout: () => Promise<void>
   loginWithGoogle: () => void
   refreshToken: () => Promise<void>
+  refreshUser: () => Promise<void>
+  setLoginAnimating: (v: boolean) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -38,31 +41,77 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoginAnimating, setIsLoginAnimating] = useState(false)
+
+  const userRef = useRef(user)
+  userRef.current = user
 
   useEffect(() => {
-    // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        authApi.getMe().then(setUser).catch(() => setUser(null))
-      } else {
-        setUser(null)
-      }
-      setIsLoading(false)
-    })
+    let isMounted = true
 
-    // Listen for changes on auth state (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          authApi.getMe().then(setUser).catch(() => setUser(null))
+          const u = await authApi.getMe()
+          if (isMounted) {
+            setUser(u)
+          }
         } else {
+          if (isMounted) {
+            setUser(null)
+          }
+        }
+      } catch {
+        if (isMounted) {
           setUser(null)
         }
-        setIsLoading(false)
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    initAuth()
+
+    // Listen for subsequent changes on auth state
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'INITIAL_SESSION') {
+          // Already handled by initAuth
+          return
+        }
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          if (!userRef.current) {
+            setIsLoading(true)
+          }
+          try {
+            const u = await authApi.getMe()
+            if (isMounted) {
+              setUser(u)
+            }
+          } catch {
+            if (isMounted) {
+              setUser(null)
+            }
+          } finally {
+            if (isMounted) {
+              setIsLoading(false)
+            }
+          }
+        } else if (event === 'SIGNED_OUT') {
+          if (isMounted) {
+            setUser(null)
+            setIsLoading(false)
+          }
+        }
       }
     )
 
     return () => {
+      isMounted = false
       subscription.unsubscribe()
     }
   }, [])
@@ -96,18 +145,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshToken = useCallback(async () => Promise.resolve(), [])
 
+  const refreshUser = useCallback(async () => {
+    const updatedUser = await authApi.getMe().catch(() => null)
+    setUser(updatedUser)
+  }, [])
+
   const value: AuthContextType = useMemo(
     () => ({
       user,
-      isAuthenticated: Boolean(user),
+      isAuthenticated: Boolean(user) && !isLoginAnimating,
       isLoading,
       login,
       register,
       logout,
       loginWithGoogle: authApi.loginWithGoogle,
       refreshToken,
+      refreshUser,
+      setLoginAnimating: setIsLoginAnimating,
     }),
-    [user, isLoading, login, logout, register, refreshToken]
+    [user, isLoading, isLoginAnimating, login, logout, register, refreshToken, refreshUser]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

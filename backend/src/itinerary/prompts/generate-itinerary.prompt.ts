@@ -10,116 +10,35 @@ interface PromptParams {
   travelType: TravelType;
   weatherData: WeatherData;
   attractions: FormattedPlace[];
-}
-
-function getTravelTypeDescription(travelType: TravelType): string {
-  switch (travelType as string) {
-    case 'CULTURAL':
-      return 'focused on museums, historical sites, cultural experiences, and local traditions';
-    case 'GASTRONOMIC':
-      return 'focused on local cuisine, food markets, cooking classes, and restaurant experiences';
-    case 'ADVENTURE':
-      return 'focused on adrenaline activities, extreme sports, and exciting experiences';
-    case 'NATURE':
-      return 'focused on outdoor activities, parks, natural landscapes, and wildlife';
-    case 'RELAX':
-      return 'focused on slower pace activities, wellness, scenic spots, and leisure time';
-    default:
-      return 'focused on personalized travel experiences';
-  }
+  travelTimeContext: string;
 }
 
 export function buildItineraryPrompt(params: PromptParams): string {
-  const {
-    destination,
-    startDate,
-    endDate,
-    days,
-    travelType,
-    weatherData,
-    attractions,
-  } = params;
+  const { destination, days, travelType, attractions } = params;
 
-  return `You are an expert travel planner creating a detailed ${days}-day itinerary for ${destination}.
+  const serializedAttractions = attractions
+    .map(
+      (attr) =>
+        `- ${attr.id}: ${attr.name} (${attr.type}) | Source: ${attr.sourceType || 'unknown'} | Lat/Lng: ${attr.location.lat},${attr.location.lng}`,
+    )
+    .join('\n');
 
-**Trip Details:**
-- Destination: ${destination}
-- Start Date: ${startDate}
-- End Date: ${endDate}
-- Duration: ${days} days
-- Travel Type: ${travelType} (${getTravelTypeDescription(travelType)})
+  return `ROLE: Travel Assistant.
+MISSION: Create a ${days}-day ${travelType} itinerary for ${destination}.
 
-**Weather Forecast:**
-${JSON.stringify(weatherData, null, 2)}
+AVAILABLE PLACES:
+${serializedAttractions}
 
-**Available Attractions:**
-${attractions.map((attr) => `- ${attr.name}: ${attr.description || 'No description available'} (Type: ${attr.type || 'General'})`).join('\n')}
-
-**Instructions:**
-1. Create a comprehensive day-by-day itinerary that maximizes the travel experience
-2. Consider the weather forecast when planning outdoor activities
-3. Include relevant attractions from the provided list
-4. Optimize the route to minimize travel time between locations
-5. Include a mix of activities that match the ${travelType} travel style
-6. Provide specific timing recommendations (start times, durations)
-7. Include practical tips and recommendations for each activity
-
-**Response Format:**
-Return a JSON object with the following structure:
-{
-  "summary": {
-    "destination": "${destination}",
-    "totalDays": ${days},
-    "travelType": "${travelType}",
-    "bestSeason": "recommended travel season",
-    "estimatedBudget": "budget estimate"
-  },
-  "days": [
-    {
-      "day": 1,
-      "date": "YYYY-MM-DD",
-      "theme": "Daily theme",
-      "weather": {
-        "condition": "sunny/cloudy/rainy",
-        "temperature": "temperature range",
-        "recommendations": "weather-related recommendations"
-      },
-      "activities": [
-        {
-          "time": "09:00",
-          "title": "Activity title",
-          "description": "Detailed description",
-          "location": "Specific location",
-          "duration": "duration in hours",
-          "cost": "estimated cost",
-          "tips": "practical tips",
-          "coordinates": {
-            "lat": latitude,
-            "lng": longitude
-          }
-        }
-      ],
-      "meals": [
-        {
-          "type": "breakfast/lunch/dinner",
-          "recommendation": "Restaurant or food recommendation",
-          "location": "Location",
-          "priceRange": "$$"
-        }
-      ],
-      "transportation": {
-        "method": "walking/taxi/public transport",
-        "estimatedCost": "daily transport cost",
-        "notes": "transportation tips"
-      }
-    }
-  ],
-  "generalTips": [
-    "Important travel tips",
-    "Cultural considerations",
-    "Safety recommendations"
-  ]
-}
-
-Please generate a realistic, well-researched itinerary that provides genuine value to travelers.`;
+INSTRUCTIONS:
+1. Use ONLY the provided place IDs for the activities.
+2. For each day, select EXACTLY 5 places:
+   - 2 mainstream attractions (Source: mainstream).
+   - 2 niche activities specific to the ${travelType} theme (Source: niche).
+   - 1 dining location (Source: dining).
+3. Cluster activities geographically using their Lat/Lng to minimize daily transit/travel time.
+4. Assign realistic durations (in hours as number/string) based on type:
+   - Meals: 1.0 to 1.5
+   - Museums/major sights: 2.0 to 3.0
+   - Parks/walks: 1.0 to 2.0
+   - Tours/experiences: 2.0 to 4.0`;
 }

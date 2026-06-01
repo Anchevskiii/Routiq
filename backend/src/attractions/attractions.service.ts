@@ -6,39 +6,30 @@ import {
 import { TravelType } from '@prisma/client';
 import axios from 'axios';
 import { AppConfigService } from '../config/config.service';
+import { withRetry } from '../common';
 import { FormattedPlace } from './types';
 
-interface GooglePlace {
+interface GooglePlaceLegacy {
   place_id: string;
-  name: string;
-  formatted_address: string;
-  geometry: {
-    location: {
+  name?: string;
+  formatted_address?: string;
+  geometry?: {
+    location?: {
       lat: number;
       lng: number;
     };
   };
-  types: string[];
+  types?: string[];
   rating?: number;
   user_ratings_total?: number;
   photos?: Array<{
     photo_reference: string;
-    height: number;
-    width: number;
+    width?: number;
+    height?: number;
   }>;
-}
-
-interface PlacesResponse {
-  results: GooglePlace[];
-  status: string;
-  next_page_token?: string;
-}
-
-interface SearchParams {
-  query: string;
-  key: string;
-  radius: number;
-  location?: string;
+  editorial_summary?: {
+    overview?: string;
+  };
 }
 
 @Injectable()
@@ -57,106 +48,176 @@ export class AttractionsService {
         'Google Places API is not configured',
       );
     }
-    return this.apiKey;
+    // Strip quotes if they exist (common issue in .env files)
+    return this.apiKey.replace(/^["']|["']$/g, '');
   }
 
-  async getAttractions(
+  async getCuratedPlaces(
     destination: string,
     travelType: TravelType,
+    days: number,
   ): Promise<FormattedPlace[]> {
-    const placeTypes = this.getPlaceTypesByTravelType(travelType);
-    const allAttractions: GooglePlace[] = [];
+    const requiredMainstream = days * 2;
+    const requiredNiche = days * 2;
+    const requiredMeals = days * 1;
 
-    for (const placeType of placeTypes) {
-      try {
-        const attractions = await this.searchPlacesByType(
-          destination,
-          placeType,
-        );
-        allAttractions.push(...attractions);
-      } catch (error) {
+    this.logger.log(
+      `Fetching curated places for ${destination} using Legacy Places API`,
+    );
+
+    const mainstreamPromise = this.searchLegacy(
+      `top mainstream popular tourist attractions in ${destination}`,
+    ).then((places) =>
+      places.map((p) => ({ ...p, sourceType: 'mainstream' as const })),
+    );
+
+    const nicheTypes = this.getPlaceTypesByTravelType(travelType);
+    const nicheQuery = `${nicheTypes.join(' OR ')} in ${destination}`;
+    const nichePromise = this.searchLegacy(nicheQuery).then((places) =>
+      places.map((p) => ({ ...p, sourceType: 'niche' as const })),
+    );
+
+    const diningPromise = this.searchLegacy(
+      `top rated popular viral restaurants food in ${destination}`,
+    ).then((places) =>
+      places.map((p) => ({ ...p, sourceType: 'dining' as const })),
+    );
+
+    const [mainstream, niche, dining] = await Promise.all([
+      mainstreamPromise,
+      nichePromise,
+      diningPromise,
+    ]);
+
+    const scorePlace = (p: FormattedPlace) =>
+      (p.rating || 0) * Math.log10((p.userRatingsTotal || 0) + 1);
+
+    const curatedMainstream = mainstream
+      .sort((a, b) => scorePlace(b) - scorePlace(a))
+      .slice(0, requiredMainstream * 2);
+
+    const curatedNiche = niche
+      .sort((a, b) => scorePlace(b) - scorePlace(a))
+      .slice(0, requiredNiche * 2);
+
+    const curatedDining = dining
+      .sort((a, b) => scorePlace(b) - scorePlace(a))
+      .slice(0, requiredMeals * 2);
+
+    const merged = [...curatedMainstream, ...curatedNiche, ...curatedDining];
+
+    // Deduplicate by place ID
+    const seen = new Set<string>();
+    const result = merged.filter((place) => {
+      if (seen.has(place.id)) return false;
+      seen.add(place.id);
+      return true;
+    });
+
+    this.logger.log(
+      `Curated ${result.length} unique places (Mainstream: ${curatedMainstream.length}, Niche: ${curatedNiche.length}, Dining: ${curatedDining.length})`,
+    );
+
+    return result;
+  }
+
+  private async searchLegacy(
+    query: string,
+    radius?: number,
+  ): Promise<FormattedPlace[]> {
+    try {
+      const response = await withRetry(
+        () =>
+          axios.get(`${this.baseUrl}/textsearch/json`, {
+            params: {
+              query,
+              key: this.getApiKeyOrThrow(),
+              ...(radius ? { radius } : {}),
+            },
+            timeout: 10000,
+          }),
+        {
+          shouldRetry: (error) => {
+            if (axios.isAxiosError(error)) {
+              return (
+                !error.response ||
+                error.response.status === 429 ||
+                error.response.status >= 500
+              );
+            }
+            return true;
+          },
+        },
+      );
+
+      if (
+        response.data.status !== 'OK' &&
+        response.data.status !== 'ZERO_RESULTS'
+      ) {
         this.logger.warn(
-          `Failed to fetch attractions for type ${placeType}: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`,
+          `Legacy API returned status ${response.data.status} for query: ${query}`,
         );
+        return [];
       }
+
+      const results: GooglePlaceLegacy[] = response.data.results || [];
+      return results.map((place) => this.formatLegacyPlace(place));
+    } catch (error) {
+      this.logger.error(
+        `Legacy search failed for '${query}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      return [];
     }
-
-    // Remove duplicates and format results
-    const uniqueAttractions = this.removeDuplicates(allAttractions);
-
-    return uniqueAttractions.map((attraction) => this.formatPlace(attraction));
   }
 
   async searchAttractions(
     query: string,
     location?: string,
-    radius = 10000,
+    radius?: number,
   ): Promise<FormattedPlace[]> {
-    try {
-      const params: SearchParams = {
-        query,
-        key: this.getApiKeyOrThrow(),
-        radius,
-      };
-
-      if (location) {
-        // If location is provided, use it as the center point
-        const coords = await this.getCoordinates(location);
-        if (coords) {
-          params.location = `${coords.lat},${coords.lng}`;
-        }
-      }
-
-      const response = await axios.get<PlacesResponse>(
-        `${this.baseUrl}/textsearch/json`,
-        { params, timeout: 10000 },
-      );
-
-      if (response.data.status !== 'OK') {
-        throw new ServiceUnavailableException(
-          `Places API error: ${response.data.status}`,
-        );
-      }
-
-      return response.data.results.map((place) => this.formatPlace(place));
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new ServiceUnavailableException(
-          `Failed to search attractions: ${error.message}`,
-        );
-      }
-      throw new ServiceUnavailableException('Failed to search attractions');
+    let fullQuery = query;
+    if (location) {
+      fullQuery = `${query} near ${location}`;
     }
+    return this.searchLegacy(fullQuery, radius);
   }
 
   async getAttractionDetails(placeId: string): Promise<FormattedPlace> {
     try {
-      const response = await axios.get(`${this.baseUrl}/details/json`, {
-        params: {
-          place_id: placeId,
-          key: this.getApiKeyOrThrow(),
-          fields:
-            'name,formatted_address,geometry,types,rating,user_ratings_total,photos,reviews,opening_hours,website,phone_number',
+      const response = await withRetry(
+        () =>
+          axios.get(`${this.baseUrl}/details/json`, {
+            params: {
+              place_id: placeId,
+              key: this.getApiKeyOrThrow(),
+              fields:
+                'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,photos,editorial_summary',
+            },
+            timeout: 10000,
+          }),
+        {
+          shouldRetry: (error) => {
+            if (axios.isAxiosError(error)) {
+              return (
+                !error.response ||
+                error.response.status === 429 ||
+                error.response.status >= 500
+              );
+            }
+            return true;
+          },
         },
-        timeout: 10000,
-      });
+      );
 
       if (response.data.status !== 'OK') {
-        throw new ServiceUnavailableException(
-          `Places API error: ${response.data.status}`,
-        );
+        throw new Error(`API status: ${response.data.status}`);
       }
 
-      return this.formatPlace(response.data.result);
+      return this.formatLegacyPlace(response.data.result);
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new ServiceUnavailableException(
-          `Failed to get attraction details: ${error.message}`,
-        );
-      }
-      throw new ServiceUnavailableException('Failed to get attraction details');
+      throw new ServiceUnavailableException(
+        `Failed to get attraction details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -165,86 +226,14 @@ export class AttractionsService {
     destination: string,
   ): Promise<FormattedPlace[]> {
     try {
-      // Get the original attraction details
       const original = await this.getAttractionDetails(placeId);
-
-      // Search for similar attractions nearby
       const alternatives = await this.searchAttractions(
         this.extractKeywordsFromName(original.name),
         destination,
-        5000, // 5km radius
       );
-
-      // Filter out the original attraction and return top alternatives
       return alternatives.filter((attr) => attr.id !== placeId).slice(0, 5);
     } catch {
       throw new ServiceUnavailableException('Failed to get alternatives');
-    }
-  }
-
-  private async searchPlacesByType(
-    destination: string,
-    type: string,
-  ): Promise<GooglePlace[]> {
-    try {
-      const coords = await this.getCoordinates(destination);
-
-      if (!coords) {
-        return [];
-      }
-
-      const response = await axios.get<PlacesResponse>(
-        `${this.baseUrl}/nearbysearch/json`,
-        {
-          params: {
-            location: `${coords.lat},${coords.lng}`,
-            radius: 15000, // 15km radius
-            type,
-            key: this.getApiKeyOrThrow(),
-          },
-          timeout: 10000,
-        },
-      );
-
-      if (response.data.status !== 'OK') {
-        return [];
-      }
-
-      return response.data.results;
-    } catch (error) {
-      this.logger.warn(
-        `Failed to search places by type ${type}: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
-      );
-      return [];
-    }
-  }
-
-  private async getCoordinates(
-    destination: string,
-  ): Promise<{ lat: number; lng: number } | null> {
-    try {
-      const response = await axios.get(`${this.baseUrl}/geocode/json`, {
-        params: {
-          address: destination,
-          key: this.getApiKeyOrThrow(),
-        },
-        timeout: 10000,
-      });
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        return response.data.results[0].geometry.location;
-      }
-
-      return null;
-    } catch (error) {
-      this.logger.warn(
-        `Failed to get coordinates: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
-      );
-      return null;
     }
   }
 
@@ -256,82 +245,47 @@ export class AttractionsService {
         return [
           'museum',
           'art_gallery',
-          'historical_landmark',
+          'place_of_worship',
           'church',
-          'synagogue',
-          'mosque',
-          'hindu_temple',
+          'castle',
         ];
       case 'GASTRONOMIC':
-        return ['restaurant', 'cafe', 'food', 'bakery', 'bar'];
+        return ['restaurant', 'cafe', 'food', 'bakery'];
       case 'ADVENTURE':
-        return [
-          'amusement_park',
-          'tourist_attraction',
-          'bowling_alley',
-          'movie_theater',
-          'night_club',
-        ];
+        return ['amusement_park', 'aquarium', 'zoo', 'park'];
       case 'NATURE':
-        return [
-          'park',
-          'natural_feature',
-          'campground',
-          'hiking_area',
-          'zoo',
-          'aquarium',
-        ];
+        return ['park', 'aquarium', 'zoo', 'campground'];
       case 'RELAX':
-        return ['spa', 'park', 'beach', 'tourist_attraction'];
+        return ['spa', 'beauty_salon', 'hair_care', 'park'];
       default:
         return ['tourist_attraction'];
     }
   }
 
-  private removeDuplicates(places: GooglePlace[]): GooglePlace[] {
-    const seen = new Set<string>();
-    return places.filter((place) => {
-      if (seen.has(place.place_id)) {
-        return false;
-      }
-      seen.add(place.place_id);
-      return true;
-    });
-  }
-
-  private formatPlace(place: GooglePlace): FormattedPlace {
+  private formatLegacyPlace(place: GooglePlaceLegacy): FormattedPlace {
     return {
       id: place.place_id,
-      name: place.name,
-      description: this.generateDescription(place),
+      name: place.name || 'Unknown Place',
+      description:
+        place.editorial_summary?.overview || this.generateDescription(place),
       location: {
-        lat: place.geometry.location.lat,
-        lng: place.geometry.location.lng,
+        lat: place.geometry?.location?.lat || 0,
+        lng: place.geometry?.location?.lng || 0,
       },
-      address: place.formatted_address,
-      type: this.categorizeAttraction(place.types),
+      address: place.formatted_address || 'Address unavailable',
+      type: place.types?.[0] || 'attraction',
       rating: place.rating || 0,
       userRatingsTotal: place.user_ratings_total || 0,
-      photos: place.photos?.map((photo) => photo.photo_reference) || [],
+      photos: place.photos?.map((p) => p.photo_reference) || [],
     };
   }
 
-  private generateDescription(place: GooglePlace): string {
-    const types = place.types.join(', ').replace(/_/g, ' ');
-    return `${place.name} is a ${types} located at ${place.formatted_address}.`;
-  }
-
-  private categorizeAttraction(types: string[]): string {
-    if (types.includes('museum')) return 'museum';
-    if (types.includes('restaurant')) return 'restaurant';
-    if (types.includes('park')) return 'park';
-    if (types.includes('tourist_attraction')) return 'attraction';
-    if (types.includes('historical_landmark')) return 'historical_site';
-    return 'general';
+  private generateDescription(place: GooglePlaceLegacy): string {
+    const type = (place.types?.[0] || 'establishment').replace(/_/g, ' ');
+    return `${place.name || 'This place'} is a ${type} located in ${place.formatted_address || 'the area'}.`;
   }
 
   private extractKeywordsFromName(name: string): string {
-    // Simple keyword extraction - could be enhanced with NLP
     return name.replace(/\b(the|and|or|of|in|at|to)\b/gi, '').trim();
   }
 }

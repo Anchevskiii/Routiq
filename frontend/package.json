@@ -6,7 +6,6 @@
   "description": "Routiq travel planning frontend - React 18 + TypeScript + Vite",
   "author": "Routiq Team",
   "scripts": {
-    "predev": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/free-port.ps1 -Port 5173",
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
@@ -16,6 +15,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.3.2",
     "@react-google-maps/api": "^2.19.2",
     "@react-pdf/renderer": "^3.1.12",
@@ -37,6 +39,7 @@
   },
   "devDependencies": {
     "@types/file-saver": "^2.0.7",
+    "@types/google.maps": "^3.64.1",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@typescript-eslint/eslint-plugin": "^6.10.0",

@@ -8,14 +8,26 @@ import {
 import { GroupRole, InvitationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
+import { MailService } from '../mail/mail.service';
+
+const ROLE_HIERARCHY: Record<GroupRole, number> = {
+  [GroupRole.OWNER]: 4,
+  [GroupRole.ADMIN]: 3,
+  [GroupRole.MODERATOR]: 2,
+  [GroupRole.MEMBER]: 1,
+};
 
 @Injectable()
 export class GroupsService {
   private readonly logger = new Logger(GroupsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   // ─── Group CRUD ───────────────────────────────────────────
 
@@ -108,7 +120,39 @@ export class GroupsService {
             createdAt: 'asc',
           },
         },
+        comments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+            replies: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
+          },
+          where: {
+            parentId: null,
+            deletedAt: null,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
         itineraries: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             itinerary: {
               select: {
@@ -119,6 +163,7 @@ export class GroupsService {
                 travelType: true,
                 totalDays: true,
                 createdAt: true,
+                deletedAt: true,
                 user: {
                   select: {
                     id: true,
@@ -126,35 +171,23 @@ export class GroupsService {
                     avatarUrl: true,
                   },
                 },
-              },
-            },
-            comments: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    avatarUrl: true,
-                  },
-                },
-              },
-              orderBy: {
-                createdAt: 'desc',
               },
             },
             votes: {
-              include: {
+              select: {
+                voteType: true,
+                userId: true,
                 user: {
                   select: {
                     id: true,
                     name: true,
+                    avatarUrl: true,
                   },
                 },
               },
             },
             _count: {
               select: {
-                comments: true,
                 votes: true,
               },
             },
@@ -170,14 +203,32 @@ export class GroupsService {
       throw new NotFoundException('Group not found');
     }
 
-    return group;
-  }
+    // Calculate scores for itineraries, excluding soft-deleted itineraries
+    const itineraries = group.itineraries
+      .filter((gi) => gi.itinerary && !gi.itinerary.deletedAt)
+      .map((gi) => {
+        const upvotes = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
+        const downvotes = gi.votes.filter(
+          (v) => v.voteType === 'DOWNVOTE',
+        ).length;
+        return {
+          ...gi,
+          score: upvotes - downvotes,
+        };
+      });
 
+    return {
+      ...group,
+      itineraries,
+    };
+  }
   async createGroup(userId: string, createGroupDto: CreateGroupDto) {
     const group = await this.prisma.group.create({
       data: {
         name: createGroupDto.name,
         description: createGroupDto.description,
+        imageUrl: createGroupDto.imageUrl,
+        themeColor: createGroupDto.themeColor,
         createdById: userId,
         members: {
           create: {
@@ -220,11 +271,34 @@ export class GroupsService {
     return group;
   }
 
+  async updateGroup(
+    groupId: string,
+    userId: string,
+    updateGroupDto: UpdateGroupDto,
+  ) {
+    await this.requireRole(groupId, userId, [GroupRole.OWNER, GroupRole.ADMIN]);
+
+    const group = await this.prisma.group.update({
+      where: { id: groupId },
+      data: {
+        name: updateGroupDto.name,
+        description: updateGroupDto.description,
+        imageUrl: updateGroupDto.imageUrl,
+        themeColor: updateGroupDto.themeColor,
+      },
+    });
+
+    await this.logActivity(groupId, userId, 'GROUP_UPDATED');
+
+    return group;
+  }
+
   async deleteGroup(groupId: string, userId: string) {
     await this.requireRole(groupId, userId, [GroupRole.OWNER]);
 
-    await this.prisma.group.delete({
+    await this.prisma.group.update({
       where: { id: groupId },
+      data: { deletedAt: new Date() },
     });
 
     return { message: 'Group deleted successfully' };
@@ -237,11 +311,10 @@ export class GroupsService {
     inviterId: string,
     inviteMemberDto: InviteMemberDto,
   ) {
-    // Only OWNER, ADMIN, MODERATOR can invite
+    // Only OWNER, ADMIN can invite (as per new matrix)
     await this.requireRole(groupId, inviterId, [
       GroupRole.OWNER,
       GroupRole.ADMIN,
-      GroupRole.MODERATOR,
     ]);
 
     // Find the user to invite
@@ -300,6 +373,21 @@ export class GroupsService {
         invitedEmail: inviteMemberDto.email,
       });
 
+      // Get inviter and group details for email
+      const [inviter, group] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: inviterId } }),
+        this.prisma.group.findUnique({ where: { id: groupId } }),
+      ]);
+
+      if (inviter && group) {
+        await this.mailService.sendGroupInvitation(
+          inviteMemberDto.email,
+          inviter.name,
+          group.name,
+          groupId,
+        );
+      }
+
       return updatedMembership;
     }
 
@@ -329,6 +417,21 @@ export class GroupsService {
       invitedUserId: userToInvite.id,
       invitedEmail: inviteMemberDto.email,
     });
+
+    // Get inviter and group details for email
+    const [inviter, group] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: inviterId } }),
+      this.prisma.group.findUnique({ where: { id: groupId } }),
+    ]);
+
+    if (inviter && group) {
+      await this.mailService.sendGroupInvitation(
+        inviteMemberDto.email,
+        inviter.name,
+        group.name,
+        groupId,
+      );
+    }
 
     return newMember;
   }
@@ -485,12 +588,7 @@ export class GroupsService {
       throw new NotFoundException('Member not found in this group');
     }
 
-    const roleHierarchy: Record<GroupRole, number> = {
-      [GroupRole.OWNER]: 4,
-      [GroupRole.ADMIN]: 3,
-      [GroupRole.MODERATOR]: 2,
-      [GroupRole.MEMBER]: 1,
-    };
+    const roleHierarchy = ROLE_HIERARCHY;
 
     if (
       removerId !== memberToRemoveId &&
@@ -524,8 +622,11 @@ export class GroupsService {
     targetUserId: string,
     newRole: GroupRole,
   ) {
-    // Only owner can change roles
-    await this.requireRole(groupId, updaterId, [GroupRole.OWNER]);
+    // OWNER can change any role, ADMIN can change roles of members below them
+    const updaterMembership = await this.requireRole(groupId, updaterId, [
+      GroupRole.OWNER,
+      GroupRole.ADMIN,
+    ]);
 
     // Can't change owner's own role via this method
     if (updaterId === targetUserId) {
@@ -544,6 +645,17 @@ export class GroupsService {
 
     if (!targetMembership) {
       throw new NotFoundException('Active member not found in this group');
+    }
+
+    const roleHierarchy = ROLE_HIERARCHY;
+
+    if (
+      updaterMembership.role === GroupRole.ADMIN &&
+      roleHierarchy[targetMembership.role] >= roleHierarchy[GroupRole.ADMIN]
+    ) {
+      throw new ForbiddenException(
+        'Admins cannot change the role of the Owner or other Admins',
+      );
     }
 
     const updated = await this.prisma.groupMember.update({
@@ -592,16 +704,39 @@ export class GroupsService {
       throw new NotFoundException('Itinerary not found or access denied');
     }
 
-    // Check if itinerary is already in the group
+    // Check if itinerary is already in the group (active)
     const existingGroupItinerary = await this.prisma.groupItinerary.findFirst({
-      where: {
-        groupId,
-        itineraryId,
-      },
+      where: { groupId, itineraryId },
     });
 
     if (existingGroupItinerary) {
-      throw new BadRequestException('Itinerary is already in this group');
+      if (!existingGroupItinerary.deletedAt) {
+        throw new BadRequestException('Itinerary is already in this group');
+      }
+      // Was previously removed — restore it
+      const groupItinerary = await this.prisma.groupItinerary.update({
+        where: { id: existingGroupItinerary.id },
+        data: { deletedAt: null, addedById: userId, addedAt: new Date() },
+        include: {
+          itinerary: {
+            select: {
+              id: true,
+              destination: true,
+              startDate: true,
+              endDate: true,
+              travelType: true,
+              totalDays: true,
+              createdAt: true,
+              user: { select: { id: true, name: true, avatarUrl: true } },
+            },
+          },
+        },
+      });
+      await this.logActivity(groupId, userId, 'ITINERARY_ADDED', {
+        itineraryId,
+        destination: itinerary.destination,
+      }).catch(() => {});
+      return groupItinerary;
     }
 
     const groupItinerary = await this.prisma.groupItinerary.create({
@@ -640,92 +775,42 @@ export class GroupsService {
     return groupItinerary;
   }
 
-  // ─── Voting ───────────────────────────────────────────────
-
-  async voteForActivity(
+  async removeItineraryFromGroup(
     groupId: string,
-    groupItineraryId: string,
     userId: string,
-    activityId: string,
-    voteType: string,
+    groupItineraryId: string,
   ) {
     await this.requireAcceptedMember(groupId, userId);
 
-    // Check if group itinerary exists and belongs to the group
-    const groupItinerary = await this.prisma.groupItinerary.findFirst({
-      where: {
-        id: groupItineraryId,
-        groupId,
-      },
+    const gi = await this.prisma.groupItinerary.findFirst({
+      where: { id: groupItineraryId, groupId, deletedAt: null },
     });
 
-    if (!groupItinerary) {
-      throw new NotFoundException('Group itinerary not found');
-    }
+    if (!gi) throw new NotFoundException('Itinerary not found in group');
 
-    // Map vote type
-    const mappedVoteType = voteType === 'DOWNVOTE' ? 'DOWNVOTE' : 'UPVOTE';
-
-    // Upsert vote
-    const vote = await this.prisma.vote.upsert({
-      where: {
-        groupItineraryId_userId_activityId: {
-          groupItineraryId,
-          userId,
-          activityId,
-        },
-      },
-      update: {
-        voteType: mappedVoteType,
-      },
-      create: {
-        groupItineraryId,
-        userId,
-        activityId,
-        voteType: mappedVoteType,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
-        },
-      },
+    await this.prisma.groupItinerary.update({
+      where: { id: groupItineraryId },
+      data: { deletedAt: new Date() },
     });
 
-    return vote;
+    return { message: 'Itinerary removed from group' };
   }
 
   // ─── Comments ─────────────────────────────────────────────
 
   async addComment(
     groupId: string,
-    groupItineraryId: string,
     userId: string,
     addCommentDto: AddCommentDto,
   ) {
     await this.requireAcceptedMember(groupId, userId);
-
-    // Check if group itinerary exists and belongs to the group
-    const groupItinerary = await this.prisma.groupItinerary.findFirst({
-      where: {
-        id: groupItineraryId,
-        groupId,
-      },
-    });
-
-    if (!groupItinerary) {
-      throw new NotFoundException('Group itinerary not found');
-    }
 
     // Validate parent comment if provided
     if (addCommentDto.parentId) {
       const parentComment = await this.prisma.comment.findFirst({
         where: {
           id: addCommentDto.parentId,
-          groupItineraryId,
+          groupId,
         },
       });
 
@@ -736,7 +821,7 @@ export class GroupsService {
 
     const comment = await this.prisma.comment.create({
       data: {
-        groupItineraryId,
+        groupId,
         userId,
         content: addCommentDto.content,
         parentId: addCommentDto.parentId ?? null,
@@ -764,34 +849,65 @@ export class GroupsService {
     });
 
     await this.logActivity(groupId, userId, 'COMMENT_ADDED', {
-      groupItineraryId,
       commentId: comment.id,
     });
 
     return comment;
   }
 
-  async getComments(groupId: string, groupItineraryId: string, userId: string) {
+  async getComments(groupId: string, userId: string) {
     await this.requireAcceptedMember(groupId, userId);
 
+    const reactionSelect = {
+      select: { emoji: true, userId: true },
+    };
+
     return this.prisma.comment.findMany({
-      where: {
-        groupItineraryId,
-        parentId: null,
-        deletedAt: null,
-      },
+      where: { groupId, parentId: null, deletedAt: null },
       include: {
         user: { select: { id: true, name: true, avatarUrl: true } },
+        reactions: reactionSelect,
         replies: {
           where: { deletedAt: null },
           include: {
             user: { select: { id: true, name: true, avatarUrl: true } },
+            reactions: reactionSelect,
           },
           orderBy: { createdAt: 'asc' },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
+  }
+
+  async toggleReaction(
+    groupId: string,
+    commentId: string,
+    userId: string,
+    emoji: string,
+  ) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    const comment = await this.prisma.comment.findFirst({
+      where: { id: commentId, groupId },
+    });
+    if (!comment) throw new NotFoundException('Comment not found');
+
+    const existing = await this.prisma.commentReaction.findUnique({
+      where: { commentId_userId_emoji: { commentId, userId, emoji } },
+    });
+
+    if (existing) {
+      await this.prisma.commentReaction.delete({
+        where: { commentId_userId_emoji: { commentId, userId, emoji } },
+      });
+      return { removed: true };
+    }
+
+    await this.prisma.commentReaction.create({
+      data: { commentId, userId, emoji },
+    });
+    return { removed: false };
   }
 
   async getVotes(groupId: string, groupItineraryId: string, userId: string) {
@@ -807,6 +923,59 @@ export class GroupsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async voteForItinerary(
+    groupId: string,
+    groupItineraryId: string,
+    userId: string,
+    voteType: string,
+  ) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    // Check if group itinerary exists and belongs to the group
+    const groupItinerary = await this.prisma.groupItinerary.findFirst({
+      where: {
+        id: groupItineraryId,
+        groupId,
+      },
+    });
+
+    if (!groupItinerary) {
+      throw new NotFoundException('Group itinerary not found');
+    }
+
+    // Map vote type
+    const mappedVoteType = voteType === 'DOWNVOTE' ? 'DOWNVOTE' : 'UPVOTE';
+
+    // Upsert vote
+    const vote = await this.prisma.vote.upsert({
+      where: {
+        groupItineraryId_userId: {
+          groupItineraryId,
+          userId,
+        },
+      },
+      update: {
+        voteType: mappedVoteType,
+      },
+      create: {
+        groupItineraryId,
+        userId,
+        voteType: mappedVoteType,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    return vote;
   }
 
   // ─── Activity Log ─────────────────────────────────────────

@@ -2,9 +2,12 @@ export interface Group {
   id: string
   name: string
   description?: string
+  imageUrl?: string
+  themeColor?: string
   createdAt: string
   members: GroupMember[]
   itineraries: GroupItinerary[]
+  comments: Comment[]
   memberCount: number
   itineraryCount: number
 }
@@ -14,6 +17,7 @@ export interface GroupMember {
   groupId: string
   userId: string
   role: GroupRole
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED'
   joinedAt: string
   user: {
     id: string
@@ -28,6 +32,7 @@ export interface GroupItinerary {
   groupId: string
   itineraryId: string
   addedAt: string
+  score: number
   itinerary: {
     id: string
     destination: string
@@ -41,18 +46,22 @@ export interface GroupItinerary {
       avatarUrl?: string
     }
   }
-  comments: Comment[]
   votes: Vote[]
   _count: {
-    comments: number
     votes: number
   }
 }
 
+export interface CommentReaction {
+  emoji: string
+  userId: string
+}
+
 export interface Comment {
   id: string
-  groupItineraryId: string
+  groupId: string
   userId: string
+  parentId?: string
   content: string
   createdAt: string
   user: {
@@ -60,13 +69,15 @@ export interface Comment {
     name: string
     avatarUrl?: string
   }
+  replies?: Comment[]
+  reactions?: CommentReaction[]
 }
 
 export interface Vote {
   id: string
   groupItineraryId: string
   userId: string
-  attractionId: string
+  voteType: 'UPVOTE' | 'DOWNVOTE'
   createdAt: string
   user: {
     id: string
@@ -74,11 +85,13 @@ export interface Vote {
   }
 }
 
-export type GroupRole = 'ADMIN' | 'MEMBER' | 'OWNER' | 'MODERATOR'
+export type GroupRole = 'OWNER' | 'ADMIN' | 'MODERATOR' | 'MEMBER'
 
 export interface CreateGroupDto {
   name: string
   description?: string
+  imageUrl?: string
+  themeColor?: string
 }
 
 export interface InviteMemberDto {
@@ -87,4 +100,19 @@ export interface InviteMemberDto {
 
 export interface AddCommentDto {
   content: string
+  parentId?: string
+}
+
+export interface Invitation {
+  id: string
+  groupId: string
+  inviterId: string
+  status: string
+  group: {
+    id: string
+    name: string
+    createdBy: {
+      name: string
+    }
+  }
 }

@@ -15,6 +15,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { WeatherModule } from './weather/weather.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -32,8 +33,14 @@ import { SupabaseModule } from './supabase/supabase.module';
     // Rate limiting
     ThrottlerModule.forRoot([
       {
+        name: 'default',
         ttl: 60000, // 1 minute
         limit: 100, // 100 requests per minute per IP
+      },
+      {
+        name: 'itinerary-generate',
+        ttl: 60000, // 1 minute
+        limit: 5, // 5 requests per minute per user
       },
     ]),
 
@@ -47,6 +54,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     GroupsModule,
     ExportModule,
     HealthModule,
+    MailModule,
   ],
   controllers: [],
   providers: [

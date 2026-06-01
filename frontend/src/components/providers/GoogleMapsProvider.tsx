@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
+declare global {
+  interface Window {
+    initGoogleMaps?: () => void
+  }
+}
+
 interface GoogleMapsContextType {
   isLoaded: boolean
   loadError: Error | null
@@ -31,30 +37,42 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
       return
     }
 
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`
-    script.async = true
-    script.defer = true
-
-    const handleLoad = () => {
+    // Define the global callback
+    window.initGoogleMaps = () => {
       setIsLoaded(true)
       setLoadError(null)
     }
+
+    if (window.google?.maps) {
+      setIsLoaded(true)
+      return
+    }
+
+    const SCRIPT_ID = 'google-maps-sdk'
+    const existingScript = document.getElementById(SCRIPT_ID)
+    
+    if (existingScript) {
+      // If script exists but google.maps is not yet loaded, wait for the callback
+      return
+    }
+
+    const script = document.createElement('script')
+    script.id = SCRIPT_ID
+    // Use the latest loading=async pattern
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry,marker&loading=async&callback=initGoogleMaps`
+    script.async = true
+    script.defer = true
 
     const handleError = () => {
       setLoadError(new Error('Failed to load Google Maps API'))
       setIsLoaded(false)
     }
 
-    script.addEventListener('load', handleLoad)
     script.addEventListener('error', handleError)
-
     document.head.appendChild(script)
 
     return () => {
-      script.removeEventListener('load', handleLoad)
       script.removeEventListener('error', handleError)
-      document.head.removeChild(script)
     }
   }, [])
 

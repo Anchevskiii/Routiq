@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppConfigService {
+  private readonly logger = new Logger(AppConfigService.name);
+
   constructor(private readonly configService: NestConfigService) {
-    console.log(
-      'AppConfigService initialized. CORS_ORIGIN:',
-      this.configService.get('CORS_ORIGIN'),
+    this.logger.log(
+      `AppConfigService initialized. CORS_ORIGIN: ${this.configService.get('CORS_ORIGIN')}`,
     );
   }
 
@@ -42,8 +43,8 @@ export class AppConfigService {
     return this.get<string>('GOOGLE_MAPS_DIRECTIONS_API_KEY') ?? '';
   }
 
-  getOpenWeatherApiKey(): string {
-    return this.get<string>('OPENWEATHER_API_KEY') ?? '';
+  getGoogleWeatherApiKey(): string {
+    return this.get<string>('GOOGLE_WEATHER_API_KEY') ?? '';
   }
 
   getSpotifyClientId(): string {
@@ -84,5 +85,26 @@ export class AppConfigService {
 
   isProduction(): boolean {
     return this.getNodeEnv() === 'production';
+  }
+
+  // Email Config
+  getMailHost(): string {
+    return this.get<string>('MAIL_HOST') || 'smtp.resend.com';
+  }
+
+  getMailPort(): number {
+    return Number(this.get<string>('MAIL_PORT')) || 465;
+  }
+
+  getMailUser(): string {
+    return this.get<string>('MAIL_USER') || '';
+  }
+
+  getMailPass(): string {
+    return this.get<string>('MAIL_PASS') || '';
+  }
+
+  getMailFrom(): string {
+    return this.get<string>('MAIL_FROM') || 'routiqtravel@proton.me';
   }
 }

@@ -9,7 +9,9 @@ export const ROUTES = {
   SHARED_ITINERARY: (shareToken: string) => `/shared/${shareToken}`,
   GROUPS: '/groups',
   GROUP_DETAIL: (id: string) => `/groups/${id}`,
+  NOTIFICATIONS: '/notifications',
   PROFILE: '/profile',
+  TRIPS: '/trips',
 } as const
 
 export type RouteKey = keyof typeof ROUTES

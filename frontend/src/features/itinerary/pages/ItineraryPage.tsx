@@ -1,185 +1,234 @@
-import React from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import React, { useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Info, Compass, MapPin } from 'lucide-react'
+import { PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
+
 import { itineraryApi } from '@/api/itinerary.api'
-import { getTravelTypeByValue } from '@/constants/travelTypes'
-import { Day, Activity } from '@/types/itinerary.types'
-import { format } from 'date-fns'
-import { Calendar, MapPin, Clock, Info, ChevronRight, Share2, Printer, Edit3 } from 'lucide-react'
+import { groupsApi } from '@/api/groups.api'
+import { QUERY_KEYS } from '@/constants/queryKeys'
+import { ROUTES } from '@/constants/routes'
+import { useAuth } from '@/app/Providers'
+
+import { ItineraryHeader } from '../components/ItineraryHeader'
+import { TripIntelligenceSidebar } from '../components/TripIntelligenceSidebar'
+import { ItineraryMap } from '../components/ItineraryMap'
+import { SortableDaysList } from '../components/SortableDaysList'
+import { GroupDetailSidebar } from '@/features/groups/components/GroupDetailSidebar'
+
+type Tab = 'it' | 'mp'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'it', label: 'Itinerary' },
+  { id: 'mp', label: 'Map' },
+]
 
 export const ItineraryPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
-  
+  const [searchParams] = useSearchParams()
+  const groupId = searchParams.get('groupId')
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  const [tab, setTab] = useState<Tab>('it')
+  const [addActivityDayId, setAddActivityDayId] = useState<string | null>(null)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
   const { data: itinerary, isLoading, error } = useQuery({
-    queryKey: ['itinerary', id],
+    queryKey: QUERY_KEYS.itinerary(id!),
     queryFn: () => itineraryApi.getItinerary(id!),
     enabled: !!id,
   })
 
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="animate-pulse space-y-8">
-          <div className="h-32 bg-gray-100 rounded-2xl" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-64 bg-gray-50 rounded-2xl" />
-              ))}
-            </div>
-            <div className="space-y-4">
-              <div className="h-96 bg-gray-50 rounded-2xl" />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+  const { data: group } = useQuery({
+    queryKey: QUERY_KEYS.group(groupId!),
+    queryFn: () => groupsApi.getGroup(groupId!),
+    enabled: !!groupId,
+  })
+
+  const currentMember = group?.members.find(m => m.userId === user?.id)
+  const currentUserRole = currentMember?.role ?? 'MEMBER'
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
+
+  const reorderActivitiesMutation = useMutation({
+    mutationFn: ({ dayId, activityIds }: { dayId: string; activityIds: string[] }) =>
+      itineraryApi.reorderActivities(id!, dayId, activityIds),
+    onSuccess: invalidate,
+  })
+
+  const reorderDaysMutation = useMutation({
+    mutationFn: (dayIds: string[]) => itineraryApi.reorderDays(id!, dayIds),
+    onMutate: async (dayIds) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
+      const previous = queryClient.getQueryData(QUERY_KEYS.itinerary(id!))
+      queryClient.setQueryData(QUERY_KEYS.itinerary(id!), (old: typeof itinerary) => {
+        if (!old?.days) return old
+        const reordered = dayIds
+          .map((dayId, i) => { const day = old.days!.find(d => d.id === dayId); return day ? { ...day, dayNumber: i + 1 } : null })
+          .filter(Boolean) as typeof old.days
+        return { ...old, days: reordered }
+      })
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(QUERY_KEYS.itinerary(id!), context.previous)
+    },
+    onSettled: invalidate,
+  })
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id || !itinerary?.days) return
+    const oldIdx = itinerary.days.findIndex(d => d.id === active.id)
+    const newIdx = itinerary.days.findIndex(d => d.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+    reorderDaysMutation.mutate(arrayMove(itinerary.days, oldIdx, newIdx).map(d => d.id))
   }
 
-  if (error || !itinerary) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <div className="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Info className="w-10 h-10 text-red-500" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Oops! Itinerary not found</h2>
-        <p className="text-gray-500 mb-8 max-w-md mx-auto">
-          We couldn't find the itinerary you're looking for. It might have been deleted or the link is incorrect.
-        </p>
-        <Link to="/dashboard" className="text-primary font-bold hover:underline">
-          Go back to Dashboard
-        </Link>
-      </div>
-    )
-  }
-
-  const travelType = getTravelTypeByValue(itinerary.travelType)
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-bold mb-4">
-              {travelType?.icon} {travelType?.label} Adventure
-            </div>
-            <h1 className="text-4xl font-extrabold text-gray-900 mb-2">{itinerary.destination}</h1>
-            <div className="flex flex-wrap items-center text-gray-500 gap-6">
-              <span className="flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-primary" />
-                {format(new Date(itinerary.startDate), 'MMMM d')} - {format(new Date(itinerary.endDate), 'MMMM d, yyyy')}
-              </span>
-              <span className="flex items-center">
-                <Clock className="w-5 h-5 mr-2 text-primary" />
-                {itinerary.days?.length || 0} Days
-              </span>
-            </div>
+  if (isLoading) return (
+    <div className="px-6 py-10 max-w-7xl mx-auto">
+      <div className="animate-pulse space-y-6">
+        <div className="h-[320px] bg-[rgba(22,24,48,0.6)] rounded-[22px]" />
+        <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-[rgba(22,24,48,0.4)] rounded-[18px]" />)}
           </div>
-          <div className="flex gap-3">
-            <button className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600">
-              <Share2 className="w-5 h-5" />
-            </button>
-            <button className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600">
-              <Printer className="w-5 h-5" />
-            </button>
-            <button className="flex items-center px-6 py-3 rounded-xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-colors">
-              <Edit3 className="w-5 h-5 mr-2" />
-              Edit Trip
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content: Days */}
-        <div className="lg:col-span-2 space-y-8">
-          {itinerary.days?.map((day: Day) => (
-            <div key={day.day} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Day {day.day}</h3>
-                  <p className="text-sm text-gray-500 font-medium">
-                    {format(new Date(day.date), 'EEEE, MMMM do')}
-                  </p>
-                </div>
-                <div className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-bold text-primary shadow-sm">
-                  {day.theme}
-                </div>
-              </div>
-              <div className="p-8 space-y-8">
-                {day.activities?.map((activity: Activity, idx: number) => (
-                  <div key={idx} className="relative pl-8 before:absolute before:left-0 before:top-2 before:bottom-0 before:w-0.5 before:bg-gray-100 last:before:hidden">
-                    <div className="absolute left-[-4px] top-2 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-primary/10" />
-                    <div className="flex flex-col md:flex-row gap-6">
-                      <div className="w-24 flex-shrink-0 pt-1">
-                        <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-md">{activity.time}</span>
-                      </div>
-                      <div className="flex-grow">
-                        <h4 className="text-lg font-bold text-gray-900 mb-1">{activity.title}</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed mb-3">{activity.description}</p>
-                        <div className="flex flex-wrap gap-4 text-xs font-semibold">
-                          <span className="flex items-center text-gray-500">
-                            <MapPin className="w-3.5 h-3.5 mr-1 text-primary" />
-                            {activity.location}
-                          </span>
-                          <span className="flex items-center text-gray-500">
-                            <Clock className="w-3.5 h-3.5 mr-1 text-primary" />
-                            {activity.duration}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Sidebar: Summary & Info */}
-        <div className="space-y-8">
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 sticky top-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">Trip Overview</h3>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-gray-900">Destination</div>
-                  <div className="text-sm text-gray-500">{itinerary.destination}</div>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-gray-900">Duration</div>
-                  <div className="text-sm text-gray-500">{itinerary.days?.length} days of exploration</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-gray-100">
-              <h4 className="text-sm font-bold text-gray-900 mb-4">Quick Links</h4>
-              <div className="space-y-2">
-                <button className="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-600 flex items-center justify-between group">
-                  Weather Forecast <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary" />
-                </button>
-                <button className="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-600 flex items-center justify-between group">
-                  Nearby Attractions <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary" />
-                </button>
-                <button className="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-600 flex items-center justify-between group">
-                  Local Food Guide <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <div className="h-96 bg-[rgba(22,24,48,0.4)] rounded-[18px]" />
         </div>
       </div>
     </div>
   )
-}
 
+  if (error || !itinerary) return (
+    <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+      <div className="bg-red-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+        <Info className="w-10 h-10 text-red-400" />
+      </div>
+      <h2 className="text-2xl font-bold text-[#f0eeff] mb-2">Itinerary not found</h2>
+      <p className="text-[#6e6c93] mb-8">We couldn't find the itinerary you're looking for.</p>
+      <Link to="/dashboard" className="text-blue-400 font-semibold hover:underline">Go back to Dashboard</Link>
+    </div>
+  )
+
+  const days = itinerary.days ?? []
+
+  const sharedListProps = {
+    days,
+    itineraryId: id!,
+    sensors,
+    addActivityDayId,
+    onDragEnd: handleDragEnd,
+    onAddActivity: setAddActivityDayId,
+    onReorderActivities: (dayId: string, activityIds: string[]) => reorderActivitiesMutation.mutate({ dayId, activityIds }),
+    onActivityUpdated: invalidate,
+    onActivityDeleted: invalidate,
+    onCloseAddActivity: () => setAddActivityDayId(null),
+  }
+
+  /* ── group view ── */
+  if (groupId && group) return (
+    <div className="px-8 py-6 pb-16">
+      <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
+        <Link to={ROUTES.GROUPS} className="hover:text-[#a3a1c8] transition-colors">Groups</Link>
+        <span className="opacity-40">/</span>
+        <Link to={ROUTES.GROUP_DETAIL(group.id)} className="hover:text-[#a3a1c8] transition-colors">{group.name}</Link>
+        <span className="opacity-40">/</span>
+        <span className="text-[#f0eeff]">{itinerary.destination}</span>
+      </nav>
+      <div className="flex gap-6 items-start">
+        <div className="flex-1 min-w-0">
+          <ItineraryHeader itinerary={itinerary} showActions={false} compact itineraryId={id} />
+          <h2 className="text-xl font-semibold text-[#f0eeff] flex items-center gap-2.5 mt-6 mb-4">
+            <Compass className="w-5 h-5 text-sky-400" /> Daily Route
+          </h2>
+          <SortableDaysList {...sharedListProps} />
+        </div>
+        <div className="w-80 shrink-0 sticky top-6 self-start">
+          <GroupDetailSidebar
+            groupId={group.id}
+            members={group.members}
+            currentUserRole={currentUserRole}
+            inviteEmail="" isInviting={false} isRemoving={false}
+            onEmailChange={() => {}} onInvite={() => {}} onRemoveMember={() => {}}
+          />
+        </div>
+      </div>
+    </div>
+  )
+
+  /* ── standard view ── */
+  return (
+    <div className="px-6 py-6 pb-16 max-w-[1400px] mx-auto">
+      <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
+        <Link to="/dashboard" className="hover:text-[#a3a1c8] transition-colors">Routiq</Link>
+        <span className="opacity-40">/</span>
+        <Link to="/dashboard" className="hover:text-[#a3a1c8] transition-colors">Trips</Link>
+        <span className="opacity-40">/</span>
+        <span className="text-[#f0eeff]">{itinerary.destination}</span>
+      </nav>
+
+      <ItineraryHeader itinerary={itinerary} itineraryId={id} />
+
+      {/* tabs */}
+      <div className="flex gap-1 bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[14px] p-1 w-fit mb-6 shadow-sm dark:shadow-none">
+        {TABS.map(t => {
+          const count = t.id === 'it' ? days.length : undefined
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-[10px] text-[13px] font-medium transition-all ${
+                tab === t.id
+                  ? 'text-white bg-gradient-to-b from-blue-500 to-blue-600 shadow-[0_4px_12px_-6px_rgba(37,99,235,0.6)]'
+                  : 'text-gray-500 dark:text-[#a3a1c8] hover:text-gray-900 dark:hover:text-[#f0eeff]'
+              }`}
+            >
+              {t.label}
+              {count != null && (
+                <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-white/25' : 'bg-gray-100 dark:bg-white/[0.08] text-gray-500 dark:text-inherit'}`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {tab === 'it' && (
+        <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
+          <div>
+            <h2 className="flex items-center gap-2.5 text-[16px] font-semibold text-gray-900 dark:text-[#f0eeff] mb-4" style={{ letterSpacing: '-0.01em' }}>
+              <span className="w-7 h-7 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
+                <Compass className="w-3.5 h-3.5" />
+              </span>
+              Daily Route
+            </h2>
+            <SortableDaysList {...sharedListProps} />
+          </div>
+
+          <aside className="flex flex-col gap-3.5 sticky top-5 self-start">
+            <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-[0_2px_12px_-4px_rgba(0,0,0,0.10),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)]">
+              <div className="flex items-center gap-2.5 px-4 py-3.5">
+                <div className="w-7 h-7 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 grid place-items-center text-sky-500 dark:text-[#22d3ee] flex-shrink-0">
+                  <MapPin className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[14px] font-semibold text-gray-900 dark:text-[#f0eeff]">Map</span>
+              </div>
+              <div className="border-t border-gray-100 dark:border-white/[0.07]">
+                <ItineraryMap days={days} destination={itinerary.destination} />
+              </div>
+            </div>
+            <TripIntelligenceSidebar itinerary={itinerary} />
+          </aside>
+        </div>
+      )}
+
+      {tab === 'mp' && (
+        <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-none">
+          <ItineraryMap days={days} destination={itinerary.destination} />
+        </div>
+      )}
+    </div>
+  )
+}
