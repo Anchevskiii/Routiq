@@ -67,27 +67,44 @@ describe('GroupsService (integration - expanded)', () => {
       });
 
       // 4. Verify entities exist
-      expect(await prisma.group.findUnique({ where: { id: group.id } })).toBeTruthy();
-      expect(await prisma.groupMember.findUnique({
-        where: { groupId_userId: { groupId: group.id, userId: memberId } },
-      })).toBeTruthy();
-      expect(await prisma.groupItinerary.findUnique({
-        where: { groupId_itineraryId: { groupId: group.id, itineraryId: itinerary.id } },
-      })).toBeTruthy();
+      expect(
+        await prisma.group.findUnique({ where: { id: group.id } }),
+      ).toBeTruthy();
+      expect(
+        await prisma.groupMember.findUnique({
+          where: { groupId_userId: { groupId: group.id, userId: memberId } },
+        }),
+      ).toBeTruthy();
+      expect(
+        await prisma.groupItinerary.findUnique({
+          where: {
+            groupId_itineraryId: {
+              groupId: group.id,
+              itineraryId: itinerary.id,
+            },
+          },
+        }),
+      ).toBeTruthy();
 
       // 5. Delete group
       await groupsService.deleteGroup(group.id, ownerId);
 
       // 6. Verify parent group is soft-deleted (returns null under findFirst)
-      expect(await prisma.group.findFirst({ where: { id: group.id } })).toBeNull();
+      expect(
+        await prisma.group.findFirst({ where: { id: group.id } }),
+      ).toBeNull();
 
       // 7. Verify that related entities are STILL in the database (since soft-delete uses an update command which bypasses foreign-key cascade deletes)
-      expect(await prisma.groupMember.findFirst({
-        where: { groupId: group.id, userId: memberId },
-      })).not.toBeNull();
-      expect(await prisma.groupItinerary.findFirst({
-        where: { groupId: group.id, itineraryId: itinerary.id },
-      })).not.toBeNull();
+      expect(
+        await prisma.groupMember.findFirst({
+          where: { groupId: group.id, userId: memberId },
+        }),
+      ).not.toBeNull();
+      expect(
+        await prisma.groupItinerary.findFirst({
+          where: { groupId: group.id, itineraryId: itinerary.id },
+        }),
+      ).not.toBeNull();
     });
   });
 
@@ -146,15 +163,23 @@ describe('GroupsService (integration - expanded)', () => {
       });
 
       // Verify they exist
-      expect(await prisma.comment.findUnique({ where: { id: comment.id } })).toBeTruthy();
-      expect(await prisma.comment.findUnique({ where: { id: reply.id } })).toBeTruthy();
+      expect(
+        await prisma.comment.findUnique({ where: { id: comment.id } }),
+      ).toBeTruthy();
+      expect(
+        await prisma.comment.findUnique({ where: { id: reply.id } }),
+      ).toBeTruthy();
 
       // Delete group
       await groupsService.deleteGroup(group.id, ownerId);
 
       // Verify comments are STILL in the database (since soft-delete update doesn't trigger cascade)
-      expect(await prisma.comment.findFirst({ where: { id: comment.id } })).not.toBeNull();
-      expect(await prisma.comment.findFirst({ where: { id: reply.id } })).not.toBeNull();
+      expect(
+        await prisma.comment.findFirst({ where: { id: comment.id } }),
+      ).not.toBeNull();
+      expect(
+        await prisma.comment.findFirst({ where: { id: reply.id } }),
+      ).not.toBeNull();
     });
   });
 });

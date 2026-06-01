@@ -58,7 +58,10 @@ describe('Itinerary + Groups (e2e)', () => {
       .expect(200);
 
     // TransformInterceptor maps paginated data as body.data array directly
-    const listData = listRes.body.data as Array<{ id: string; destination: string }>;
+    const listData = listRes.body.data as Array<{
+      id: string;
+      destination: string;
+    }>;
     const ids = listData.map((item) => item.id);
     expect(ids).toContain(itinerary.id);
 

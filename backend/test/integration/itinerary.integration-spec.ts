@@ -95,22 +95,40 @@ describe('ItineraryService (integration)', () => {
       });
 
       // Assert they are created
-      expect(await prisma.itinerary.findUnique({ where: { id: itinerary.id } })).toBeTruthy();
-      expect(await prisma.itineraryDay.findUnique({ where: { id: day.id } })).toBeTruthy();
-      expect(await prisma.itineraryActivity.findUnique({ where: { id: activity.id } })).toBeTruthy();
-      expect(await prisma.itineraryTip.findUnique({ where: { id: tip.id } })).toBeTruthy();
+      expect(
+        await prisma.itinerary.findUnique({ where: { id: itinerary.id } }),
+      ).toBeTruthy();
+      expect(
+        await prisma.itineraryDay.findUnique({ where: { id: day.id } }),
+      ).toBeTruthy();
+      expect(
+        await prisma.itineraryActivity.findUnique({
+          where: { id: activity.id },
+        }),
+      ).toBeTruthy();
+      expect(
+        await prisma.itineraryTip.findUnique({ where: { id: tip.id } }),
+      ).toBeTruthy();
 
       // 3. Delete the itinerary through ItineraryService (which soft-deletes the parent itinerary)
       await itineraryService.deleteItinerary(itinerary.id, userId);
 
       // 4. Assert soft-deleted itinerary is not found using normal select queries
-      const foundItinerary = await prisma.itinerary.findFirst({ where: { id: itinerary.id } });
+      const foundItinerary = await prisma.itinerary.findFirst({
+        where: { id: itinerary.id },
+      });
       expect(foundItinerary).toBeNull();
 
       // 5. Related entities remain in the database since soft-deletion uses an update command which bypasses foreign-key cascade deletes
-      const foundDay = await prisma.itineraryDay.findFirst({ where: { id: day.id } });
-      const foundActivity = await prisma.itineraryActivity.findFirst({ where: { id: activity.id } });
-      const foundTip = await prisma.itineraryTip.findUnique({ where: { id: tip.id } });
+      const foundDay = await prisma.itineraryDay.findFirst({
+        where: { id: day.id },
+      });
+      const foundActivity = await prisma.itineraryActivity.findFirst({
+        where: { id: activity.id },
+      });
+      const foundTip = await prisma.itineraryTip.findUnique({
+        where: { id: tip.id },
+      });
 
       expect(foundDay).not.toBeNull();
       expect(foundActivity).not.toBeNull();
@@ -122,7 +140,7 @@ describe('ItineraryService (integration)', () => {
     it('correctly pages through user itineraries', async () => {
       // 1. Create a fresh user to avoid conflicts
       const localUser = await createTestUser(prisma);
-      
+
       // 2. Create 15 itineraries
       for (let i = 1; i <= 15; i++) {
         await createTestItinerary(prisma, localUser.id, {
@@ -131,7 +149,11 @@ describe('ItineraryService (integration)', () => {
       }
 
       // 3. Request page 1 with limit 10
-      const pageOne = await itineraryService.getUserItineraries(localUser.id, 1, 10);
+      const pageOne = await itineraryService.getUserItineraries(
+        localUser.id,
+        1,
+        10,
+      );
       expect(pageOne.itineraries.length).toBe(10);
       expect(pageOne.pagination.total).toBe(15);
       expect(pageOne.pagination.page).toBe(1);
@@ -139,7 +161,11 @@ describe('ItineraryService (integration)', () => {
       expect(pageOne.pagination.totalPages).toBe(2);
 
       // 4. Request page 2 with limit 10
-      const pageTwo = await itineraryService.getUserItineraries(localUser.id, 2, 10);
+      const pageTwo = await itineraryService.getUserItineraries(
+        localUser.id,
+        2,
+        10,
+      );
       expect(pageTwo.itineraries.length).toBe(5);
       expect(pageTwo.pagination.page).toBe(2);
     });

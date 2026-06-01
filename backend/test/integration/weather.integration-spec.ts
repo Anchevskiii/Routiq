@@ -5,7 +5,9 @@ import { WeatherService } from '../../src/weather/weather.service';
 import { AppConfigService } from '../../src/config/config.service';
 
 interface PrivateWeatherService {
-  getCoordinates: (destination: string) => Promise<{ lat: number; lng: number }>;
+  getCoordinates: (
+    destination: string,
+  ) => Promise<{ lat: number; lng: number }>;
   getForecastWithGoogle: (
     lat: number,
     lng: number,
@@ -70,13 +72,21 @@ describe('WeatherService Caching (integration)', () => {
         });
 
       // 1. Initial call (empty cache)
-      const data1 = await weatherService.getForecast('Ljubljana', '2026-06-01', 3);
+      const data1 = await weatherService.getForecast(
+        'Ljubljana',
+        '2026-06-01',
+        3,
+      );
       expect(data1.location).toBe('Ljubljana');
       expect(getCoordinatesSpy).toHaveBeenCalledTimes(1);
       expect(getForecastWithGoogleSpy).toHaveBeenCalledTimes(1);
 
       // 2. Second call within TTL (cache hit)
-      const data2 = await weatherService.getForecast('Ljubljana', '2026-06-01', 3);
+      const data2 = await weatherService.getForecast(
+        'Ljubljana',
+        '2026-06-01',
+        3,
+      );
       expect(data2.location).toBe('Ljubljana');
       // Number of API/Coordinate calls should still be 1!
       expect(getCoordinatesSpy).toHaveBeenCalledTimes(1);
@@ -109,14 +119,23 @@ describe('WeatherService Caching (integration)', () => {
       privateService.cache.set(cacheKey, {
         data: {
           location: 'Ljubljana',
-          current: { temperature: 10, condition: 'Rainy', humidity: 90, windSpeed: 15 },
+          current: {
+            temperature: 10,
+            condition: 'Rainy',
+            humidity: 90,
+            windSpeed: 15,
+          },
           forecast: [],
         },
         timestamp: Date.now() - 2 * 60 * 60 * 1000, // 2 hours ago
       });
 
       // Call service
-      const data = await weatherService.getForecast('Ljubljana', '2026-06-01', 3);
+      const data = await weatherService.getForecast(
+        'Ljubljana',
+        '2026-06-01',
+        3,
+      );
       expect(data.current.condition).toBe('Sunny'); // Fetched fresh Sunny data instead of old Rainy data!
       expect(getCoordinatesSpy).toHaveBeenCalledTimes(1);
       expect(getForecastWithGoogleSpy).toHaveBeenCalledTimes(1);

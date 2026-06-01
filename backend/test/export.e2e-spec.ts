@@ -73,7 +73,9 @@ describe('Export Controller (e2e)', () => {
     expect(bodyText).toContain('SUMMARY:Colosseum Guided Tour');
     // Note: Comma is escaped inside RFC ics structures
     expect(bodyText).toContain('LOCATION:Colosseum\\, Piazza del Colosseo');
-    expect(bodyText).toContain('DESCRIPTION:Explore the ancient gladiatorial arena.');
+    expect(bodyText).toContain(
+      'DESCRIPTION:Explore the ancient gladiatorial arena.',
+    );
     expect(bodyText).toContain('END:VEVENT');
     expect(bodyText).toContain('END:VCALENDAR');
   });

@@ -172,10 +172,16 @@ export async function createTestApp(): Promise<TestAppContext> {
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
   app.use(cookieParser());
-  app.use((req: Request & { user?: TestAuthUser }, _res: Response, next: NextFunction) => {
-    req.user = currentUser;
-    next();
-  });
+  app.use(
+    (
+      req: Request & { user?: TestAuthUser },
+      _res: Response,
+      next: NextFunction,
+    ) => {
+      req.user = currentUser;
+      next();
+    },
+  );
   app.setGlobalPrefix('api');
   await app.init();
 
