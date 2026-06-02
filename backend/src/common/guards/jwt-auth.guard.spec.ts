@@ -251,7 +251,9 @@ describe('JwtAuthGuard', () => {
       } as unknown as ExecutionContext;
 
       expect(await guard.canActivate(ctx)).toBe(true);
-      expect(mockSupabaseClient.auth.getUser).toHaveBeenCalledWith('cookie-token-123');
+      expect(mockSupabaseClient.auth.getUser).toHaveBeenCalledWith(
+        'cookie-token-123',
+      );
     });
 
     it('throws UnauthorizedException if both bearer and cookie are missing', async () => {
@@ -259,6 +261,62 @@ describe('JwtAuthGuard', () => {
 
       const request = {
         cookies: {},
+      };
+      const ctx = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => request }),
+        getArgs: () => [],
+        getArgByIndex: () => null,
+        switchToRpc: () => ({}),
+        switchToWs: () => ({}),
+        getType: () => 'http',
+      } as unknown as ExecutionContext;
+
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        new UnauthorizedException('Missing bearer token'),
+      );
+    });
+
+    it('allows cookie token on safe HTTP methods (e.g. GET)', async () => {
+      mockExtractToken.mockReturnValue(null);
+      mockSupabaseClient.auth.getUser.mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+      mockUsersService.upsertUser.mockResolvedValue(undefined);
+
+      const request = {
+        method: 'GET',
+        cookies: {
+          'sb-access-token': 'cookie-token-123',
+        },
+      };
+      const ctx = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => request }),
+        getArgs: () => [],
+        getArgByIndex: () => null,
+        switchToRpc: () => ({}),
+        switchToWs: () => ({}),
+        getType: () => 'http',
+      } as unknown as ExecutionContext;
+
+      expect(await guard.canActivate(ctx)).toBe(true);
+      expect(mockSupabaseClient.auth.getUser).toHaveBeenCalledWith(
+        'cookie-token-123',
+      );
+    });
+
+    it('rejects cookie token on mutating HTTP methods (e.g. POST)', async () => {
+      mockExtractToken.mockReturnValue(null);
+
+      const request = {
+        method: 'POST',
+        cookies: {
+          'sb-access-token': 'cookie-token-123',
+        },
       };
       const ctx = {
         getHandler: () => ({}),

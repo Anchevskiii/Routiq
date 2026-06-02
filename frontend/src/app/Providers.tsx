@@ -49,6 +49,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const userRef = useRef(user)
   userRef.current = user
 
+  const isLoginAnimatingRef = useRef(isLoginAnimating)
+  isLoginAnimatingRef.current = isLoginAnimating
+
   useEffect(() => {
     let isMounted = true
 
@@ -96,7 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (event === 'SIGNED_IN' && session?.user) {
-          if (!userRef.current) {
+          if (!userRef.current && !isLoginAnimatingRef.current) {
             setIsLoading(true)
           }
           try {
@@ -131,21 +134,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [isE2E, queryClient])
 
   const login = useCallback(async (credentials: LoginDto) => {
-    setIsLoading(true)
-    try {
-      await authApi.login(credentials)
-    } finally {
-      setIsLoading(false)
-    }
+    await authApi.login(credentials)
   }, [])
 
   const register = useCallback(async (payload: RegisterDto) => {
-    setIsLoading(true)
-    try {
-      await authApi.register(payload)
-    } finally {
-      setIsLoading(false)
-    }
+    await authApi.register(payload)
   }, [])
 
   const logout = useCallback(async () => {

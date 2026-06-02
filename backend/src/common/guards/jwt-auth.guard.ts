@@ -25,6 +25,12 @@ function extractTokenFromCookie(request: Request): string | null {
   if (!request.cookies) {
     return null;
   }
+  // Hardening: Only allow cookie auth for safe HTTP methods (GET, HEAD, OPTIONS)
+  // to completely prevent CSRF attacks on write/delete operations.
+  const safeMethods = ['GET', 'HEAD', 'OPTIONS'];
+  if (request.method && !safeMethods.includes(request.method.toUpperCase())) {
+    return null;
+  }
   return request.cookies['sb-access-token'] ?? null;
 }
 
