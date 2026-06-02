@@ -160,6 +160,50 @@ describe('JwtAuthGuard', () => {
   });
 
   // =========================================================================
+  // Test-mode bypass
+  // =========================================================================
+
+  describe('test-mode bypass', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it('returns true when NODE_ENV is test and request.user is already set', async () => {
+      process.env.NODE_ENV = 'test';
+      const { ctx, request } = buildContextWithRequest();
+      request.user = {
+        sub: 'test-user',
+        email: 'test@example.com',
+      } as JwtPayload;
+
+      const result = await guard.canActivate(ctx);
+
+      expect(result).toBe(true);
+      expect(mockSupabaseService.getClient).not.toHaveBeenCalled();
+      expect(mockExtractToken).not.toHaveBeenCalled();
+    });
+
+    it('does not bypass when NODE_ENV is not test', async () => {
+      process.env.NODE_ENV = 'development';
+      const { ctx, request } = buildContextWithRequest();
+      request.user = {
+        sub: 'test-user',
+        email: 'test@example.com',
+      } as JwtPayload;
+      mockSupabaseClient.auth.getUser.mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+
+      await guard.canActivate(ctx);
+
+      expect(mockSupabaseService.getClient).toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
   // Missing / malformed token
   // =========================================================================
 
@@ -177,6 +221,116 @@ describe('JwtAuthGuard', () => {
 
       await expect(guard.canActivate(buildContext())).rejects.toThrow(
         UnauthorizedException,
+      );
+    });
+  });
+
+  describe('cookie token extraction', () => {
+    it('extracts token from cookie when bearer token is missing', async () => {
+      mockExtractToken.mockReturnValue(null);
+      mockSupabaseClient.auth.getUser.mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+      mockUsersService.upsertUser.mockResolvedValue(undefined);
+
+      const request = {
+        cookies: {
+          'sb-access-token': 'cookie-token-123',
+        },
+      };
+      const ctx = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => request }),
+        getArgs: () => [],
+        getArgByIndex: () => null,
+        switchToRpc: () => ({}),
+        switchToWs: () => ({}),
+        getType: () => 'http',
+      } as unknown as ExecutionContext;
+
+      expect(await guard.canActivate(ctx)).toBe(true);
+      expect(mockSupabaseClient.auth.getUser).toHaveBeenCalledWith(
+        'cookie-token-123',
+      );
+    });
+
+    it('throws UnauthorizedException if both bearer and cookie are missing', async () => {
+      mockExtractToken.mockReturnValue(null);
+
+      const request = {
+        cookies: {},
+      };
+      const ctx = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => request }),
+        getArgs: () => [],
+        getArgByIndex: () => null,
+        switchToRpc: () => ({}),
+        switchToWs: () => ({}),
+        getType: () => 'http',
+      } as unknown as ExecutionContext;
+
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        new UnauthorizedException('Missing bearer token'),
+      );
+    });
+
+    it('allows cookie token on safe HTTP methods (e.g. GET)', async () => {
+      mockExtractToken.mockReturnValue(null);
+      mockSupabaseClient.auth.getUser.mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+      mockUsersService.upsertUser.mockResolvedValue(undefined);
+
+      const request = {
+        method: 'GET',
+        cookies: {
+          'sb-access-token': 'cookie-token-123',
+        },
+      };
+      const ctx = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => request }),
+        getArgs: () => [],
+        getArgByIndex: () => null,
+        switchToRpc: () => ({}),
+        switchToWs: () => ({}),
+        getType: () => 'http',
+      } as unknown as ExecutionContext;
+
+      expect(await guard.canActivate(ctx)).toBe(true);
+      expect(mockSupabaseClient.auth.getUser).toHaveBeenCalledWith(
+        'cookie-token-123',
+      );
+    });
+
+    it('rejects cookie token on mutating HTTP methods (e.g. POST)', async () => {
+      mockExtractToken.mockReturnValue(null);
+
+      const request = {
+        method: 'POST',
+        cookies: {
+          'sb-access-token': 'cookie-token-123',
+        },
+      };
+      const ctx = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => request }),
+        getArgs: () => [],
+        getArgByIndex: () => null,
+        switchToRpc: () => ({}),
+        switchToWs: () => ({}),
+        getType: () => 'http',
+      } as unknown as ExecutionContext;
+
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        new UnauthorizedException('Missing bearer token'),
       );
     });
   });

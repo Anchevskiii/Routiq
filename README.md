@@ -1,287 +1,216 @@
-# Routiq - Travel Planning Platform
+# Routiq — AI platforma za načrtovanje potovanj
 
-> AI-powered travel planning with collaborative features
+> Routiq je spletna aplikacija za načrtovanje potovanj s pomočjo umetne inteligence.  
+> Uporabnik vnese destinacijo, datume in tip potovanja — sistem generira personaliziran dnevni itinerar z atrakcijami, vremensko napovedjo in optimizirano potjo na Google Maps.
 
-Routiq is a modern travel planning application that helps users create personalized itineraries using AI, real-time weather data, and collaborative group features.
-
-## 🏗️ Architecture
-
-- **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
-- **Backend**: NestJS + TypeScript + Prisma + PostgreSQL (Supabase)
-- **AI**: Google Gemini 2.5 Flash for itinerary generation
-- **Maps**: Google Maps JavaScript SDK + Places API
-- **Weather**: Google Weather API
-- **Auth**: JWT + Google OAuth
-
-## 📁 Project Structure
-
-```
-routiq/
-├── frontend/                 # React frontend
-│   ├── src/
-│   │   ├── app/             # App bootstrap & providers
-│   │   ├── api/             # API layer
-│   │   ├── components/      # UI components
-│   │   ├── features/        # Feature modules
-│   │   ├── hooks/           # Shared hooks
-│   │   ├── types/           # TypeScript types
-│   │   ├── utils/           # Utility functions
-│   │   └── constants/       # App constants
-│   ├── package.json
-│   └── vite.config.ts
-├── backend/                  # NestJS backend
-│   ├── src/
-│   │   ├── auth/            # Authentication
-│   │   ├── users/           # User management
-│   │   ├── itinerary/       # Core feature
-│   │   ├── groups/          # Group travel
-│   │   ├── attractions/     # Places API proxy
-│   │   ├── weather/         # Weather API proxy
-│   │   ├── export/          # PDF/ICS export
-│   │   ├── gemini/          # AI integration
-│   │   └── common/          # Shared utilities
-│   ├── prisma/
-│   │   └── schema.prisma    # Database schema
-│   └── package.json
-├── BACKEND_ARCHITECTURE.md   # Backend documentation
-├── FRONTEND_ARCHITECTURE.md  # Frontend documentation
-├── DIRECTORY.md              # Complete file structure
-└── README.md                 # This file
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js >= 20 LTS
-- PostgreSQL database (Supabase recommended)
-- API keys for external services
-
-### 1. Clone and Install
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd routiq
-
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
-```
-
-### 2. Environment Setup
-
-#### Backend Environment
-
-```bash
-# Copy the example environment file
-cd backend
-cp .env.example .env
-
-# Edit .env with your configuration
-```
-
-Required environment variables:
-```env
-DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres"
-JWT_SECRET="your-super-secret-jwt-key"
-JWT_REFRESH_SECRET="your-super-secret-refresh-key"
-GEMINI_API_KEY="your-gemini-api-key"
-GOOGLE_PLACES_API_KEY="your-google-api-key"
-GOOGLE_MAPS_DIRECTIONS_API_KEY="your-google-api-key"
-GOOGLE_WEATHER_API_KEY="your-google-api-key"
-GOOGLE_CLIENT_ID="your-google-oauth-client-id"
-GOOGLE_CLIENT_SECRET="your-google-oauth-client-secret"
-FRONTEND_URL="http://localhost:5173"
-```
-
-#### Frontend Environment
-
-```bash
-# Copy the example environment file
-cd frontend
-cp .env.example .env
-
-# Edit .env with your configuration
-```
-
-Required environment variables:
-```env
-VITE_API_URL=http://localhost:3000/api
-VITE_GOOGLE_MAPS_API_KEY=your-google-maps-javascript-api-key
-```
-
-### 3. Database Setup
-
-```bash
-# In the backend directory
-cd backend
-
-# Generate Prisma client
-npx prisma generate
-
-# Run database migrations
-npx prisma migrate dev
-
-# (Optional) Seed with test data
-npx prisma db seed
-```
-
-### 4. Start Development Servers
-
-```bash
-# Start backend (in backend directory)
-cd backend
-npm run start:dev
-
-# Start frontend (in frontend directory)
-cd frontend
-npm run dev
-```
-
-#### Port cleanup (Windows)
-
-Routiq expects the **API on port 3000** and the **Vite dev server on 5173**. On Windows, stray Node processes often leave those ports occupied, which used to push Vite to 5174+ and break CORS expectations.
-
-A shared script at **`scripts/free-port.ps1`** finds every process **listening** on a given TCP port (via `Get-NetTCPConnection`), logs **PID and process name**, and stops those processes so the port is free.
-
-**npm hooks** run that script automatically before common dev commands (only when you invoke npm from `backend/` or `frontend/` so the path `../scripts/free-port.ps1` resolves):
-
-| When you run… | Script runs first | Port freed |
-|---------------|-------------------|------------|
-| `backend`: `npm start`, `npm run start:dev`, `npm run start:debug` | `prestart`, `prestart:dev`, or `prestart:debug` | **3000** |
-| `backend`: `npm run prisma:generate` | `preprisma:generate` | **3000** |
-| `frontend`: `npm run dev` | `predev` | **5173** |
-
-The frontend Vite config uses **`strictPort: true`**, so if 5173 is still blocked after cleanup, the dev server **exits with an error** instead of silently using another port.
-
-**Caution:** Anything legitimately bound to 3000 or 5173 (not another Routiq instance) will be stopped too—avoid running these commands in that situation.
-
-The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3000
-- API Documentation: http://localhost:3000/api/docs
-
-## 📚 Development Scripts
-
-### Backend
-
-```bash
-npm run start:dev    # Free port 3000 (Windows), then start in development mode
-npm run build        # Build for production
-npm run start:prod   # Start production build
-npm run test         # Run tests
-npm run lint         # Lint code
-npm run format       # Format code
-
-# Prisma commands
-npm run prisma:generate    # Free port 3000 (Windows), then generate Prisma client
-npm run prisma:migrate     # Run migrations
-npm run prisma:studio      # Open Prisma Studio
-npm run prisma:seed        # Seed database
-```
-
-### Frontend
-
-```bash
-npm run dev         # Free port 5173 (Windows), then start Vite on :5173 (strict)
-npm run build       # Build for production
-npm run preview     # Preview production build
-npm run test        # Run tests
-npm run lint        # Lint code
-npm run lint:fix    # Fix linting issues
-npm run format      # Format code
-npm run type-check  # Type checking
-```
-
-## 🔧 Configuration
-
-### Database Setup with Supabase
-
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Get the connection string from Settings → Database → URI
-3. Add it to your `backend/.env` file
-4. Run `npx prisma migrate deploy` to apply schema
-
-### API Keys Setup
-
-#### Google APIs
-1. Create a project at [Google Cloud Console](https://console.cloud.google.com)
-2. Enable:
-   - Places API
-   - Maps JavaScript API
-   - Directions API
-   - Weather API (Google Cloud)
-3. Create API keys with appropriate restrictions
-4. Add keys to environment files (same key can be used for all)
-
-#### Gemini AI
-1. Get API key from [Google AI Studio](https://aistudio.google.com)
-2. Add to `backend/.env`
-
-## 🧪 Testing
-
-### Backend Tests
-
-```bash
-# Unit tests
-npm run test
-
-# E2E tests
-npm run test:e2e
-
-# Coverage
-npm run test:cov
-```
-
-### Frontend Tests
-
-```bash
-# Unit tests
-npm run test
-
-# E2E tests (when implemented)
-npm run test:e2e
-```
-
-## 📖 Documentation
-
-- [Backend Architecture](./BACKEND_ARCHITECTURE.md)
-- [Frontend Architecture](./FRONTEND_ARCHITECTURE.md)
-- [Directory Structure](./DIRECTORY.md)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'feat: add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-### Commit Convention
-
-Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-
-- `feat:` New feature
-- `fix:` Bug fix
-- `refactor:` Code refactoring
-- `style:` Style changes
-- `docs:` Documentation
-- `test:` Tests
-- `chore:` Maintenance
-
-## 📝 License
-
-This project is private and confidential.
-
-## 🆘 Support
-
-For support, please contact the development team or create an issue in the repository.
+**Ekipa:** Jan Ančevski · Klemen Novak · Mojca Marin
 
 ---
 
-**Built with ❤️ by the Routiq Team**
+## Kazalo dokumentacije
+
+| Dokument | Vsebina |
+|---|---|
+| [Arhitektura sistema](docs/architecture.md) | Deployment diagram, tech stack, FE/BE arhitektura, komponentni pregled |
+| [Podatkovni model](docs/data-model.md) | ER diagram, vse tabele z opisi, enumeracije, indeksi |
+| [Podatkovni tokovi](docs/data-flows.md) | Sequence diagrami: avtentikacija, AI generiranje, skupinska potovanja |
+| [REST API referenca](docs/api-reference.md) | Vsi endpointi z metodami, parametri in opisi |
+| [Varnostna arhitektura](docs/security.md) | JWT tok, shranjevanje tokenov, API ključi, rate limiting, Helmet |
+| [Testiranje](docs/testing.md) | Testna strategija, pokritost, spec datoteke, kako zagnati |
+| [CI/CD pipeline](docs/ci-cd.md) | GitHub Actions, deploy na Vercel in Render |
+| [Vodenje projekta](docs/project-management.md) | Git workflow, iteracije, commit konvencija, PR pravila |
+| [Izzivi in rešitve](docs/challenges.md) | Konkretni problemi ki so se pojavili med razvojem |
+| [Standardi pisanja kode](docs/coding-standards.md) | TypeScript pravila, imenovanje, strukturna pravila |
+
+---
+
+## Arhitektura
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Uporabnikov brskalnik                        │
+│  React SPA (Vite + TypeScript)  │  Google Maps JS SDK          │
+└──────────────────┬──────────────────────────────────────────────┘
+                   │ HTTPS / REST (Axios)
+┌──────────────────▼──────────────────────────────────────────────┐
+│                  Render.com — NestJS REST API                   │
+│  Auth │ Itinerary │ Groups │ Weather │ Attractions │ Export     │
+└──┬────┴────┬───────┴────────┴────────┴─────────────┴─────┬──────┘
+   │         │                                              │
+   ▼         ▼                                              ▼
+Supabase  Google Cloud                                   Resend
+(PostgreSQL  (Gemini AI, Places, Weather, OAuth)         (E-pošta)
+ + Auth)
+```
+
+Podroben deployment diagram → [Arhitektura sistema](docs/architecture.md#deployment-diagram)
+
+---
+
+## Ključne funkcionalnosti
+
+| Sklop | Opis |
+|---|---|
+| **AI generiranje** | Google Gemini 2.5 Flash generira itinerar prek SSE streaming — vsak dan se prikaže sproti |
+| **Interaktivni zemljevid** | Google Maps z atrakcijami, optimizirano potjo in vremensko napovedjo |
+| **Urejanje itinerarja** | Drag & drop razporejanje aktivnosti, dodajanje in brisanje |
+| **Skupinska potovanja** | Kreiranje skupin, e-mail povabila (Resend), glasovanje za itinerarje |
+| **Klepet** | Komentarji s threading (podrejenimi odgovori) in emoji reakcijami |
+| **Izvoz** | PDF (klient, @react-pdf/renderer) in .ics (strežnik) |
+| **Avtentikacija** | E-mail/geslo + Google OAuth, JWT prek Supabase Auth |
+| **Teme** | Svetli in temni način (light/dark mode) |
+
+---
+
+## Tech Stack
+
+| Plast | Tehnologija |
+|---|---|
+| **Frontend** | React 18 + TypeScript + Vite + Tailwind CSS |
+| **Backend** | NestJS 10 + TypeScript |
+| **ORM** | Prisma |
+| **Baza** | PostgreSQL (Supabase — hosted) |
+| **Avtentikacija** | Supabase Auth + Google OAuth |
+| **AI** | Google Gemini 2.5 Flash |
+| **Karte** | Google Maps JavaScript SDK + Places API + Directions API |
+| **Vreme** | Google Weather API |
+| **E-pošta** | Resend (transakcijska e-pošta) |
+| **Deploy FE** | Vercel |
+| **Deploy BE** | Render.com |
+
+> ⚠️ **Axios 1.14.0 je pinana** — verziji 1.14.1 in 0.30.4 sta bili marca 2026 kompromitirani v supply chain napadu. Ne posodabljaj brez preveritve. Podrobnosti: [Izzivi in rešitve](docs/challenges.md#supply-chain-napad-na-axios).
+
+---
+
+## Hiter začetek
+
+### Predpogoji
+
+- Node.js >= 20 LTS
+- PostgreSQL baza (Supabase priporočen)
+- API ključi: Google Cloud Console, Gemini AI Studio, Resend
+
+### Namestitev
+
+```bash
+# 1. Kloniraj repozitorij
+git clone <repository-url>
+cd routiq
+
+# 2. Namesti odvisnosti
+cd backend && npm install
+cd ../frontend && npm install
+
+# 3. Nastavi okolje
+cd backend && cp .env.example .env    # Uredi z API ključi
+cd ../frontend && cp .env.example .env
+
+# 4. Pripravi bazo
+cd backend
+npx prisma generate
+npx prisma migrate dev
+npx prisma db seed    # opcijsko
+
+# 5. Zaženi
+# Terminal 1
+cd backend && npm run start:dev    # → http://localhost:3000
+
+# Terminal 2
+cd frontend && npm run dev         # → http://localhost:5173
+```
+
+Swagger API dokumentacija: `http://localhost:3000/api/docs` (samo v development)
+
+### Potrebne environment spremenljivke
+
+```env
+# backend/.env
+DATABASE_URL=postgresql://...           # Supabase connection pooler (pgbouncer)
+DIRECT_URL=postgresql://...             # Direktna konekcija za Prisma migracije
+SUPABASE_JWT_SECRET=...                 # Iz Supabase dashboard → Settings → API
+GEMINI_API_KEY=...
+GOOGLE_PLACES_API_KEY=...
+GOOGLE_MAPS_DIRECTIONS_API_KEY=...
+GOOGLE_WEATHER_API_KEY=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+MAIL_HOST=smtp.resend.com               # Resend SMTP
+MAIL_PORT=465
+MAIL_USER=resend
+MAIL_PASS=...                           # Resend API key
+MAIL_FROM=onboarding@resend.dev
+FRONTEND_URL=http://localhost:5173
+NODE_ENV=development
+PORT=3000
+
+# frontend/.env
+VITE_API_URL=http://localhost:3000/api
+VITE_GOOGLE_MAPS_API_KEY=...
+VITE_SUPABASE_URL=https://...supabase.co
+VITE_SUPABASE_ANON_KEY=...
+```
+
+---
+
+## Struktura repozitorija
+
+```
+routiq/                         # Monorepo koren
+├── frontend/                   # React 18 + TypeScript + Vite
+│   └── src/
+│       ├── api/                # Vsi HTTP klici (Axios)
+│       ├── app/                # Router, globalni providerji
+│       ├── components/         # UI primitivi + layout
+│       ├── features/           # Feature moduli (auth, planner, itinerary, groups...)
+│       ├── hooks/              # Deljeni custom hooks
+│       ├── types/              # TypeScript tipi
+│       └── utils/              # Utility funkcije
+├── backend/                    # NestJS + Prisma
+│   ├── prisma/
+│   │   └── schema.prisma       # Celotna podatkovna shema
+│   └── src/
+│       ├── auth/               # Supabase Auth integracija
+│       ├── users/              # Profil, nastavitve, avatar
+│       ├── itinerary/          # AI generiranje + CRUD (jedro)
+│       ├── gemini/             # Gemini SSE streaming service
+│       ├── attractions/        # Google Places proxy
+│       ├── weather/            # Google Weather proxy + cache
+│       ├── groups/             # Skupinska potovanja
+│       ├── export/             # .ics generiranje
+│       ├── mail/               # Resend e-pošta
+│       └── common/             # Guards, filters, interceptors, utils
+├── .github/workflows/
+│   └── ci.yml                  # GitHub Actions CI pipeline
+└── docs/                       # Detajlna dokumentacija (→ kazalo zgoraj)
+```
+
+Popoln pregled vseh datotek: [DIRECTORY.md](DIRECTORY.md)
+
+---
+
+## Testi
+
+```bash
+cd backend
+npx jest                    # Vsi unit testi
+npx jest --coverage         # Z poročilom pokritosti
+npx jest --watch            # Watch mode
+```
+
+Podrobna dokumentacija testov: [Testiranje](docs/testing.md)
+
+---
+
+## Deploy
+
+| Okolje | Storitev | Branch |
+|---|---|---|
+| Frontend | Vercel | `main` |
+| Backend | Render.com | `main` |
+
+CI/CD pipeline se sproži ob vsakem PR/push na `main`. Podrobnosti: [CI/CD pipeline](docs/ci-cd.md)
+
+---
+
+*Projekt razvit v okviru predmeta pri UM FERI, 2026.*  
+*Ekipa: Jan Ančevski · Klemen Novak · Mojca Marin*

@@ -11,9 +11,21 @@ export const apiClient = axios.create({
 
 let cachedToken: string | null = null
 
+const setSessionCookie = (token: string | null) => {
+  if (typeof document === 'undefined') return
+  if (token) {
+    // Set cookie as secure with SameSite=Lax, omitting Max-Age/Expires to make it a session cookie
+    document.cookie = `sb-access-token=${encodeURIComponent(token)}; path=/; SameSite=Lax; Secure`
+  } else {
+    // Remove the cookie
+    document.cookie = `sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`
+  }
+}
+
 // Keep token in sync with auth state changes (also initializes token on startup)
 supabase.auth.onAuthStateChange((_event, session) => {
   cachedToken = session?.access_token ?? null
+  setSessionCookie(cachedToken)
 })
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {

@@ -22,7 +22,7 @@ import { MailModule } from './mail/mail.module';
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
     }),
     AppConfigModule,
 
