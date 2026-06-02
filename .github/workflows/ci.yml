@@ -52,11 +52,13 @@ jobs:
         run: npx prisma generate
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
+          DIRECT_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
 
       - name: Run Prisma Database Migrations
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
+          DIRECT_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
 
       - name: Run Unit Tests
         run: npm run test
