@@ -225,6 +225,58 @@ describe('JwtAuthGuard', () => {
     });
   });
 
+  describe('cookie token extraction', () => {
+    it('extracts token from cookie when bearer token is missing', async () => {
+      mockExtractToken.mockReturnValue(null);
+      mockSupabaseClient.auth.getUser.mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+      mockUsersService.upsertUser.mockResolvedValue(undefined);
+
+      const request = {
+        cookies: {
+          'sb-access-token': 'cookie-token-123',
+        },
+      };
+      const ctx = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => request }),
+        getArgs: () => [],
+        getArgByIndex: () => null,
+        switchToRpc: () => ({}),
+        switchToWs: () => ({}),
+        getType: () => 'http',
+      } as unknown as ExecutionContext;
+
+      expect(await guard.canActivate(ctx)).toBe(true);
+      expect(mockSupabaseClient.auth.getUser).toHaveBeenCalledWith('cookie-token-123');
+    });
+
+    it('throws UnauthorizedException if both bearer and cookie are missing', async () => {
+      mockExtractToken.mockReturnValue(null);
+
+      const request = {
+        cookies: {},
+      };
+      const ctx = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => request }),
+        getArgs: () => [],
+        getArgByIndex: () => null,
+        switchToRpc: () => ({}),
+        switchToWs: () => ({}),
+        getType: () => 'http',
+      } as unknown as ExecutionContext;
+
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        new UnauthorizedException('Missing bearer token'),
+      );
+    });
+  });
+
   describe('Supabase client unavailable', () => {
     it('throws UnauthorizedException when getClient returns null', async () => {
       mockSupabaseService.getClient.mockReturnValue(null);

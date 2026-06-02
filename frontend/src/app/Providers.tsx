@@ -7,6 +7,7 @@ import React, {
   useState,
   useRef,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from '@/api/auth.api'
 import { supabase } from '@/api/supabase'
 import type { LoginDto, RegisterDto, User } from '@/types/auth.types'
@@ -43,6 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoginAnimating, setIsLoginAnimating] = useState(false)
   const isE2E = import.meta.env.VITE_E2E_BYPASS_AUTH === 'true'
+  const queryClient = useQueryClient()
 
   const userRef = useRef(user)
   userRef.current = user
@@ -74,6 +76,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch {
         if (isMounted) {
           setUser(null)
+          queryClient.clear()
         }
       } finally {
         if (isMounted) {
@@ -104,6 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } catch {
             if (isMounted) {
               setUser(null)
+              queryClient.clear()
             }
           } finally {
             if (isMounted) {
@@ -113,6 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else if (event === 'SIGNED_OUT') {
           if (isMounted) {
             setUser(null)
+            queryClient.clear()
             setIsLoading(false)
           }
         }
@@ -123,7 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isMounted = false
       subscription.unsubscribe()
     }
-  }, [isE2E])
+  }, [isE2E, queryClient])
 
   const login = useCallback(async (credentials: LoginDto) => {
     setIsLoading(true)
@@ -147,17 +152,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true)
     try {
       await authApi.logout()
+      queryClient.clear()
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [queryClient])
 
   const refreshToken = useCallback(async () => Promise.resolve(), [])
 
   const refreshUser = useCallback(async () => {
-    const updatedUser = await authApi.getMe().catch(() => null)
+    const updatedUser = await authApi.getMe().catch(() => {
+      queryClient.clear()
+      return null
+    })
     setUser(updatedUser)
-  }, [])
+  }, [queryClient])
 
   const value: AuthContextType = useMemo(
     () => ({
@@ -177,3 +186,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
+

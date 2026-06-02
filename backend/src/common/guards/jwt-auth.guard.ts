@@ -20,6 +20,14 @@ interface RequestWithUser extends Request {
 /** Placeholder domain for Supabase identities without an email claim (phone-only etc.). */
 const ANONYMOUS_EMAIL_SUFFIX = '@anonymous.routiq.local';
 
+/** Helper to extract Supabase access token from cookie */
+function extractTokenFromCookie(request: Request): string | null {
+  if (!request.cookies) {
+    return null;
+  }
+  return request.cookies['sb-access-token'] ?? null;
+}
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   private readonly logger = new Logger(JwtAuthGuard.name);
@@ -45,7 +53,11 @@ export class JwtAuthGuard implements CanActivate {
     if (process.env.NODE_ENV === 'test' && request.user) {
       return true;
     }
-    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
+    let token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
+
+    if (!token) {
+      token = extractTokenFromCookie(request);
+    }
 
     if (!token) {
       throw new UnauthorizedException('Missing bearer token');
