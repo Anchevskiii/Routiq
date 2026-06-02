@@ -72,6 +72,7 @@ export const DayCard: React.FC<DayCardProps> = ({
             {...dragHandleProps}
             {...dragHandleAttributes}
             onClick={e => e.stopPropagation()}
+            data-testid="day-drag-handle"
             className="p-1.5 rounded-[8px] text-gray-400 dark:text-[#6e6c93] cursor-grab active:cursor-grabbing hover:text-gray-600 dark:hover:text-[#a3a1c8] transition-colors flex-shrink-0"
           >
             <GripVertical className="w-4 h-4" />

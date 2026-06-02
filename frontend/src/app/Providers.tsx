@@ -42,12 +42,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoginAnimating, setIsLoginAnimating] = useState(false)
+  const isE2E = import.meta.env.VITE_E2E_BYPASS_AUTH === 'true'
 
   const userRef = useRef(user)
   userRef.current = user
 
   useEffect(() => {
     let isMounted = true
+
+    if (isE2E) {
+      if (isMounted) {
+        setUser({ id: 'e2e-user', email: 'e2e@routiq.test', name: 'E2E User' })
+        setIsLoading(false)
+      }
+      return () => { isMounted = false }
+    }
 
     const initAuth = async () => {
       try {
@@ -114,7 +123,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isMounted = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, [isE2E])
 
   const login = useCallback(async (credentials: LoginDto) => {
     setIsLoading(true)

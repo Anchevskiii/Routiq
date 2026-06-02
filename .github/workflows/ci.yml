@@ -2,14 +2,30 @@ name: Routiq CI Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, development ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, development ]
 
 jobs:
   backend-checks:
-    name: Backend Validation
+    name: Backend Validation & Testing
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: routiq_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     defaults:
       run:
         working-directory: ./backend
@@ -28,19 +44,39 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
-        env:
-          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
-
       - name: Code Formatting Check
         run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
 
       - name: Linter Check (ESLint)
         run: npm run lint
 
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
+
+      - name: Run Prisma Database Migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
+
+      - name: Run Unit Tests
+        run: npm run test
+
+      - name: Run Integration Tests
+        run: npm run test:integration
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
+          DIRECT_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
+
+      - name: Run End-to-End (E2E) & Regression Tests
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
+          DIRECT_URL: "postgresql://postgres:postgres@localhost:5433/routiq_test?schema=public"
+
   frontend-checks:
-    name: Frontend Validation
+    name: Frontend Validation & Testing
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -71,3 +107,12 @@ jobs:
 
       - name: Production Build Check
         run: npm run build
+
+      - name: Run Unit & Component Tests (Vitest)
+        run: npm run test:unit:run
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E Tests (Playwright)
+        run: npm run test:e2e

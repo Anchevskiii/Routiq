@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { z } from 'zod'
 import { Plus, Trash2, ChevronDown } from 'lucide-react'
 import type { GroupRole } from '@/types/group.types'
 
@@ -10,6 +11,11 @@ const ROLE_OPTIONS: { value: GroupRole; label: string }[] = [
   { value: 'MEMBER',    label: 'Member' },
 ]
 
+const emailSchema = z
+  .string()
+  .min(1, 'Email is required')
+  .email('Enter a valid email')
+
 interface Props {
   members: PendingMember[]
   onChange: (members: PendingMember[]) => void
@@ -17,10 +23,20 @@ interface Props {
 
 export const CreateGroupMembersStep: React.FC<Props> = ({ members, onChange }) => {
   const [emailInput, setEmailInput] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   const add = () => {
     const email = emailInput.trim()
-    if (!email || members.find(m => m.email === email)) return
+    const result = emailSchema.safeParse(email)
+    if (!result.success) {
+      setEmailError(result.error.errors[0]?.message ?? 'Enter a valid email')
+      return
+    }
+    if (members.find(m => m.email === email)) {
+      setEmailError('Email already added')
+      return
+    }
+    setEmailError(null)
     onChange([...members, { email, role: 'MEMBER' }])
     setEmailInput('')
   }
@@ -40,7 +56,10 @@ export const CreateGroupMembersStep: React.FC<Props> = ({ members, onChange }) =
         <input
           type="email"
           value={emailInput}
-          onChange={e => setEmailInput(e.target.value)}
+          onChange={e => {
+            setEmailInput(e.target.value)
+            if (emailError) setEmailError(null)
+          }}
           onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())}
           placeholder="member@email.com"
           className="flex-1 bg-gray-100/60 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.1] rounded-[10px] px-3.5 py-2.5 text-gray-900 dark:text-[#f0eeff] text-[13px] outline-none placeholder:text-gray-400"
@@ -53,6 +72,11 @@ export const CreateGroupMembersStep: React.FC<Props> = ({ members, onChange }) =
           <Plus size={14} /> Add
         </button>
       </div>
+      {emailError && (
+        <p className="text-xs text-red-400 mt-1">
+          {emailError}
+        </p>
+      )}
 
       {members.length === 0 ? (
         <p className="py-6 text-center text-[13px] text-gray-400 dark:text-[#6e6c93]">No members added yet. You can skip this step.</p>
