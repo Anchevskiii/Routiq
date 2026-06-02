@@ -35,19 +35,19 @@ sequenceDiagram
     U->>FE: Vnese email + geslo
     FE->>SB: supabase.auth.signInWithPassword()
     Note over FE,SB: Direkten klic na Supabase (brez backenda)
-    SB-->>FE: session { access_token, refresh_token, user }
-    FE->>FE: Shrani access_token v memory (AuthContext)
-    FE->>FE: refresh_token ostane v Supabase SDK (httpOnly)
-    FE->>BE: GET /auth/me (Bearer access_token)
+    SB-->>FE: session { access_token, user }
+    FE->>FE: Shrani access_token v sessionStorage (XSS zaščita)
+    FE->>FE: Nastavi sejni piškotek sb-access-token (SameSite=Lax, Secure)
+    FE->>BE: GET /api/users/profile (Authorization: Bearer access_token)
     BE->>SB: supabase.auth.getUser(token)
     SB-->>BE: user data (id, email, name...)
     BE->>DB: upsertUser (sinhronizacija lokalne kopije)
     BE-->>FE: { success: true, data: user }
     FE->>FE: Shrani user v AuthContext
-    FE-->>U: Redirect na /dashboard
+    FE-->>U: Predvajaj map animacijo -> Redirect na /dashboard
 
     rect rgb(230, 240, 255)
-        Note over U,DB: Vsak nadaljnji API klic
+        Note over U,DB: Vsak standardni API klic
         FE->>BE: Request + Authorization: Bearer token
         BE->>SB: supabase.auth.getUser(token)
         SB-->>BE: user
@@ -55,16 +55,20 @@ sequenceDiagram
         BE-->>FE: Response
     end
 
-    rect rgb(255, 235, 230)
-        Note over U,DB: Token poteče (401)
-        FE->>SB: supabase.auth.refreshSession()
-        SB-->>FE: Nov access_token
-        FE->>FE: Posodobi token v memory
-        FE->>BE: Ponovi originalni request
+    rect rgb(230, 255, 230)
+        Note over U,DB: Prenos datotek / GET zahtevki (npr. .ics izvoz)
+        FE->>BE: GET /api/export/:id/ics + sb-access-token piškotek (avtomatsko)
+        Note over BE: Guard preveri piškotek (dovoljeno samo za GET/HEAD)
+        BE->>SB: supabase.auth.getUser(token_iz_piskotka)
+        SB-->>BE: user
+        BE-->>FE: Stream koledarske datoteke (.ics)
     end
 ```
 
-**Ključna varnostna odločitev:** `access_token` živi samo v React Context (RAM). Ko se stran osveži, se token samodejno obnovi prek Supabase SDK. Ta pristop prepreči XSS napade, ki bi sicer ukradli token iz `localStorage`.
+**Ključne varnostne odločitve:**
+1. **sessionStorage**: Žetoni se namesto v `localStorage` shranjujejo v `sessionStorage`, kar preprečuje permanentno krajo žetonov (seja se uniči takoj ob zaprtju zavihka brskalnika).
+2. **SameSite=Lax Sejni piškotek**: Sinhroniziran piškotek `sb-access-token` deluje kot varnostni fallback za zaščitene `GET` prenose. Nima nastavljenega roka trajanja (Expires), tako da ga brskalnik izbriše ob zaprtju seje.
+3. **CSRF zaščita na backendu**: `JwtAuthGuard` prebere token iz piškotka **izključno pri varnih metodah (`GET`, `HEAD`, `OPTIONS`)**. Za vse ostale (POST, PUT, DELETE, PATCH) zahteva eksplicitno Bearer záhlavje, kar onemogoča CSRF napade.
 
 ---
 

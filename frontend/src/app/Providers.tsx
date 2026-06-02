@@ -7,6 +7,7 @@ import React, {
   useState,
   useRef,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from '@/api/auth.api'
 import { supabase } from '@/api/supabase'
 import type { LoginDto, RegisterDto, User } from '@/types/auth.types'
@@ -43,9 +44,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoginAnimating, setIsLoginAnimating] = useState(false)
   const isE2E = import.meta.env.VITE_E2E_BYPASS_AUTH === 'true'
+  const queryClient = useQueryClient()
 
   const userRef = useRef(user)
   userRef.current = user
+
+  const isLoginAnimatingRef = useRef(isLoginAnimating)
+  isLoginAnimatingRef.current = isLoginAnimating
 
   useEffect(() => {
     let isMounted = true
@@ -74,6 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch {
         if (isMounted) {
           setUser(null)
+          queryClient.clear()
         }
       } finally {
         if (isMounted) {
@@ -93,7 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (event === 'SIGNED_IN' && session?.user) {
-          if (!userRef.current) {
+          if (!userRef.current && !isLoginAnimatingRef.current) {
             setIsLoading(true)
           }
           try {
@@ -104,6 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } catch {
             if (isMounted) {
               setUser(null)
+              queryClient.clear()
             }
           } finally {
             if (isMounted) {
@@ -113,6 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else if (event === 'SIGNED_OUT') {
           if (isMounted) {
             setUser(null)
+            queryClient.clear()
             setIsLoading(false)
           }
         }
@@ -123,41 +131,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isMounted = false
       subscription.unsubscribe()
     }
-  }, [isE2E])
+  }, [isE2E, queryClient])
 
   const login = useCallback(async (credentials: LoginDto) => {
-    setIsLoading(true)
-    try {
-      await authApi.login(credentials)
-    } finally {
-      setIsLoading(false)
-    }
+    await authApi.login(credentials)
   }, [])
 
   const register = useCallback(async (payload: RegisterDto) => {
-    setIsLoading(true)
-    try {
-      await authApi.register(payload)
-    } finally {
-      setIsLoading(false)
-    }
+    await authApi.register(payload)
   }, [])
 
   const logout = useCallback(async () => {
     setIsLoading(true)
     try {
       await authApi.logout()
+      queryClient.clear()
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [queryClient])
 
   const refreshToken = useCallback(async () => Promise.resolve(), [])
 
   const refreshUser = useCallback(async () => {
-    const updatedUser = await authApi.getMe().catch(() => null)
+    const updatedUser = await authApi.getMe().catch(() => {
+      queryClient.clear()
+      return null
+    })
     setUser(updatedUser)
-  }, [])
+  }, [queryClient])
 
   const value: AuthContextType = useMemo(
     () => ({
@@ -177,3 +179,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
+
