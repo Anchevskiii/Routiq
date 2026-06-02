@@ -1,17 +1,11 @@
-import {
-  ExecutionContext,
-  INestApplication,
-  ValidationPipe,
-} from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import cookieParser from 'cookie-parser';
 import { AppModule } from '../src/app.module';
 import { SupabaseService } from '../src/supabase/supabase.service';
-import { PrismaService } from '../src/prisma/prisma.service';
 import { AllExceptionsFilter, TransformInterceptor } from '../src/common';
 import { ItineraryThrottlerGuard } from '../src/itinerary/guards/itinerary-throttler.guard';
-import { APP_GUARD } from '@nestjs/core';
 
 describe('Authentication (e2e)', () => {
   let app: INestApplication;

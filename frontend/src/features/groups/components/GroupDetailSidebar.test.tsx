@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { GroupMember } from '@/types/group.types'
 
 vi.mock('./GroupComments', () => ({
   GroupComments: () => null,
@@ -9,12 +10,14 @@ vi.mock('./GroupComments', () => ({
 
 import { GroupDetailSidebar } from './GroupDetailSidebar'
 
-const members = [
+const members: GroupMember[] = [
   {
     id: 'm1',
+    groupId: 'g1',
     userId: 'u1',
     role: 'OWNER',
     status: 'ACCEPTED',
+    joinedAt: '2026-06-02T18:00:00Z',
     user: { id: 'u1', name: 'Owner', email: 'owner@routiq.test' },
   },
 ]

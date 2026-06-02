@@ -129,7 +129,14 @@ export class GroupsService {
                 avatarUrl: true,
               },
             },
+            reactions: {
+              select: {
+                emoji: true,
+                userId: true,
+              },
+            },
             replies: {
+              where: { deletedAt: null },
               include: {
                 user: {
                   select: {
@@ -138,6 +145,15 @@ export class GroupsService {
                     avatarUrl: true,
                   },
                 },
+                reactions: {
+                  select: {
+                    emoji: true,
+                    userId: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: 'asc',
               },
             },
           },

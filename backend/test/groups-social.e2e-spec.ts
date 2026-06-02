@@ -65,7 +65,7 @@ describe('Groups Social (e2e)', () => {
 
     const reactionRes = await request(app.getHttpServer())
       .post(`/api/groups/${groupId}/comments/${commentId}/reactions`)
-      .send({ emoji: ':thumbs_up:' })
+      .send({ emoji: '👍' })
       .expect(200);
 
     expect(reactionRes.body.success).toBe(true);
@@ -98,7 +98,7 @@ describe('Groups Social (e2e)', () => {
     expect(group.comments[0].replies.length).toBe(1);
     expect(group.comments[0].reactions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ emoji: ':thumbs_up:', userId }),
+        expect.objectContaining({ emoji: '👍', userId }),
       ]),
     );
 

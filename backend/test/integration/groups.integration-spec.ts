@@ -1,6 +1,5 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { ConflictException } from '@nestjs/common';
 import { PrismaModule } from '../../src/prisma/prisma.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { GroupsService } from '../../src/groups/groups.service';
