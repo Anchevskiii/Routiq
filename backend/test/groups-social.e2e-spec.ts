@@ -98,7 +98,7 @@ describe('Groups Social (e2e)', () => {
     expect(group.comments[0].replies.length).toBe(1);
     expect(group.comments[0].reactions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ emoji: ':thumbs_up:', userId }),
+        expect.objectContaining({ emoji: '👍', userId }),
       ]),
     );
 
