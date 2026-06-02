@@ -41,3 +41,9 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+
+# Playwright test outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

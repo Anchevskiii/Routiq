@@ -249,6 +249,59 @@ describe('GroupsService', () => {
   });
 
   // =========================================================================
+  // updateGroup
+  // =========================================================================
+
+  describe('updateGroup', () => {
+    it('updates the group when caller is OWNER or ADMIN', async () => {
+      const updatedGroup = {
+        ...groupRecord,
+        name: 'Updated Group',
+        description: 'Updated description',
+        imageUrl: 'https://example.com/group.png',
+        themeColor: '#112233',
+      };
+      mockPrisma.groupMember.findFirst.mockResolvedValue(adminMembership);
+      mockPrisma.group.update.mockResolvedValue(updatedGroup);
+
+      const result = await service.updateGroup(groupId, adminId, {
+        name: 'Updated Group',
+        description: 'Updated description',
+        imageUrl: 'https://example.com/group.png',
+        themeColor: '#112233',
+      });
+
+      expect(mockPrisma.group.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: groupId },
+          data: expect.objectContaining({
+            name: 'Updated Group',
+            description: 'Updated description',
+            imageUrl: 'https://example.com/group.png',
+            themeColor: '#112233',
+          }),
+        }),
+      );
+      expect(mockPrisma.activityLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: 'GROUP_UPDATED' }),
+        }),
+      );
+      expect(result).toEqual(updatedGroup);
+    });
+
+    it('throws ForbiddenException when caller lacks required role', async () => {
+      mockPrisma.groupMember.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateGroup(groupId, memberId, { name: 'Blocked update' }),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockPrisma.group.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
   // deleteGroup
   // =========================================================================
 

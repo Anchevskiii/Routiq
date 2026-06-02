@@ -97,7 +97,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-[14px] font-semibold text-gray-900 dark:text-[#f0eeff] leading-snug tracking-[-0.005em]">
+              <span data-testid="activity-title" className="text-[14px] font-semibold text-gray-900 dark:text-[#f0eeff] leading-snug tracking-[-0.005em]">
                 {activity.title}
               </span>
               <span className={`text-[9px] font-mono font-semibold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-[5px] ${catBadge}`}>
@@ -138,6 +138,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
           <button
             {...dragHandleProps}
             {...dragHandleAttributes}
+            data-testid="activity-drag-handle"
             className="w-7 h-7 rounded-[8px] bg-transparent border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] cursor-grab active:cursor-grabbing hover:text-gray-700 dark:hover:text-[#f0eeff] hover:border-gray-400 dark:hover:border-white/[0.14] transition-all"
           >
             <GripVertical className="w-3.5 h-3.5" />

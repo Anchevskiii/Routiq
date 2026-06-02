@@ -27,8 +27,24 @@ export const GroupDetailSidebar: React.FC<Props> = ({
   const [membersOpen, setMembersOpen]   = useState(true)
   const [commentsOpen, setCommentsOpen] = useState(true)
   const [showInvite, setShowInvite]     = useState(false)
+  const [inviteError, setInviteError]   = useState<string | null>(null)
 
   const canManage = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN'
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+
+  const handleInvite = () => {
+    const trimmed = inviteEmail.trim()
+    if (!trimmed) {
+      setInviteError('Email is required')
+      return
+    }
+    if (!isValidEmail(trimmed)) {
+      setInviteError('Enter a valid email')
+      return
+    }
+    setInviteError(null)
+    onInvite()
+  }
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -41,23 +57,33 @@ export const GroupDetailSidebar: React.FC<Props> = ({
         onToggle={() => setMembersOpen(v => !v)}
         foot={canManage ? (
           showInvite ? (
-            <div className="flex gap-2 px-3.5 py-2.5 border-t border-gray-200 dark:border-white/[0.07]">
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={e => onEmailChange(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && onInvite()}
-                placeholder="Email address"
-                className="flex-1 bg-gray-100/60 dark:bg-white/[0.04] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-gray-900 dark:text-[#f0eeff] text-xs outline-none placeholder:text-gray-400 dark:text-[#6e6c93]"
-              />
-              <button
-                onClick={onInvite}
-                disabled={!inviteEmail || isInviting}
-                className="px-3 py-1.5 rounded-lg border-none grp-aurora text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
-              >
-                {isInviting ? '…' : 'Send'}
-              </button>
-            </div>
+            <>
+              <div className="flex gap-2 px-3.5 py-2.5 border-t border-gray-200 dark:border-white/[0.07]">
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={e => {
+                    onEmailChange(e.target.value)
+                    if (inviteError) setInviteError(null)
+                  }}
+                  onKeyDown={e => e.key === 'Enter' && handleInvite()}
+                  placeholder="Email address"
+                  className="flex-1 bg-gray-100/60 dark:bg-white/[0.04] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-gray-900 dark:text-[#f0eeff] text-xs outline-none placeholder:text-gray-400 dark:text-[#6e6c93]"
+                />
+                <button
+                  onClick={handleInvite}
+                  disabled={!inviteEmail || isInviting}
+                  className="px-3 py-1.5 rounded-lg border-none grp-aurora text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  {isInviting ? '…' : 'Send'}
+                </button>
+              </div>
+              {inviteError && (
+                <p className="px-3.5 pb-2 text-[11px] text-red-400">
+                  {inviteError}
+                </p>
+              )}
+            </>
           ) : (
             <button
               onClick={() => setShowInvite(true)}

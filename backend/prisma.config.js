@@ -1,7 +1,9 @@
 const path = require('path');
 
 // Load environment variables before anything else
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+const envName = process.env.PRISMA_ENV ?? process.env.NODE_ENV ?? 'development';
+const envFile = envName === 'test' ? '.env.test' : '.env';
+require('dotenv').config({ path: path.resolve(__dirname, envFile) });
 
 const { defineConfig } = require('@prisma/config');
 
