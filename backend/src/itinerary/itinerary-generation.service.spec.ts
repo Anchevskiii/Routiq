@@ -132,6 +132,10 @@ describe('ItineraryGenerationService', () => {
     it('uses default summary and tips when missing', async () => {
       const tx = {
         itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-1' }) },
+        itineraryTip: { createMany: jest.fn().mockResolvedValue({ count: 3 }) },
+        itineraryDay: { create: jest.fn().mockResolvedValue({ id: 'day-1' }) },
+        itineraryWeatherSnapshot: { create: jest.fn().mockResolvedValue({ id: 'weather-1' }) },
+        itineraryActivity: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
       };
       mockPrisma.$transaction.mockImplementation(
         (cb: (txClient: unknown) => unknown) => cb(tx),
@@ -158,15 +162,18 @@ describe('ItineraryGenerationService', () => {
             aiPromptHash: 'hash',
             generatedAt: expect.any(Date),
             generationTimeMs: expect.any(Number),
-            generalTips: {
-              create: expect.any(Array),
-            },
           }),
         }),
       );
 
-      const createArg = tx.itinerary.create.mock.calls[0][0];
-      expect(createArg.data.generalTips.create).toHaveLength(3);
+      expect(tx.itineraryTip.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.any(Array),
+        }),
+      );
+
+      const createManyArg = tx.itineraryTip.createMany.mock.calls[0][0];
+      expect(createManyArg.data).toHaveLength(3);
     });
   });
 
