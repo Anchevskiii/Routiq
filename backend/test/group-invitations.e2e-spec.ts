@@ -52,7 +52,7 @@ describe('Group Invitations (e2e)', () => {
 
     const acceptRes = await request(app.getHttpServer())
       .post(`/api/groups/${groupId}/accept`)
-      .expect(200);
+      .expect(201);
 
     expect(acceptRes.body.success).toBe(true);
     expect(acceptRes.body.data.status).toBe(InvitationStatus.ACCEPTED);
