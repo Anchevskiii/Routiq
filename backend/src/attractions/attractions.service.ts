@@ -38,6 +38,13 @@ export class AttractionsService {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://maps.googleapis.com/maps/api/place';
 
+  // Cache Places API search queries for 24 hours
+  private searchCache = new Map<
+    string,
+    { data: FormattedPlace[]; timestamp: number }
+  >();
+  private readonly searchCacheDuration = 24 * 60 * 60 * 1000; // 24 hours in ms
+
   constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGooglePlacesApiKey();
   }
@@ -125,6 +132,13 @@ export class AttractionsService {
     query: string,
     radius?: number,
   ): Promise<FormattedPlace[]> {
+    const cacheKey = `${query}-${radius || ''}`;
+    const cached = this.searchCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.searchCacheDuration) {
+      this.logger.log(`Cache hit for legacy Places search: ${query}`);
+      return cached.data;
+    }
+
     try {
       const response = await withRetry(
         () =>
@@ -161,7 +175,15 @@ export class AttractionsService {
       }
 
       const results: GooglePlaceLegacy[] = response.data.results || [];
-      return results.map((place) => this.formatLegacyPlace(place));
+      const formatted = results.map((place) => this.formatLegacyPlace(place));
+
+      // Store in cache
+      this.searchCache.set(cacheKey, {
+        data: formatted,
+        timestamp: Date.now(),
+      });
+
+      return formatted;
     } catch (error) {
       this.logger.error(
         `Legacy search failed for '${query}': ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -191,7 +213,7 @@ export class AttractionsService {
               place_id: placeId,
               key: this.getApiKeyOrThrow(),
               fields:
-                'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,photos,editorial_summary',
+                'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,editorial_summary',
             },
             timeout: 10000,
           }),
@@ -276,7 +298,7 @@ export class AttractionsService {
       type: place.types?.[0] || 'attraction',
       rating: place.rating || 0,
       userRatingsTotal: place.user_ratings_total || 0,
-      photos: place.photos?.map((p) => p.photo_reference) || [],
+      photos: [],
     };
   }
 
@@ -287,5 +309,48 @@ export class AttractionsService {
 
   private extractKeywordsFromName(name: string): string {
     return name.replace(/\b(the|and|or|of|in|at|to)\b/gi, '').trim();
+  }
+
+  async geocodeAddress(
+    address: string,
+  ): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const response = await withRetry(
+        () =>
+          axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+            params: {
+              address,
+              key: this.getApiKeyOrThrow(),
+            },
+            timeout: 5000,
+          }),
+        {
+          shouldRetry: (error) => {
+            if (axios.isAxiosError(error)) {
+              return (
+                !error.response ||
+                error.response.status === 429 ||
+                error.response.status >= 500
+              );
+            }
+            return true;
+          },
+        },
+      );
+
+      if (
+        response.data.status === 'OK' &&
+        response.data.results?.[0]?.geometry?.location
+      ) {
+        const loc = response.data.results[0].geometry.location;
+        return { lat: loc.lat, lng: loc.lng };
+      }
+      return null;
+    } catch (error) {
+      this.logger.error(
+        `Geocoding failed for '${address}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      return null;
+    }
   }
 }

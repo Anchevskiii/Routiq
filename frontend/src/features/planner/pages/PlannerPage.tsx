@@ -42,6 +42,7 @@ export const PlannerPage: React.FC = () => {
   const [attractions, setAttractions]       = useState<FormattedPlace[]>([])
   const [generatedDays, setGeneratedDays]   = useState<StreamingDay[]>([])
   const [elapsedTime, setElapsedTime]       = useState(0)
+  const [destination, setDestination]       = useState('')
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
@@ -57,7 +58,7 @@ export const PlannerPage: React.FC = () => {
     if (days <= 0) { toast.error('End date must be after start date'); return }
     if (days > 14) { toast.error('Trip duration cannot exceed 14 days'); return }
 
-    setProgress(''); setAttractions([]); setGeneratedDays([])
+    setProgress(''); setAttractions([]); setGeneratedDays([]); setDestination(values.destination)
 
     stream(ITINERARY_ENDPOINTS.GENERATE, { ...values, days }, {
       onProgress: (data) => {
@@ -84,6 +85,7 @@ export const PlannerPage: React.FC = () => {
   }
 
   return (
+    <>
     <div className="relative h-full overflow-hidden bg-gray-50 dark:bg-[#08091a]">
 
       {/* Orbs — pinned to container, do not scroll */}
@@ -108,21 +110,26 @@ export const PlannerPage: React.FC = () => {
         />
       </div>
 
-      {/* Scrollable content */}
-      <div className="relative z-10 h-full overflow-y-auto">
-        <div className="max-w-[1400px] mx-auto px-6 py-10">
-            {isLoading ? (
-            <GenerationLoading
-              progress={progress}
-              attractions={attractions}
-              generatedDays={generatedDays}
-              elapsedTime={elapsedTime}
-            />
-          ) : (
+      {/* Scrollable content — only shown when not loading */}
+      {!isLoading && (
+        <div className="relative z-10 h-full overflow-y-auto">
+          <div className="max-w-[1400px] mx-auto px-6 py-10">
             <PlannerForm onSubmit={handleGenerate} isLoading={isLoading} />
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
+
+    {/* Loading overlay — outside all transforms for correct fixed positioning */}
+    {isLoading && (
+      <GenerationLoading
+        progress={progress}
+        attractions={attractions}
+        generatedDays={generatedDays}
+        elapsedTime={elapsedTime}
+        destination={destination}
+      />
+    )}
+    </>
   )
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { ChevronDown, Cloud, Sun, CloudRain, Wind, GripVertical, Plus, MapPin, Clock } from 'lucide-react'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'
@@ -50,16 +50,23 @@ export const DayCard: React.FC<DayCardProps> = ({
   const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
+  // Local activities order for instant visual feedback
+  const [localActivities, setLocalActivities] = useState(day.activities ?? [])
+  useEffect(() => { setLocalActivities(day.activities ?? []) }, [day.activities])
+
   const handleActivityDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (!over || active.id === over.id || !day.activities) return
-    const oldIdx = day.activities.findIndex(a => a.id === active.id)
-    const newIdx = day.activities.findIndex(a => a.id === over.id)
+    if (!over || active.id === over.id) return
+    const oldIdx = localActivities.findIndex(a => a.id === active.id)
+    const newIdx = localActivities.findIndex(a => a.id === over.id)
     if (oldIdx === -1 || newIdx === -1) return
-    onReorderActivities?.(day.id, arrayMove(day.activities, oldIdx, newIdx).map(a => a.id))
+
+    const reordered = arrayMove(localActivities, oldIdx, newIdx)
+    setLocalActivities(reordered)  // instant visual update
+    onReorderActivities?.(day.id, reordered.map(a => a.id))
   }
 
-  const totalMinutes = day.activities?.reduce((s, a) => s + (a.durationMinutes ?? 0), 0) ?? 0
+  const totalMinutes = localActivities.reduce((s, a) => s + (a.durationMinutes ?? 0), 0)
   const activeHours = totalMinutes > 0 ? `~${Math.round(totalMinutes / 60)}h` : null
 
   return (
@@ -92,11 +99,11 @@ export const DayCard: React.FC<DayCardProps> = ({
           </h3>
           <div className="flex items-center gap-1.5 text-[13px] text-gray-400 dark:text-[#6e6c93]">
             <span>{format(new Date(day.date), 'EEEE, MMMM d')}</span>
-            {day.activities && day.activities.length > 0 && (
+            {localActivities.length > 0 && (
               <>
                 <span className="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-[#6e6c93]" />
                 <span className="inline-flex items-center gap-1 text-gray-500 dark:text-[#a3a1c8]">
-                  <MapPin className="w-2.5 h-2.5" /> {day.activities.length} stops
+                  <MapPin className="w-2.5 h-2.5" /> {localActivities.length} stops
                 </span>
               </>
             )}
@@ -125,7 +132,7 @@ export const DayCard: React.FC<DayCardProps> = ({
         <div className="flex gap-4 px-5 py-3 border-b border-blue-100/80 dark:border-white/[0.07] bg-blue-50/50 dark:bg-black/10">
           <span className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 dark:text-[#a3a1c8]">
             <MapPin className="w-3 h-3 text-gray-400 dark:text-[#6e6c93]" />
-            <strong className="text-gray-800 dark:text-[#f0eeff] font-semibold">{day.activities?.length ?? 0}</strong> stops
+            <strong className="text-gray-800 dark:text-[#f0eeff] font-semibold">{localActivities.length}</strong> stops
           </span>
           {activeHours && (
             <span className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 dark:text-[#a3a1c8]">
@@ -136,7 +143,7 @@ export const DayCard: React.FC<DayCardProps> = ({
         </div>
 
         <div className="px-5 py-4 relative bg-slate-50/60 dark:bg-transparent">
-          {(day.activities?.length ?? 0) > 1 && (
+          {localActivities.length > 1 && (
             <div
               className="absolute w-0.5 pointer-events-none"
               style={{
@@ -148,10 +155,10 @@ export const DayCard: React.FC<DayCardProps> = ({
             />
           )}
 
-          {day.activities && day.activities.length > 0 ? (
+          {localActivities.length > 0 ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleActivityDragEnd}>
-              <SortableContext items={day.activities.map(a => a.id)} strategy={verticalListSortingStrategy}>
-                {day.activities.map((activity, index) => (
+              <SortableContext items={localActivities.map(a => a.id)} strategy={verticalListSortingStrategy}>
+                {localActivities.map((activity, index) => (
                   <SortableAttractionCard
                     key={activity.id}
                     activity={activity}

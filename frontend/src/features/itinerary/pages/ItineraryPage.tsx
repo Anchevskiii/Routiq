@@ -12,7 +12,7 @@ import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/app/Providers'
 
 import { ItineraryHeader } from '../components/ItineraryHeader'
-import { TripIntelligenceSidebar } from '../components/TripIntelligenceSidebar'
+// import { TripIntelligenceSidebar } from '../components/TripIntelligenceSidebar'
 import { ItineraryMap } from '../components/ItineraryMap'
 import { SortableDaysList } from '../components/SortableDaysList'
 import { GroupDetailSidebar } from '@/features/groups/components/GroupDetailSidebar'
@@ -54,7 +54,35 @@ export const ItineraryPage: React.FC = () => {
   const reorderActivitiesMutation = useMutation({
     mutationFn: ({ dayId, activityIds }: { dayId: string; activityIds: string[] }) =>
       itineraryApi.reorderActivities(id!, dayId, activityIds),
-    onSuccess: invalidate,
+
+    onMutate: async ({ dayId, activityIds }) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
+      const previous = queryClient.getQueryData(QUERY_KEYS.itinerary(id!))
+
+      queryClient.setQueryData(QUERY_KEYS.itinerary(id!), (old: typeof itinerary) => {
+        if (!old?.days) return old
+        return {
+          ...old,
+          days: old.days.map(day => {
+            if (day.id !== dayId || !day.activities) return day
+            const reordered = activityIds
+              .map((actId, i) => {
+                const act = day.activities!.find(a => a.id === actId)
+                return act ? { ...act, sortOrder: i } : null
+              })
+              .filter(Boolean) as typeof day.activities
+            return { ...day, activities: reordered }
+          }),
+        }
+      })
+      return { previous }
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(QUERY_KEYS.itinerary(id!), context.previous)
+    },
+
+    onSettled: invalidate,
   })
 
   const reorderDaysMutation = useMutation({
@@ -219,14 +247,17 @@ export const ItineraryPage: React.FC = () => {
                 <ItineraryMap days={days} destination={itinerary.destination} />
               </div>
             </div>
-            <TripIntelligenceSidebar itinerary={itinerary} />
+            {/* TripIntelligenceSidebar commented out */}
           </aside>
         </div>
       )}
 
       {tab === 'mp' && (
-        <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-none">
-          <ItineraryMap days={days} destination={itinerary.destination} />
+        <div
+          className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-none flex flex-col"
+          style={{ height: 'calc(100vh - 220px)', minHeight: 500 }}
+        >
+          <ItineraryMap days={days} destination={itinerary.destination} fullscreen />
         </div>
       )}
     </div>
