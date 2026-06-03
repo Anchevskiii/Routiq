@@ -15,7 +15,9 @@ describe('AttractionsController', () => {
       getAttractionDetails: jest.fn(),
       getAlternatives: jest.fn(),
     };
-    controller = new AttractionsController(mockService as unknown as AttractionsService);
+    controller = new AttractionsController(
+      mockService as unknown as AttractionsService,
+    );
   });
 
   describe('searchAttractions', () => {
@@ -24,7 +26,11 @@ describe('AttractionsController', () => {
       const searchDto = { query: 'Eiffel', location: 'Paris', radius: 5000 };
       const res = await controller.searchAttractions(searchDto);
       expect(res).toEqual([]);
-      expect(mockService.searchAttractions).toHaveBeenCalledWith('Eiffel', 'Paris', 5000);
+      expect(mockService.searchAttractions).toHaveBeenCalledWith(
+        'Eiffel',
+        'Paris',
+        5000,
+      );
     });
   });
 

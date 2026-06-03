@@ -41,7 +41,11 @@ describe('NotificationsService', () => {
   describe('createNotification', () => {
     it('should return null if user not found', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
-      const res = await service.createNotification('u1', NotificationType.VOTE, 'title');
+      const res = await service.createNotification(
+        'u1',
+        NotificationType.VOTE,
+        'title',
+      );
       expect(res).toBeNull();
     });
 
@@ -51,7 +55,11 @@ describe('NotificationsService', () => {
           votes: false,
         },
       });
-      const res = await service.createNotification('u1', NotificationType.VOTE, 'title');
+      const res = await service.createNotification(
+        'u1',
+        NotificationType.VOTE,
+        'title',
+      );
       expect(res).toBeNull();
     });
 
@@ -62,7 +70,13 @@ describe('NotificationsService', () => {
         },
       });
       mockPrisma.notification.create.mockResolvedValue({ id: 'n1' });
-      const res = await service.createNotification('u1', NotificationType.VOTE, 'title', 'body', { some: 'data' });
+      const res = await service.createNotification(
+        'u1',
+        NotificationType.VOTE,
+        'title',
+        'body',
+        { some: 'data' },
+      );
       expect(res).toEqual({ id: 'n1' });
       expect(mockPrisma.notification.create).toHaveBeenCalledWith({
         data: {
@@ -79,10 +93,12 @@ describe('NotificationsService', () => {
   describe('getUserNotifications', () => {
     it('should fetch paginated notifications, total, and unread counts', async () => {
       mockPrisma.notification.findMany.mockResolvedValue([{ id: 'n1' }]);
-      mockPrisma.notification.count.mockImplementation((args: { where?: { readAt?: unknown } }) => {
-        if (args?.where?.readAt === null) return Promise.resolve(1);
-        return Promise.resolve(2);
-      });
+      mockPrisma.notification.count.mockImplementation(
+        (args: { where?: { readAt?: unknown } }) => {
+          if (args?.where?.readAt === null) return Promise.resolve(1);
+          return Promise.resolve(2);
+        },
+      );
 
       const res = await service.getUserNotifications('u1', 2, 10);
       expect(res).toEqual({
@@ -116,12 +132,17 @@ describe('NotificationsService', () => {
   describe('markRead', () => {
     it('should throw NotFoundException if notification not found', async () => {
       mockPrisma.notification.findFirst.mockResolvedValue(null);
-      await expect(service.markRead('n1', 'u1')).rejects.toThrow(NotFoundException);
+      await expect(service.markRead('n1', 'u1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should update notification readAt', async () => {
       mockPrisma.notification.findFirst.mockResolvedValue({ id: 'n1' });
-      mockPrisma.notification.update.mockResolvedValue({ id: 'n1', readAt: new Date() });
+      mockPrisma.notification.update.mockResolvedValue({
+        id: 'n1',
+        readAt: new Date(),
+      });
       const res = await service.markRead('n1', 'u1');
       expect(res).toBeDefined();
       expect(mockPrisma.notification.update).toHaveBeenCalledWith({
@@ -152,7 +173,12 @@ describe('NotificationsService', () => {
     });
 
     it('should send reminder notifications for upcoming trips', async () => {
-      const trip = { id: 'trip1', userId: 'u1', destination: 'Paris', startDate: new Date() };
+      const trip = {
+        id: 'trip1',
+        userId: 'u1',
+        destination: 'Paris',
+        startDate: new Date(),
+      };
       mockPrisma.itinerary.findMany.mockResolvedValue([trip]);
       mockPrisma.user.findUnique.mockResolvedValue({ metadata: {} });
       mockPrisma.notification.create.mockResolvedValue({ id: 'n1' });
@@ -170,13 +196,22 @@ describe('NotificationsService', () => {
     });
 
     it('should log warning if sending reminder fails', async () => {
-      const trip = { id: 'trip1', userId: 'u1', destination: 'Paris', startDate: new Date() };
+      const trip = {
+        id: 'trip1',
+        userId: 'u1',
+        destination: 'Paris',
+        startDate: new Date(),
+      };
       mockPrisma.itinerary.findMany.mockResolvedValue([trip]);
       mockPrisma.user.findUnique.mockRejectedValue(new Error('DB error'));
 
-      const spyWarn = jest.spyOn((service as any).logger, 'warn').mockImplementation();
+      const spyWarn = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation();
       await service.checkTripReminders();
-      expect(spyWarn).toHaveBeenCalledWith(expect.stringContaining('Failed to send trip reminder for trip1'));
+      expect(spyWarn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to send trip reminder for trip1'),
+      );
     });
   });
 });

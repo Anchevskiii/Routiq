@@ -18,7 +18,9 @@ describe('NotificationsController', () => {
       markRead: jest.fn(),
       markAllRead: jest.fn(),
     };
-    controller = new NotificationsController(mockService as unknown as NotificationsService);
+    controller = new NotificationsController(
+      mockService as unknown as NotificationsService,
+    );
   });
 
   const mockUser: JwtPayload = {
@@ -32,7 +34,11 @@ describe('NotificationsController', () => {
       mockService.getUserNotifications.mockResolvedValue({ notifications: [] });
       const res = await controller.getUserNotifications(mockUser, 2, 15);
       expect(res).toEqual({ notifications: [] });
-      expect(mockService.getUserNotifications).toHaveBeenCalledWith('user-123', 2, 15);
+      expect(mockService.getUserNotifications).toHaveBeenCalledWith(
+        'user-123',
+        2,
+        15,
+      );
     });
   });
 

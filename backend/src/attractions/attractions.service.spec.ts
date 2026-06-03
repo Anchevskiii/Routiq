@@ -2,6 +2,7 @@ import { TravelType } from '@prisma/client';
 import axios from 'axios';
 import { AppConfigService } from '../config/config.service';
 import { AttractionsService } from './attractions.service';
+import { FormattedPlace } from './types';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -14,7 +15,6 @@ jest.mock('../common', () => {
   };
 });
 
-
 describe('AttractionsService', () => {
   let service: AttractionsService;
   let mockConfigService: {
@@ -26,34 +26,42 @@ describe('AttractionsService', () => {
     mockConfigService = {
       getGooglePlacesApiKey: jest.fn().mockReturnValue('fake-key'),
     };
-    service = new AttractionsService(mockConfigService as unknown as AppConfigService);
+    service = new AttractionsService(
+      mockConfigService as unknown as AppConfigService,
+    );
   });
 
   describe('getApiKeyOrThrow', () => {
     it('should throw ServiceUnavailableException if apiKey is not configured', () => {
       mockConfigService.getGooglePlacesApiKey.mockReturnValue(null);
-      const invalidService = new AttractionsService(mockConfigService as unknown as AppConfigService);
-      expect(() => (invalidService as any).getApiKeyOrThrow()).toThrow(
+      const invalidService = new AttractionsService(
+        mockConfigService as unknown as AppConfigService,
+      );
+      expect(() => invalidService['getApiKeyOrThrow']()).toThrow(
         'Google Places API is not configured',
       );
     });
 
     it('should strip quotes if they exist in apiKey', () => {
       mockConfigService.getGooglePlacesApiKey.mockReturnValue('"my-key"');
-      const serviceWithQuotes = new AttractionsService(mockConfigService as unknown as AppConfigService);
-      expect((serviceWithQuotes as any).getApiKeyOrThrow()).toBe('my-key');
+      const serviceWithQuotes = new AttractionsService(
+        mockConfigService as unknown as AppConfigService,
+      );
+      expect(serviceWithQuotes['getApiKeyOrThrow']()).toBe('my-key');
     });
   });
 
   describe('searchLegacy', () => {
     it('should return cached data if cached and within 24 hours', async () => {
-      const cachedData = [{ id: 'cached-id', name: 'Cached Place' }] as any;
-      (service as any).searchCache.set('query-radius-', {
+      const cachedData = [
+        { id: 'cached-id', name: 'Cached Place' },
+      ] as unknown as FormattedPlace[];
+      service['searchCache'].set('query-radius-', {
         data: cachedData,
         timestamp: Date.now(),
       });
 
-      const result = await (service as any).searchLegacy('query-radius');
+      const result = await service['searchLegacy']('query-radius');
       expect(result).toEqual(cachedData);
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
@@ -76,7 +84,7 @@ describe('AttractionsService', () => {
         },
       });
 
-      const result = await (service as any).searchLegacy('Paris');
+      const result = await service['searchLegacy']('Paris');
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('place1');
       expect(result[0].name).toBe('Place One');
@@ -92,13 +100,13 @@ describe('AttractionsService', () => {
         },
       });
 
-      const result = await (service as any).searchLegacy('Paris');
+      const result = await service['searchLegacy']('Paris');
       expect(result).toEqual([]);
     });
 
     it('should return empty array if search fails', async () => {
       mockedAxios.get.mockRejectedValue(new Error('Network error'));
-      const result = await (service as any).searchLegacy('Paris');
+      const result = await service['searchLegacy']('Paris');
       expect(result).toEqual([]);
     });
   });
@@ -119,7 +127,11 @@ describe('AttractionsService', () => {
         },
       });
 
-      const result = await service.getCuratedPlaces('Paris', TravelType.CULTURAL, 1);
+      const result = await service.getCuratedPlaces(
+        'Paris',
+        TravelType.CULTURAL,
+        1,
+      );
       expect(result.length).toBeGreaterThan(0);
       expect(mockedAxios.get).toHaveBeenCalledTimes(3);
     });
