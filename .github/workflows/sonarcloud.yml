@@ -38,8 +38,11 @@ jobs:
       - name: Run backend unit tests with coverage
         run: cd backend && npm run test:cov
 
+      - name: Fix coverage paths for monorepo
+        run: sed -i 's|SF:src|SF:backend/src|g' backend/coverage/lcov.info
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.ROUTIQ_SONAR }}
-          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_HOST_URL: https://sonarcloud.io
