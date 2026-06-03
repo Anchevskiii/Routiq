@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, Info, MessageCircle } from 'lucide-react'
 import type { FormattedPlace } from '@/types/attractions.types'
 import type { StreamingDay } from '@/types/itinerary.types'
-import { LoadingPreviewPanel }    from './LoadingPreviewPanel'
 import { LoadingAttractionsPanel } from './LoadingAttractionsPanel'
 
 interface Props {
@@ -31,7 +30,7 @@ const QUESTIONS = [
   "One thing you never travel without (besides your phone)?",
 ]
 
-export const GenerationLoading: React.FC<Props> = ({ progress, attractions, generatedDays, elapsedTime }) => {
+export const GenerationLoading: React.FC<Props> = ({ progress, attractions, generatedDays: _generatedDays, elapsedTime }) => {
   const [factIndex, setFactIndex] = useState(0)
   const [questionIndex, setQuestionIndex] = useState(0)
   const [showFact, setShowFact] = useState(true)
@@ -49,7 +48,7 @@ export const GenerationLoading: React.FC<Props> = ({ progress, attractions, gene
   }, [])
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8">
+    <div className="w-full max-w-2xl mx-auto space-y-8">
       <div className="text-center space-y-4">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full font-mono text-lg border border-primary/20">
           <Clock className="w-5 h-5 animate-pulse" />
@@ -59,29 +58,27 @@ export const GenerationLoading: React.FC<Props> = ({ progress, attractions, gene
         <p className="text-ink-dim animate-pulse">{progress || 'Preparing your itinerary...'}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div className="bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-blue-900/20 dark:to-blue-50/20 rounded-2xl p-6 border border-line h-48 flex flex-col justify-center relative overflow-hidden">
-            <div className="absolute top-4 left-4 text-primary/20">
-              {factIndex % 2 === 0 ? <Info className="w-8 h-8" /> : <MessageCircle className="w-8 h-8" />}
-            </div>
-            <AnimatePresence mode="wait">
-              {showFact && (
-                <motion.div key={factIndex} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="text-center px-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-primary mb-2 block">
-                    {factIndex % 2 === 0 ? 'Travel Fun Fact' : 'A Question For You'}
-                  </span>
-                  <p className="text-ink text-lg font-medium leading-relaxed">
-                    {factIndex % 2 === 0 ? FUN_FACTS[factIndex] : QUESTIONS[questionIndex]}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          <LoadingPreviewPanel generatedDays={generatedDays} />
+      {/* Fun fact / question card */}
+      <div className="bg-gradient-to-br from-primary/5 to-secondary/5 dark:from-blue-900/20 dark:to-blue-50/20 rounded-2xl p-6 border border-line h-48 flex flex-col justify-center relative overflow-hidden">
+        <div className="absolute top-4 left-4 text-primary/20">
+          {factIndex % 2 === 0 ? <Info className="w-8 h-8" /> : <MessageCircle className="w-8 h-8" />}
         </div>
-        <LoadingAttractionsPanel attractions={attractions} />
+        <AnimatePresence mode="wait">
+          {showFact && (
+            <motion.div key={factIndex} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="text-center px-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-primary mb-2 block">
+                {factIndex % 2 === 0 ? 'Travel Fun Fact' : 'A Question For You'}
+              </span>
+              <p className="text-ink text-lg font-medium leading-relaxed">
+                {factIndex % 2 === 0 ? FUN_FACTS[factIndex] : QUESTIONS[questionIndex]}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+
+      {/* Attractions panel only */}
+      <LoadingAttractionsPanel attractions={attractions} />
     </div>
   )
 }

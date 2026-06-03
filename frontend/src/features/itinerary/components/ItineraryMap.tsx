@@ -9,6 +9,7 @@ import { MapActivityBar } from './MapActivityBar'
 interface Props {
   days: Day[]
   destination: string
+  fullscreen?: boolean
 }
 
 function infoHtml(a: PlacedActivity) {
@@ -21,7 +22,7 @@ function infoHtml(a: PlacedActivity) {
   </div>`
 }
 
-export const ItineraryMap: React.FC<Props> = ({ days, destination }) => {
+export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = false }) => {
   const { isLoaded, loadError } = useGoogleMaps()
   const { placed, loading } = usePlacedActivities(days, destination, isLoaded)
   const mapRef         = useRef<HTMLDivElement>(null)
@@ -94,11 +95,11 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination }) => {
   const daysWithPlaces = [...new Set(placed.map(a => a.dayNumber))].sort()
 
   return (
-    <div className="rounded-2xl overflow-hidden shadow-sm border border-blue-600/10">
+    <div className={`rounded-2xl overflow-hidden shadow-sm border border-blue-600/10 ${fullscreen ? 'h-full flex flex-col' : ''}`}>
       {daysWithPlaces.length > 1 && (
         <MapDayTabs days={daysWithPlaces} selectedDay={selectedDay} expanded={expanded} onSelectDay={setSelectedDay} onToggleExpand={toggleExpand} />
       )}
-      <div className={`relative transition-[height] duration-300 ${expanded ? 'h-[520px]' : 'h-[320px]'}`}>
+      <div className={`relative transition-[height] duration-300 ${fullscreen ? 'flex-1 min-h-0' : expanded ? 'h-[520px]' : 'h-[320px]'}`}>
         <div ref={mapRef} className="h-full w-full" />
         {daysWithPlaces.length <= 1 && (
           <button onClick={toggleExpand} title={expanded ? 'Collapse' : 'Expand'} className="absolute top-2 right-2 z-10 bg-white dark:bg-[#1e1b38] border border-line rounded-lg p-1.5 shadow-sm text-ink-faint hover:text-ink transition-colors">

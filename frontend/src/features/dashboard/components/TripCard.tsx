@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { format, differenceInDays } from 'date-fns'
+import { format } from 'date-fns'
 import { Calendar, Trash2 } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { QUERY_KEYS } from '@/constants/queryKeys'
@@ -35,21 +35,42 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
   const start = new Date(trip.startDate)
   const status = end < today ? 'Past' : start <= today ? 'Active' : 'Planning'
 
-  const [deleted, setDeleted] = useState(false)
+  // Wikipedia cover photo (same as ItineraryHeader)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  useEffect(() => {
+    const city = trip.destination.split(',')[0].trim()
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(city)}`)
+      .then(r => r.json())
+      .then(data => {
+        const url = data.originalimage?.source || data.thumbnail?.source
+        if (url) setPhotoUrl(url)
+      })
+      .catch(() => {})
+  }, [trip.destination])
 
   const { mutate, isPending } = useMutation({
     mutationFn: () => itineraryApi.deleteItinerary(trip.id),
-    onSuccess: () => {
-      setDeleted(true)
+    onMutate: async () => {
+      // Optimistically remove from cache — no "deleted strip" flash
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.itineraries })
+      const prev = queryClient.getQueryData(QUERY_KEYS.itineraries)
+      queryClient.setQueryData(QUERY_KEYS.itineraries, (old: { data: Itinerary[] } | undefined) => {
+        if (!old?.data) return old
+        return { ...old, data: old.data.filter(it => it.id !== trip.id) }
+      })
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(QUERY_KEYS.itineraries, ctx.prev)
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.itineraries })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.groups })
     },
   })
 
-  if (deleted) return null
-
   return (
-    <motion.div variants={fadeUp} layout exit={{ opacity: 0, scale: 0.9 }}>
+    <motion.div variants={fadeUp}>
       <AnimatePresence mode="wait">
         {confirm ? (
           <motion.div
@@ -94,12 +115,22 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
                 whileTap={{ scale: 0.97 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 22 }}
               >
-                <div className="relative h-24" style={{ background: grad }}>
-                  <span className="absolute top-2.5 left-2.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20 text-white">
+                {/* Cover photo (Wikipedia) or gradient fallback */}
+                <div className="relative h-28 overflow-hidden" style={{ background: grad }}>
+                  {photoUrl && (
+                    <img
+                      src={photoUrl}
+                      alt={trip.destination}
+                      className="absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-500"
+                      style={{ opacity: 0.85 }}
+                    />
+                  )}
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.45) 100%)' }} />
+                  <span className="absolute top-2.5 left-2.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-black/30 backdrop-blur-sm text-white">
                     {status}
                   </span>
                   <button
-                    className="absolute top-2 right-2 w-[26px] h-[26px] flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-red-500/80 transition-colors"
+                    className="absolute top-2 right-2 w-[26px] h-[26px] flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-red-500/80 transition-colors"
                     onClick={e => { e.preventDefault(); setConfirm(true) }}
                   >
                     <Trash2 className="w-3 h-3" />
@@ -114,25 +145,17 @@ export const TripCard: React.FC<Props> = ({ trip, index }) => {
                         {travelType?.icon} {travelType?.label ?? trip.travelType}
                       </div>
                     </div>
-                    <div className="flex -space-x-1 shrink-0">
-                      {[c1, c2, '#e0e7ff'].map((col, k) => (
-                        <span key={k} className="inline-block w-[18px] h-[18px] rounded-full border-2 border-white dark:border-[#16142e]" style={{ background: col }} />
-                      ))}
-                    </div>
+                    {/* color circles removed */}
                   </div>
 
-                  <div className="flex items-center justify-between text-xs mb-1.5 text-secondary-400 dark:text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-secondary-400 dark:text-slate-500">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-[11px] h-[11px]" />
                       {format(start, 'dd.MM')}–{format(end, 'dd.MM.yy')}
                     </span>
                     <span className="font-semibold" style={{ color: c1 }}>
-                      {Math.max(0, differenceInDays(end, start))}d
+                      {trip.totalDays} days
                     </span>
-                  </div>
-
-                  <div className="h-1 rounded-full overflow-hidden bg-blue-600/[0.09]">
-                    <div className="h-full rounded-full w-[55%]" style={{ background: grad }} />
                   </div>
                 </div>
               </motion.div>

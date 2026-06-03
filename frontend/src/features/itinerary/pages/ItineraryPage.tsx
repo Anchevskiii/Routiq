@@ -12,7 +12,7 @@ import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/app/Providers'
 
 import { ItineraryHeader } from '../components/ItineraryHeader'
-import { TripIntelligenceSidebar } from '../components/TripIntelligenceSidebar'
+// import { TripIntelligenceSidebar } from '../components/TripIntelligenceSidebar'
 import { ItineraryMap } from '../components/ItineraryMap'
 import { SortableDaysList } from '../components/SortableDaysList'
 import { GroupDetailSidebar } from '@/features/groups/components/GroupDetailSidebar'
@@ -219,14 +219,17 @@ export const ItineraryPage: React.FC = () => {
                 <ItineraryMap days={days} destination={itinerary.destination} />
               </div>
             </div>
-            <TripIntelligenceSidebar itinerary={itinerary} />
+            {/* TripIntelligenceSidebar commented out */}
           </aside>
         </div>
       )}
 
       {tab === 'mp' && (
-        <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-none">
-          <ItineraryMap days={days} destination={itinerary.destination} />
+        <div
+          className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-none flex flex-col"
+          style={{ height: 'calc(100vh - 220px)', minHeight: 500 }}
+        >
+          <ItineraryMap days={days} destination={itinerary.destination} fullscreen />
         </div>
       )}
     </div>

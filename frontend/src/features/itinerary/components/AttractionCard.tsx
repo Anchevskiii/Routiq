@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { MapPin, Clock, ExternalLink, Utensils, Camera, GripVertical } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import type { DraggableSyntheticListeners, DraggableAttributes } from '@dnd-kit/core'
@@ -34,6 +34,46 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
   const [editState, setEditState]       = useState<EditState>('idle')
   const [editTime, setEditTime]         = useState(activity.startTime ?? '')
   const [editDuration, setEditDuration] = useState(String(activity.durationMinutes ?? 60))
+  const [photoUrl, setPhotoUrl]         = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    // Strip generic venue-type words to get a more searchable core term
+    const stripVenueType = (s: string) =>
+      s.replace(/\s*(workshop|restaurant|cafe|temple|shrine|museum|park|garden|gallery|center|centre|hall|house|church|cathedral|palace|castle|market|square|tower|walk|trail|tour|site|nature|cutting)\b.*/i, '').trim()
+
+    const trySearch = async (query: string): Promise<string | null> => {
+      if (query.length < 3) return null
+      const res = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
+      )
+      const [, titles] = await res.json() as [string, string[]]
+      const title = titles?.[0]
+      if (!title) return null
+      const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`)
+      const data = await summary.json()
+      return data.thumbnail?.source ?? null
+    }
+
+    const fetchPhoto = async () => {
+      try {
+        const queries = [
+          activity.title,
+          stripVenueType(activity.title),
+          activity.title.split(' ').slice(0, 2).join(' '),
+        ].filter((q, i, arr) => q.length > 2 && arr.indexOf(q) === i) // dedupe
+
+        for (const q of queries) {
+          const url = await trySearch(q)
+          if (url && !cancelled) { setPhotoUrl(url); return }
+        }
+      } catch { /* keep icon fallback */ }
+    }
+
+    fetchPhoto()
+    return () => { cancelled = true }
+  }, [activity.title])
 
   const deleteMutation = useMutation({
     mutationFn: () => {
@@ -92,8 +132,11 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
       {/* card */}
       <div className="flex flex-col gap-2">
         <div className="bg-white dark:bg-white/[0.025] border border-gray-100 dark:border-white/[0.07] rounded-[12px] p-3 flex items-center gap-3 hover:bg-sky-50/50 dark:hover:bg-white/[0.04] hover:border-sky-200 dark:hover:border-white/[0.14] hover:translate-x-0.5 cursor-pointer transition-all shadow-[0_1px_4px_-1px_rgba(0,0,0,0.08)] dark:shadow-none">
-          <div className={`w-10 h-10 rounded-[10px] flex-shrink-0 grid place-items-center ${iconBg}`}>
-            {iconEl}
+          <div className={`w-10 h-10 rounded-[10px] flex-shrink-0 overflow-hidden ${photoUrl ? '' : `grid place-items-center ${iconBg}`}`}>
+            {photoUrl
+              ? <img src={photoUrl} alt={activity.title} className="w-full h-full object-cover" />
+              : iconEl
+            }
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
