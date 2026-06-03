@@ -230,14 +230,9 @@ export class GroupsService {
     const itineraries = group.itineraries
       .filter((gi) => gi.itinerary && !gi.itinerary.deletedAt)
       .map((gi) => {
-        const upvotes = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
-        const downvotes = gi.votes.filter(
-          (v) => v.voteType === 'DOWNVOTE',
-        ).length;
-        return {
-          ...gi,
-          score: upvotes - downvotes,
-        };
+        // Score = number of upvotes (downvotes don't subtract)
+        const score = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
+        return { ...gi, score };
       });
 
     return {
@@ -1055,6 +1050,7 @@ export class GroupsService {
     });
 
     // Notify itinerary owner when someone else votes
+
     try {
       const itinerary = await this.prisma.itinerary.findFirst({
         where: { id: groupItinerary.itineraryId, deletedAt: null },
@@ -1074,6 +1070,17 @@ export class GroupsService {
     }
 
     return vote;
+  }
+
+  async removeVote(groupId: string, groupItineraryId: string, userId: string) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    await this.prisma.vote.updateMany({
+      where: { groupItineraryId, userId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+
+    return { success: true };
   }
 
   // ─── Activity Log ─────────────────────────────────────────

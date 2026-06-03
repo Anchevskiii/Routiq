@@ -41,7 +41,8 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
   const { itinerary, votes } = groupItinerary
 
   // Derive score and userVote directly from votes prop — always in sync with server
-  const serverScore    = (votes ?? []).reduce((acc, v) => acc + (v.voteType === 'UPVOTE' ? 1 : -1), 0)
+  // Score = upvote count only (downvotes don't subtract)
+  const serverScore    = (votes ?? []).filter(v => v.voteType === 'UPVOTE').length
   const serverUserVote = votes?.find(
     v => v.userId === currentUserId || v.user?.id === currentUserId
   )?.voteType ?? null
@@ -56,18 +57,26 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
     onMutate: (newVoteType) => { setPendingVote(newVoteType) },
     onError: () => { setPendingVote(null); toast.error('Failed to register vote') },
-    onSettled: () => {
-      setPendingVote(null)
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
-    },
+    onSettled: () => { setPendingVote(null); queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) }) },
+  })
+
+  const removeVoteMutation = useMutation({
+    mutationFn: () => groupsApi.removeVote(groupId!, groupItinerary.id),
+    onMutate: () => { setPendingVote('REMOVE' as never) },
+    onError: () => { setPendingVote(null); toast.error('Failed to remove vote') },
+    onSettled: () => { setPendingVote(null); queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) }) },
   })
 
   // Display values: optimistic while pending, server values otherwise
-  const displayVote  = voteMutation.isPending ? pendingVote  : serverUserVote
-  const displayScore = voteMutation.isPending
+  const isAnyPending = voteMutation.isPending || removeVoteMutation.isPending
+  const displayVote  = isAnyPending
+    ? (removeVoteMutation.isPending ? null : pendingVote)
+    : serverUserVote
+  // Optimistic displayScore: score = upvotes only
+  const displayScore = isAnyPending
     ? serverScore
-      + (pendingVote    === 'UPVOTE' ? 1 : pendingVote    === 'DOWNVOTE' ? -1 : 0)
-      - (serverUserVote === 'UPVOTE' ? 1 : serverUserVote === 'DOWNVOTE' ? -1 : 0)
+      - (serverUserVote === 'UPVOTE' ? 1 : 0)  // remove old upvote contribution
+      + (removeVoteMutation.isPending ? 0 : pendingVote === 'UPVOTE' ? 1 : 0)  // add new upvote if any
     : serverScore
 
   // Show ALL voters (upvote + downvote) so count matches score awareness
@@ -156,8 +165,9 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
         <VoteWidget
           score={displayScore}
           userVote={displayVote}
-          isPending={voteMutation.isPending}
+          isPending={isAnyPending}
           onVote={dir => voteMutation.mutate(dir)}
+          onRemoveVote={() => removeVoteMutation.mutate()}
         />
         <button
           onClick={e => {
