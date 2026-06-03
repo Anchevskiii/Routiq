@@ -38,10 +38,18 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
   const navigate = useNavigate()
   const { id: groupId } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
-  const { itinerary, score, votes } = groupItinerary
+  const { itinerary, score: serverScore, votes } = groupItinerary
 
   const myVote = votes?.find(v => v.userId === currentUserId)
-  const userVote = myVote?.voteType ?? null
+  const [userVote, setUserVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(myVote?.voteType ?? null)
+  const [localScore, setLocalScore] = useState(serverScore)
+
+  // Sync from server when props change (e.g. after background refetch)
+  React.useEffect(() => {
+    setLocalScore(serverScore)
+    setUserVote(myVote?.voteType ?? null)
+  }, [serverScore, myVote?.voteType])
+
   const upvoters = votes?.filter(v => v.voteType === 'UPVOTE') ?? []
 
   const days = differenceInDays(new Date(itinerary.endDate), new Date(itinerary.startDate)) + 1
@@ -55,39 +63,24 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
     mutationFn: (voteType: 'UPVOTE' | 'DOWNVOTE') =>
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
 
-    onMutate: async (newVoteType) => {
-      // Optimistically update score in cache so UI responds instantly
-      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.group(groupId!) })
-      const previous = queryClient.getQueryData(QUERY_KEYS.group(groupId!))
-
-      queryClient.setQueryData(QUERY_KEYS.group(groupId!), (old: { itineraries?: GroupItinerary[] } | undefined) => {
-        if (!old?.itineraries) return old
-        return {
-          ...old,
-          itineraries: old.itineraries.map(gi => {
-            if (gi.id !== groupItinerary.id) return gi
-            const prevVote = gi.votes?.find(v => v.userId === currentUserId)?.voteType ?? null
-            const scoreDelta =
-              (newVoteType === 'UPVOTE' ? 1 : -1) -
-              (prevVote === 'UPVOTE' ? 1 : prevVote === 'DOWNVOTE' ? -1 : 0)
-            const updatedVotes = [
-              ...(gi.votes ?? []).filter(v => v.userId !== currentUserId),
-              { userId: currentUserId!, voteType: newVoteType, user: { id: currentUserId!, name: '', avatarUrl: null } },
-            ]
-            return { ...gi, score: gi.score + scoreDelta, votes: updatedVotes }
-          }),
-        }
-      })
-      return { previous }
+    onMutate: (newVoteType) => {
+      // Instantly update local state — no cache dance needed
+      const prevVote = userVote
+      const delta =
+        (newVoteType === 'UPVOTE' ? 1 : -1) -
+        (prevVote === 'UPVOTE' ? 1 : prevVote === 'DOWNVOTE' ? -1 : 0)
+      setLocalScore(s => s + delta)
+      setUserVote(newVoteType)
+      return { prevVote, prevScore: localScore }
     },
 
     onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) queryClient.setQueryData(QUERY_KEYS.group(groupId!), ctx.previous)
+      // Roll back on error
+      if (ctx) { setLocalScore(ctx.prevScore); setUserVote(ctx.prevVote) }
       toast.error('Failed to register vote')
     },
 
     onSettled: () => {
-      // Background refetch to confirm server state
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
     },
   })
@@ -166,7 +159,7 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
 
       <div className="flex flex-col items-center gap-2">
         <VoteWidget
-          score={score}
+          score={localScore}
           userVote={userVote}
           isPending={voteMutation.isPending}
           onVote={dir => voteMutation.mutate(dir)}
