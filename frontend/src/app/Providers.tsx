@@ -151,7 +151,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [queryClient])
 
-  const refreshToken = useCallback(async () => Promise.resolve(), [])
+  const refreshToken = useCallback(async () => {}, [])
 
   const refreshUser = useCallback(async () => {
     const updatedUser = await authApi.getMe().catch(() => {
