@@ -9,7 +9,7 @@ import { groupsApi } from '@/api/groups.api'
 import type { Invitation } from '@/types/group.types'
 
 export const DashboardTopbar: React.FC = () => {
-  const { user } = useAuth()
+  const { user: _user } = useAuth()
   const { isDark, toggle } = useTheme()
 
   const { data: invitations } = useQuery({

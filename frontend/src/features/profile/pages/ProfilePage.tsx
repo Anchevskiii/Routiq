@@ -20,11 +20,8 @@ const NOTIFICATION_ITEMS = [
   { key: 'tripReminders' as const, label: 'Trip reminders', desc: '24 hours before a trip starts' },
 ]
 
-const PRIVACY_ITEMS = [
-  { key: 'publicProfile' as const, label: 'Public profile', desc: 'Allow others to find you by name' },
-  { key: 'sharedItineraries' as const, label: 'Shared itineraries', desc: 'Allow your itineraries to be viewed via share link' },
-  { key: 'activityStatus' as const, label: 'Activity status', desc: 'Show when you were last active' },
-]
+// PRIVACY_ITEMS commented out (section hidden, only Danger Zone shown)
+// const PRIVACY_ITEMS = [...]
 
 export const ProfilePage: React.FC = () => {
   const { user, logout, refreshUser } = useAuth()
