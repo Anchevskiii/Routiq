@@ -2,6 +2,7 @@ import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { GroupsService } from '../src/groups/groups.service';
 import { MailService } from '../src/mail/mail.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { SupabaseService } from '../src/supabase/supabase.service';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -23,6 +24,7 @@ describe('GroupsService (integration)', () => {
       providers: [
         GroupsService,
         { provide: MailService, useValue: { sendGroupInvitation: jest.fn() } },
+        { provide: NotificationsService, useValue: { createNotification: jest.fn().mockResolvedValue(null) } },
         { provide: SupabaseService, useValue: { getClient: () => null } },
       ],
     }).compile();

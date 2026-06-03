@@ -75,6 +75,10 @@ export const groupsApi = {
     return response.data.data
   },
 
+  async removeVote(groupId: string, groupItineraryId: string): Promise<void> {
+    await apiClient.delete(`/groups/${groupId}/itineraries/${groupItineraryId}/vote`)
+  },
+
   async addComment(groupId: string, content: string, parentId?: string): Promise<Comment> {
     const response = await apiClient.post<ApiResponse<Comment>>(`/groups/${groupId}/comments`, {
       content,

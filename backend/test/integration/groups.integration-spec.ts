@@ -4,6 +4,7 @@ import { PrismaModule } from '../../src/prisma/prisma.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { GroupsService } from '../../src/groups/groups.service';
 import { MailService } from '../../src/mail/mail.service';
+import { NotificationsService } from '../../src/notifications/notifications.service';
 import { SupabaseService } from '../../src/supabase/supabase.service';
 import { createTestUser, createTestItinerary } from '../test-data';
 
@@ -25,6 +26,7 @@ describe('GroupsService (integration - expanded)', () => {
       providers: [
         GroupsService,
         { provide: MailService, useValue: { sendGroupInvitation: jest.fn() } },
+        { provide: NotificationsService, useValue: { createNotification: jest.fn().mockResolvedValue(null) } },
         { provide: SupabaseService, useValue: { getClient: () => null } },
       ],
     }).compile();

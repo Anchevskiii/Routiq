@@ -295,6 +295,16 @@ export class GroupsController {
     );
   }
 
+  @ApiOperation({ summary: 'Remove vote from a group itinerary' })
+  @Delete(':groupId/itineraries/:groupItineraryId/vote')
+  async removeVote(
+    @Param('groupId') groupId: string,
+    @Param('groupItineraryId') groupItineraryId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.removeVote(groupId, groupItineraryId, user.sub);
+  }
+
   @ApiOperation({ summary: 'Add a comment to the group' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiBody({ type: AddCommentDto })
