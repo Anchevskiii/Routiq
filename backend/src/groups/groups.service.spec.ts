@@ -118,6 +118,7 @@ function buildService(): GroupsService {
   return new GroupsService(
     mockPrisma as unknown as PrismaService,
     mockMailService as unknown as MailService,
+    { getClient: () => null } as unknown as import('../supabase/supabase.service').SupabaseService,
   );
 }
 

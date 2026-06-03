@@ -10,6 +10,7 @@ import { GroupDetailSidebar } from '@/features/groups/components/GroupDetailSide
 import { GroupHeader } from '@/features/groups/components/GroupHeader'
 import { GroupItinerariesTab } from '@/features/groups/components/GroupItinerariesTab'
 import { AddItineraryModal } from '@/features/groups/components/AddItineraryModal'
+import { GroupSettingsModal } from '@/features/groups/components/GroupSettingsModal'
 import type { GroupRole } from '@/types/group.types'
 
 export const GroupDetailPage: React.FC = () => {
@@ -19,6 +20,7 @@ export const GroupDetailPage: React.FC = () => {
   const { user } = useAuth()
   const [inviteEmail, setInviteEmail]           = useState('')
   const [isAddItineraryOpen, setAddItinerary]   = useState(false)
+  const [isSettingsOpen, setSettingsOpen]       = useState(false)
   const [toastDismissed, setToastDismissed]     = useState(false)
 
   const { data: group, isLoading, error } = useQuery({
@@ -86,6 +88,7 @@ export const GroupDetailPage: React.FC = () => {
         group={group}
         onImport={() => setAddItinerary(true)}
         onGenerate={() => navigate(`${ROUTES.PLANNER}?groupId=${id}`)}
+        onSettings={() => setSettingsOpen(true)}
       />
 
       {/* Main layout */}
@@ -124,6 +127,14 @@ export const GroupDetailPage: React.FC = () => {
           onClose={() => setAddItinerary(false)}
           onAdd={itineraryId => addItineraryMutation.mutate(itineraryId)}
           isSubmitting={addItineraryMutation.isPending}
+        />
+      )}
+
+      {isSettingsOpen && (
+        <GroupSettingsModal
+          group={group}
+          currentUserRole={currentUserRole}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>

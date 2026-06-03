@@ -10,6 +10,7 @@ export interface PaginatedResponse<T = unknown> extends ApiResponse<T[]> {
     page: number
     limit: number
     totalPages: number
+    sharedCount?: number
   }
 }
 

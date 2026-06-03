@@ -29,6 +29,15 @@ export const groupsApi = {
     return response.data.data
   },
 
+  async uploadGroupImage(groupId: string, file: File): Promise<string> {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await apiClient.post<ApiResponse<{ imageUrl: string }>>(`/groups/${groupId}/image`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data.data.imageUrl
+  },
+
   async getGroup(id: string): Promise<Group> {
     const response = await apiClient.get<ApiResponse<Group>>(`/groups/${id}`)
     return response.data.data

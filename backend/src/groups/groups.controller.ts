@@ -10,7 +10,13 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -22,6 +28,11 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+interface MulterFile {
+  fieldname: string; originalname: string; encoding: string;
+  mimetype: string; size: number; buffer: Buffer;
+}
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -102,6 +113,24 @@ export class GroupsController {
     @Body() updateGroupDto: UpdateGroupDto,
   ) {
     return this.groupsService.updateGroup(id, user.sub, updateGroupDto);
+  }
+
+  @ApiOperation({ summary: 'Upload group cover image' })
+  @Post(':id/image')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  async uploadGroupImage(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile(new ParseFilePipe({
+      validators: [
+        new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024, message: 'Max 5MB' }),
+        new FileTypeValidator({ fileType: /image\/(jpeg|png|webp|gif|heic|heif)/ }),
+      ],
+      fileIsRequired: true,
+    }))
+    file: MulterFile,
+  ) {
+    return this.groupsService.uploadGroupImage(id, user.sub, file.buffer!, file.mimetype);
   }
 
   @ApiOperation({ summary: 'Delete a group' })

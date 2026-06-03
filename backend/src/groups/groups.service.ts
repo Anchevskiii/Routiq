@@ -3,10 +3,12 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { GroupRole, InvitationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -27,6 +29,7 @@ export class GroupsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   // ─── Group CRUD ───────────────────────────────────────────
@@ -307,6 +310,32 @@ export class GroupsService {
     await this.logActivity(groupId, userId, 'GROUP_UPDATED');
 
     return group;
+  }
+
+  async uploadGroupImage(groupId: string, userId: string, buffer: Buffer, mimetype: string): Promise<{ imageUrl: string }> {
+    await this.requireRole(groupId, userId, [GroupRole.OWNER, GroupRole.ADMIN]);
+
+    const client = this.supabaseService.getClient();
+    if (!client) throw new InternalServerErrorException('Storage service unavailable');
+
+    const ext = mimetype.split('/')[1] ?? 'jpg';
+    const path = `groups/${groupId}/${Date.now()}.${ext}`;
+
+    const { error } = await client.storage
+      .from('group-images')
+      .upload(path, buffer, { contentType: mimetype, upsert: true });
+
+    if (error) {
+      this.logger.error(`Group image upload failed: ${error.message}`);
+      throw new InternalServerErrorException('Failed to upload image');
+    }
+
+    const { data } = client.storage.from('group-images').getPublicUrl(path);
+    const imageUrl = data.publicUrl;
+
+    await this.prisma.group.update({ where: { id: groupId }, data: { imageUrl } });
+
+    return { imageUrl };
   }
 
   async deleteGroup(groupId: string, userId: string) {
