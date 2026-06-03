@@ -242,6 +242,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return this.extendedClient.calendarExport;
   }
 
+  get notification() {
+    return this.extendedClient.notification;
+  }
+
   // ─── Transaction ────────────────────────────────────────────────────────────
   // Exposes $transaction bound to the extended client. The `tx` client passed
   // into the callback is an interactive-transaction-scoped extended client, so
