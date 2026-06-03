@@ -46,7 +46,20 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
 
   // Pending vote (optimistic only while mutation is in-flight)
   const [pendingVote, setPendingVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
+  const voteMutation = useMutation({
+    mutationFn: (voteType: 'UPVOTE' | 'DOWNVOTE') =>
+      groupsApi.vote(groupId!, groupItinerary.id, voteType),
+    onMutate: (newVoteType) => { setPendingVote(newVoteType) },
+    onError: () => { setPendingVote(null); toast.error('Failed to register vote') },
+    onSettled: () => {
+      setPendingVote(null)
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+    },
+  })
+
+  // Display values: optimistic while pending, server values otherwise
   const displayVote  = voteMutation.isPending ? pendingVote  : serverUserVote
   const displayScore = voteMutation.isPending
     ? serverScore
@@ -60,27 +73,6 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
   const thumbCls = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]
   const travelType = getTravelTypeByValue(itinerary.travelType)
   const emoji = travelType?.icon ?? '📍'
-
-  const [confirmRemove, setConfirmRemove] = useState(false)
-
-  const voteMutation = useMutation({
-    mutationFn: (voteType: 'UPVOTE' | 'DOWNVOTE') =>
-      groupsApi.vote(groupId!, groupItinerary.id, voteType),
-
-    onMutate: (newVoteType) => {
-      setPendingVote(newVoteType)
-    },
-
-    onError: () => {
-      setPendingVote(null)
-      toast.error('Failed to register vote')
-    },
-
-    onSettled: () => {
-      setPendingVote(null)
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
-    },
-  })
 
   const removeMutation = useMutation({
     mutationFn: () => groupsApi.removeItineraryFromGroup(groupId!, groupItinerary.id),
