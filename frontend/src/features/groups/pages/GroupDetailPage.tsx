@@ -27,6 +27,9 @@ export const GroupDetailPage: React.FC = () => {
     queryKey: QUERY_KEYS.group(id!),
     queryFn: () => groupsApi.getGroup(id!),
     enabled: !!id,
+    staleTime: 0,           // always treat as stale → refetch on focus/mount
+    refetchOnMount: true,   // fetch fresh data every time page opens
+    refetchOnWindowFocus: true,  // refetch when tab regains focus
   })
 
   const inviteMutation = useMutation({
