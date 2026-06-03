@@ -619,12 +619,12 @@ export class ItineraryService {
   }
 
   private generateRandomToken(): string {
-  return randomBytes(32).toString('hex');
-}
+    return randomBytes(32).toString('hex');
+  }
 
   private hashString(input: string): string {
-  return createHash('sha256').update(input).digest('hex').slice(0, 16);
-}
+    return createHash('sha256').update(input).digest('hex').slice(0, 16);
+  }
 
   /**
    * Generates an itinerary and streams progress/result via SSE.
