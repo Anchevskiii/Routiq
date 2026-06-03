@@ -34,7 +34,12 @@ describe('ItineraryService (integration)', () => {
         },
         {
           provide: AttractionsService,
-          useValue: {},
+          useValue: {
+            geocodeAddress: jest
+              .fn()
+              .mockResolvedValue({ lat: 48.8566, lng: 2.3522 }),
+            getCuratedPlaces: jest.fn().mockResolvedValue([]),
+          },
         },
         {
           provide: WeatherService,

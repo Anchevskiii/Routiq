@@ -71,9 +71,11 @@ export class ItineraryService {
   async getUserItineraries(userId: string, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
-    const [itineraries, total] = await Promise.all([
+    const baseWhere = { userId, deletedAt: null };
+
+    const [itineraries, total, sharedCount] = await Promise.all([
       this.prisma.itinerary.findMany({
-        where: { userId, deletedAt: null },
+        where: baseWhere,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -107,8 +109,12 @@ export class ItineraryService {
           },
         },
       }),
+      this.prisma.itinerary.count({ where: baseWhere }),
       this.prisma.itinerary.count({
-        where: { userId },
+        where: {
+          ...baseWhere,
+          groupItineraries: { some: { deletedAt: null } },
+        },
       }),
     ]);
 
@@ -119,6 +125,7 @@ export class ItineraryService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        sharedCount,
       },
     };
   }

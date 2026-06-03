@@ -118,6 +118,12 @@ function buildService(): GroupsService {
   return new GroupsService(
     mockPrisma as unknown as PrismaService,
     mockMailService as unknown as MailService,
+    {
+      getClient: () => null,
+    } as unknown as import('../supabase/supabase.service').SupabaseService,
+    {
+      createNotification: jest.fn().mockResolvedValue(null),
+    } as unknown as import('../notifications/notifications.service').NotificationsService,
   );
 }
 
@@ -818,7 +824,7 @@ describe('GroupsService', () => {
             userId: memberId,
             voteType: 'UPVOTE',
           }),
-          update: { voteType: 'UPVOTE' },
+          update: expect.objectContaining({ voteType: 'UPVOTE' }),
         }),
       );
       expect(result.voteType).toBe('UPVOTE');
@@ -865,7 +871,9 @@ describe('GroupsService', () => {
       );
 
       expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ update: { voteType: 'DOWNVOTE' } }),
+        expect.objectContaining({
+          update: expect.objectContaining({ voteType: 'DOWNVOTE' }),
+        }),
       );
       expect(result.voteType).toBe('DOWNVOTE');
     });

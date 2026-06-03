@@ -1,6 +1,6 @@
 import React from 'react'
 import { format } from 'date-fns'
-import { Sparkles, Plus, Lock, Share2, Settings, Users } from 'lucide-react'
+import { Sparkles, Plus, Lock, Settings, Users } from 'lucide-react'
 import type { Group, GroupRole } from '@/types/group.types'
 import { initials, avatarGrad } from '@/utils/avatar.utils'
 
@@ -10,9 +10,10 @@ interface Props {
   group: Group
   onImport: () => void
   onGenerate: () => void
+  onSettings: () => void
 }
 
-export const GroupHeader: React.FC<Props> = ({ group, onImport, onGenerate }) => (
+export const GroupHeader: React.FC<Props> = ({ group, onImport, onGenerate, onSettings }) => (
   <div className="grp-panel rounded-[22px] overflow-hidden mb-[22px] border border-gray-200 dark:border-white/[0.07]">
     {/* Cover */}
     {group.imageUrl ? (
@@ -23,13 +24,19 @@ export const GroupHeader: React.FC<Props> = ({ group, onImport, onGenerate }) =>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
       </div>
     ) : (
-      <div className="grp-cover h-[180px]" />
+      <div
+        className={`h-[180px]${!group.themeColor ? ' grp-cover' : ''}`}
+        style={group.themeColor ? { background: `linear-gradient(135deg, ${group.themeColor}cc, ${group.themeColor}88)` } : undefined}
+      />
     )}
 
     {/* Body */}
     <div className="px-[26px] pt-[18px] pb-[22px] flex items-center gap-[22px] flex-wrap">
       {/* Floating icon */}
-      <div className="grp-aurora w-16 h-16 rounded-[18px] grid place-items-center -mt-12 shrink-0 border-[3px] border-gray-100 dark:border-[#161830] shadow-[0_12px_28px_-6px_rgba(37,99,235,0.6)]">
+      <div
+        className={`w-16 h-16 rounded-[18px] grid place-items-center -mt-12 shrink-0 border-[3px] border-gray-100 dark:border-[#161830] shadow-[0_12px_28px_-6px_rgba(37,99,235,0.6)]${!group.themeColor ? ' grp-aurora' : ''}`}
+        style={group.themeColor ? { background: group.themeColor } : undefined}
+      >
         <Users size={28} className="text-white" />
       </div>
 
@@ -76,9 +83,8 @@ export const GroupHeader: React.FC<Props> = ({ group, onImport, onGenerate }) =>
           )}
         </div>
 
-        <GhostBtn icon={<Share2 size={13} />} label="Invite"            onClick={() => {}} />
-        <GhostBtn icon={<Settings size={13} />} label="Settings"        onClick={() => {}} />
         <GhostBtn icon={<Plus size={13} />}     label="Import itinerary" onClick={onImport} />
+        <GhostBtn icon={<Settings size={13} />} label="Settings"         onClick={onSettings} />
         <button
           onClick={onGenerate}
           className="grp-aurora inline-flex items-center gap-1.5 px-[13px] py-[9px] rounded-[11px] border-none text-white text-[13px] font-medium cursor-pointer shadow-[0_8px_22px_-8px_rgba(37,99,235,0.6)] hover:-translate-y-px transition-transform"

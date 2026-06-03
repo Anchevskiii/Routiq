@@ -135,7 +135,7 @@ export class ItineraryGenerationService {
         }
 
         // 3. Create days, their weather snapshots, and activities sequentially
-        for (const day of (generated.days ?? [])) {
+        for (const day of generated.days ?? []) {
           const mappedDay = this.mapSingleDay(
             day,
             createItineraryDto.startDate,
@@ -170,8 +170,29 @@ export class ItineraryGenerationService {
               : [mappedDay.activities.create];
 
             if (activitiesData.length > 0) {
+              const enrichedActivities = await Promise.all(
+                activitiesData.map(async (act) => {
+                  if (act.latitude === null || act.longitude === null) {
+                    const query = act.location || act.title;
+                    if (query) {
+                      const fullQuery = `${query}, ${createItineraryDto.destination}`;
+                      const coords =
+                        await this.attractionsService.geocodeAddress(fullQuery);
+                      if (coords) {
+                        return {
+                          ...act,
+                          latitude: coords.lat,
+                          longitude: coords.lng,
+                        };
+                      }
+                    }
+                  }
+                  return act;
+                }),
+              );
+
               await tx.itineraryActivity.createMany({
-                data: activitiesData.map((act) => ({
+                data: enrichedActivities.map((act) => ({
                   dayId: createdDay.id,
                   ...act,
                 })),
