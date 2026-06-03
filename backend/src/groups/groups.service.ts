@@ -9,6 +9,8 @@ import {
 import { GroupRole, InvitationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '@prisma/client';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -30,6 +32,7 @@ export class GroupsService {
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
     private readonly supabaseService: SupabaseService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ─── Group CRUD ───────────────────────────────────────────
@@ -476,6 +479,14 @@ export class GroupsService {
         group.name,
         groupId,
       );
+      // In-app notification for the invited user
+      await this.notificationsService.createNotification(
+        userToInvite.id,
+        NotificationType.GROUP_INVITATION,
+        `${inviter.name} invited you to "${group.name}"`,
+        'Tap to view the invitation.',
+        { groupId },
+      );
     }
 
     return newMember;
@@ -897,6 +908,27 @@ export class GroupsService {
       commentId: comment.id,
     });
 
+    // Notify all group members except the commenter
+    const [groupInfo, members] = await Promise.all([
+      this.prisma.group.findUnique({ where: { id: groupId }, select: { name: true } }),
+      this.prisma.groupMember.findMany({
+        where: { groupId, status: 'ACCEPTED', deletedAt: null, userId: { not: userId } },
+        select: { userId: true },
+      }),
+    ]);
+    const commenter = comment.user.name;
+    await Promise.allSettled(
+      members.map(m =>
+        this.notificationsService.createNotification(
+          m.userId,
+          NotificationType.COMMENT,
+          `${commenter} commented in "${groupInfo?.name}"`,
+          comment.content.slice(0, 100),
+          { groupId, commentId: comment.id },
+        ),
+      ),
+    );
+
     return comment;
   }
 
@@ -1019,6 +1051,22 @@ export class GroupsService {
         },
       },
     });
+
+    // Notify itinerary owner (not the voter)
+    const itinerary = await this.prisma.itinerary.findUnique({
+      where: { id: groupItinerary.itineraryId },
+      select: { userId: true, destination: true },
+    });
+    if (itinerary && itinerary.userId !== userId) {
+      const voter = vote.user.name;
+      await this.notificationsService.createNotification(
+        itinerary.userId,
+        NotificationType.VOTE,
+        `${voter} voted on your "${itinerary.destination}" itinerary`,
+        `${mappedVoteType === 'UPVOTE' ? '👍 Upvote' : '👎 Downvote'} in group`,
+        { groupId, groupItineraryId, itineraryId: groupItinerary.itineraryId },
+      ).catch(() => {});
+    }
 
     return vote;
   }
