@@ -28,7 +28,7 @@ export async function withRetry<T>(
       lastError = error;
       attempt++;
       if (attempt > maxRetries || !shouldRetry(error)) {
-        throw error;
+        break;
       }
 
       // Exponential backoff with jitter
