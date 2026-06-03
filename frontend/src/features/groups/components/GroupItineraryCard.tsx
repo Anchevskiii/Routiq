@@ -40,18 +40,19 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
   const queryClient = useQueryClient()
   const { itinerary, votes } = groupItinerary
 
-  // Compute score directly from votes array (more reliable than server score field)
-  const computedScore = (votes ?? []).reduce((acc, v) => acc + (v.voteType === 'UPVOTE' ? 1 : -1), 0)
+  // Derive score and userVote directly from votes prop — always in sync with server
+  const serverScore    = (votes ?? []).reduce((acc, v) => acc + (v.voteType === 'UPVOTE' ? 1 : -1), 0)
+  const serverUserVote = votes?.find(v => v.userId === currentUserId)?.voteType ?? null
 
-  const myVote = votes?.find(v => v.userId === currentUserId)
-  const [userVote, setUserVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(myVote?.voteType ?? null)
-  const [localScore, setLocalScore] = useState(computedScore)
+  // Pending vote (optimistic only while mutation is in-flight)
+  const [pendingVote, setPendingVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(null)
 
-  // Sync from server when votes change (e.g. after background refetch)
-  React.useEffect(() => {
-    setLocalScore(computedScore)
-    setUserVote(myVote?.voteType ?? null)
-  }, [computedScore, myVote?.voteType])
+  const displayVote  = voteMutation.isPending ? pendingVote  : serverUserVote
+  const displayScore = voteMutation.isPending
+    ? serverScore
+      + (pendingVote    === 'UPVOTE' ? 1 : pendingVote    === 'DOWNVOTE' ? -1 : 0)
+      - (serverUserVote === 'UPVOTE' ? 1 : serverUserVote === 'DOWNVOTE' ? -1 : 0)
+    : serverScore
 
   const upvoters = votes?.filter(v => v.voteType === 'UPVOTE') ?? []
 
@@ -67,23 +68,16 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
 
     onMutate: (newVoteType) => {
-      // Instantly update local state — no cache dance needed
-      const prevVote = userVote
-      const delta =
-        (newVoteType === 'UPVOTE' ? 1 : -1) -
-        (prevVote === 'UPVOTE' ? 1 : prevVote === 'DOWNVOTE' ? -1 : 0)
-      setLocalScore(s => s + delta)
-      setUserVote(newVoteType)
-      return { prevVote, prevScore: localScore }
+      setPendingVote(newVoteType)
     },
 
-    onError: (_err, _vars, ctx) => {
-      // Roll back on error
-      if (ctx) { setLocalScore(ctx.prevScore); setUserVote(ctx.prevVote) }
+    onError: () => {
+      setPendingVote(null)
       toast.error('Failed to register vote')
     },
 
     onSettled: () => {
+      setPendingVote(null)
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
     },
   })
@@ -162,8 +156,8 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
 
       <div className="flex flex-col items-center gap-2">
         <VoteWidget
-          score={localScore}
-          userVote={userVote}
+          score={displayScore}
+          userVote={displayVote}
           isPending={voteMutation.isPending}
           onVote={dir => voteMutation.mutate(dir)}
         />
