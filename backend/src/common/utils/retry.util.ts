@@ -19,10 +19,13 @@ export async function withRetry<T>(
   const shouldRetry = options.shouldRetry ?? (() => true);
 
   let attempt = 0;
-  while (true) {
+  let lastError: unknown;
+
+  while (attempt <= maxRetries) {
     try {
       return await fn();
     } catch (error) {
+      lastError = error;
       attempt++;
       if (attempt > maxRetries || !shouldRetry(error)) {
         throw error;
@@ -45,4 +48,6 @@ export async function withRetry<T>(
       await new Promise((resolve) => setTimeout(resolve, finalDelay));
     }
   }
+
+  throw lastError;
 }

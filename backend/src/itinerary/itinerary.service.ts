@@ -24,6 +24,7 @@ import { GeneratedDay, GeneratedItinerary } from './types';
 
 import { Prisma } from '@prisma/client';
 import { FormattedPlace } from '../attractions/types';
+import { randomBytes, createHash } from 'crypto';
 
 export type ItineraryGenerateStreamEvent =
   | { type: 'status'; message: string }
@@ -611,21 +612,12 @@ export class ItineraryService {
   }
 
   private generateRandomToken(): string {
-    return (
-      Math.random().toString(36).substring(2, 15) +
-      Math.random().toString(36).substring(2, 15)
-    );
-  }
+  return randomBytes(32).toString('hex');
+}
 
   private hashString(input: string): string {
-    let hash = 0;
-    for (let i = 0; i < input.length; i++) {
-      const char = input.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash |= 0; // Convert to 32bit integer
-    }
-    return hash.toString(36);
-  }
+  return createHash('sha256').update(input).digest('hex').slice(0, 16);
+}
 
   /**
    * Generates an itinerary and streams progress/result via SSE.
