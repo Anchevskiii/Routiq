@@ -236,12 +236,9 @@ export const GenerationLoading: React.FC<Props> = ({
 
           <div style={{ padding: '22px 26px 26px' }}>
             {/* Title */}
-            <h1 style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.5px', margin: '0 0 4px', color: textMain }}>
-              Preparing your itinerary…
+            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px', margin: '0 0 16px', color: textMain }}>
+              Building your trip to <strong style={{ color: '#3b82f6' }}>{destination || 'your destination'}</strong>…
             </h1>
-            <p style={{ fontSize: 13.5, color: textSub, margin: '0 0 20px' }}>
-              Building your perfect trip to <strong style={{ color: textMain }}>{destination || 'your destination'}</strong>. This takes just a moment.
-            </p>
 
             {/* Progress */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>

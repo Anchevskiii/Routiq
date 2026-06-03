@@ -109,22 +109,25 @@ export const PlannerPage: React.FC = () => {
         />
       </div>
 
-      {/* Scrollable content */}
-      <div className="relative z-10 h-full overflow-y-auto">
-        <div className="max-w-[1400px] mx-auto px-6 py-10">
-            {isLoading ? (
-            <GenerationLoading
-              progress={progress}
-              attractions={attractions}
-              generatedDays={generatedDays}
-              elapsedTime={elapsedTime}
-              destination={destination}
-            />
-          ) : (
+      {/* Scrollable content — only shown when not loading */}
+      {!isLoading && (
+        <div className="relative z-10 h-full overflow-y-auto">
+          <div className="max-w-[1400px] mx-auto px-6 py-10">
             <PlannerForm onSubmit={handleGenerate} isLoading={isLoading} />
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
+
+    {/* Loading overlay — outside all transforms for correct fixed positioning */}
+    {isLoading && (
+      <GenerationLoading
+        progress={progress}
+        attractions={attractions}
+        generatedDays={generatedDays}
+        elapsedTime={elapsedTime}
+        destination={destination}
+      />
+    )}
   )
 }
