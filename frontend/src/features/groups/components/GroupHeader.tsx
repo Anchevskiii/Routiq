@@ -1,6 +1,6 @@
 import React from 'react'
 import { format } from 'date-fns'
-import { Sparkles, Plus, Lock, Share2, Settings, Users } from 'lucide-react'
+import { Sparkles, Plus, Lock, Users } from 'lucide-react'
 import type { Group, GroupRole } from '@/types/group.types'
 import { initials, avatarGrad } from '@/utils/avatar.utils'
 
