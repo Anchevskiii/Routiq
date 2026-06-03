@@ -113,12 +113,14 @@ export const ProfilePage: React.FC = () => {
           )}
           {activeSection === 'privacy' && (
             <>
+              {/* Privacy toggles commented out
               <ToggleSection
                 title="Privacy Settings"
                 items={PRIVACY_ITEMS}
                 settings={settings}
                 onToggle={(key, value) => updateSettingsMutation.mutate({ [key]: value })}
               />
+              */}
               <DangerZone
                 isDeleting={deleteAccountMutation.isPending}
                 onDelete={() => deleteAccountMutation.mutate()}

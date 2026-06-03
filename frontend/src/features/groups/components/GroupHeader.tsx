@@ -76,8 +76,7 @@ export const GroupHeader: React.FC<Props> = ({ group, onImport, onGenerate }) =>
           )}
         </div>
 
-        <GhostBtn icon={<Share2 size={13} />} label="Invite"            onClick={() => {}} />
-        <GhostBtn icon={<Settings size={13} />} label="Settings"        onClick={() => {}} />
+        {/* Invite and Settings buttons removed */}
         <GhostBtn icon={<Plus size={13} />}     label="Import itinerary" onClick={onImport} />
         <button
           onClick={onGenerate}
