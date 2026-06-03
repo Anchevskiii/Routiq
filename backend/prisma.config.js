@@ -17,6 +17,6 @@ const { defineConfig } = require('@prisma/config');
 module.exports = defineConfig({
   datasource: {
     // For migrations, use DIRECT_URL (bypasses PgBouncer)
-    url: process.env.DIRECT_URL,
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
   },
 });
