@@ -38,17 +38,20 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
   const navigate = useNavigate()
   const { id: groupId } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
-  const { itinerary, score: serverScore, votes } = groupItinerary
+  const { itinerary, votes } = groupItinerary
+
+  // Compute score directly from votes array (more reliable than server score field)
+  const computedScore = (votes ?? []).reduce((acc, v) => acc + (v.voteType === 'UPVOTE' ? 1 : -1), 0)
 
   const myVote = votes?.find(v => v.userId === currentUserId)
   const [userVote, setUserVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(myVote?.voteType ?? null)
-  const [localScore, setLocalScore] = useState(serverScore)
+  const [localScore, setLocalScore] = useState(computedScore)
 
-  // Sync from server when props change (e.g. after background refetch)
+  // Sync from server when votes change (e.g. after background refetch)
   React.useEffect(() => {
-    setLocalScore(serverScore)
+    setLocalScore(computedScore)
     setUserVote(myVote?.voteType ?? null)
-  }, [serverScore, myVote?.voteType])
+  }, [computedScore, myVote?.voteType])
 
   const upvoters = votes?.filter(v => v.voteType === 'UPVOTE') ?? []
 

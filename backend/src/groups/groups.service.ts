@@ -196,6 +196,7 @@ export class GroupsService {
               },
             },
             votes: {
+              where: { deletedAt: null },
               select: {
                 voteType: true,
                 userId: true,
