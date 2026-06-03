@@ -1036,6 +1036,7 @@ export class GroupsService {
       },
       update: {
         voteType: mappedVoteType,
+        deletedAt: null,   // clear soft-delete if vote was previously removed
       },
       create: {
         groupItineraryId,

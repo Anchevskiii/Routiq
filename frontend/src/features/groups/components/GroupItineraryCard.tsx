@@ -42,7 +42,10 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
 
   // Derive score and userVote directly from votes prop — always in sync with server
   const serverScore    = (votes ?? []).reduce((acc, v) => acc + (v.voteType === 'UPVOTE' ? 1 : -1), 0)
-  const serverUserVote = votes?.find(v => v.userId === currentUserId)?.voteType ?? null
+  const serverUserVote = votes?.find(
+    v => v.userId === currentUserId || v.user?.id === currentUserId
+  )?.voteType ?? null
+
 
   // Pending vote (optimistic only while mutation is in-flight)
   const [pendingVote, setPendingVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(null)
@@ -67,7 +70,8 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
       - (serverUserVote === 'UPVOTE' ? 1 : serverUserVote === 'DOWNVOTE' ? -1 : 0)
     : serverScore
 
-  const upvoters = votes?.filter(v => v.voteType === 'UPVOTE') ?? []
+  // Show ALL voters (upvote + downvote) so count matches score awareness
+  const allVoters = votes ?? []
 
   const days = differenceInDays(new Date(itinerary.endDate), new Date(itinerary.startDate)) + 1
   const thumbCls = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]
@@ -123,25 +127,27 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
           </span>
         </div>
 
-        {/* Voter avatars */}
-        {upvoters.length > 0 && (
+        {/* Voter avatars — show ALL voters with up/down indicator */}
+        {allVoters.length > 0 && (
           <div className="flex items-center gap-2">
             <div className="flex">
-              {upvoters.slice(0, 4).map((v, i) => (
-                <div
-                  key={v.id}
-                  className={`w-[18px] h-[18px] rounded-full bg-gradient-to-br ${avatarGrad(v.user.name)} border-[1.5px] border-gray-100 dark:border-[#0f1022] flex items-center justify-center text-[7px] font-bold text-white${i === 0 ? '' : ' -ml-1.5'}`}
-                >
-                  {initials(v.user.name)}
+              {allVoters.slice(0, 4).map((v, i) => (
+                <div key={v.userId} className="relative" style={{ marginLeft: i === 0 ? 0 : -6 }}>
+                  <div className={`w-[18px] h-[18px] rounded-full bg-gradient-to-br ${avatarGrad(v.user.name)} border-[1.5px] border-gray-100 dark:border-[#0f1022] flex items-center justify-center text-[7px] font-bold text-white`}>
+                    {initials(v.user.name)}
+                  </div>
+                  <span className={`absolute -bottom-0.5 -right-0.5 text-[7px] leading-none ${v.voteType === 'UPVOTE' ? 'text-emerald-500' : 'text-red-400'}`}>
+                    {v.voteType === 'UPVOTE' ? '▲' : '▼'}
+                  </span>
                 </div>
               ))}
-              {upvoters.length > 4 && (
+              {allVoters.length > 4 && (
                 <div className="w-[18px] h-[18px] rounded-full bg-gray-200/60 dark:bg-white/[0.08] border-[1.5px] border-gray-100 dark:border-[#0f1022] flex items-center justify-center text-[8px] text-gray-500 dark:text-[#a3a1c8] -ml-1.5">
-                  +{upvoters.length - 4}
+                  +{allVoters.length - 4}
                 </div>
               )}
             </div>
-            <span className="text-[11px] text-gray-500 dark:text-[#a3a1c8]">{upvoters.length} voted</span>
+            <span className="text-[11px] text-gray-500 dark:text-[#a3a1c8]">{allVoters.length} voted</span>
           </div>
         )}
       </div>
