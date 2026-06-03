@@ -97,101 +97,106 @@ export class ItineraryGenerationService {
     const estimatedBudget =
       generated.summary?.estimatedBudget ?? 'Contact local guides for pricing';
 
-    return this.prisma.$transaction(async (tx) => {
-      // 1. Create the parent Itinerary record
-      const itinerary = await tx.itinerary.create({
-        data: {
-          userId,
-          destination: createItineraryDto.destination,
-          startDate: createItineraryDto.startDate,
-          endDate: createItineraryDto.endDate,
-          travelType: createItineraryDto.travelType,
-          totalDays: createItineraryDto.days,
-          aiModel: 'gemini-2.5-flash',
-          aiPromptHash: promptHash,
-          generatedAt: new Date(),
-          generationTimeMs,
-          bestSeason,
-          estimatedBudget,
-        },
-      });
-
-      // 2. Create general tips sequentially
-      const generalTips = generated.generalTips ?? [
-        'Check local transportation options before arrival.',
-        'Keep digital copies of your travel documents.',
-        'Respect local customs and traditions.',
-      ];
-
-      if (generalTips.length > 0) {
-        await tx.itineraryTip.createMany({
-          data: generalTips.map((tip, index) => ({
-            itineraryId: itinerary.id,
-            sortOrder: index,
-            content: tip,
-          })),
-        });
-      }
-
-      // 3. Create days, their weather snapshots, and activities sequentially
-      for (const day of (generated.days ?? [])) {
-        const mappedDay = this.mapSingleDay(
-          day,
-          createItineraryDto.startDate,
-          weatherData,
-          attractions,
-        );
-
-        // Create the ItineraryDay record
-        const createdDay = await tx.itineraryDay.create({
+    return this.prisma.$transaction(
+      async (tx) => {
+        // 1. Create the parent Itinerary record
+        const itinerary = await tx.itinerary.create({
           data: {
-            itineraryId: itinerary.id,
-            dayNumber: mappedDay.dayNumber,
-            date: mappedDay.date,
-            theme: mappedDay.theme,
+            userId,
+            destination: createItineraryDto.destination,
+            startDate: createItineraryDto.startDate,
+            endDate: createItineraryDto.endDate,
+            travelType: createItineraryDto.travelType,
+            totalDays: createItineraryDto.days,
+            aiModel: 'gemini-2.5-flash',
+            aiPromptHash: promptHash,
+            generatedAt: new Date(),
+            generationTimeMs,
+            bestSeason,
+            estimatedBudget,
           },
         });
 
-        // Create the ItineraryWeatherSnapshot record
-        if (mappedDay.weather?.create) {
-          await tx.itineraryWeatherSnapshot.create({
+        // 2. Create general tips sequentially
+        const generalTips = generated.generalTips ?? [
+          'Check local transportation options before arrival.',
+          'Keep digital copies of your travel documents.',
+          'Respect local customs and traditions.',
+        ];
+
+        if (generalTips.length > 0) {
+          await tx.itineraryTip.createMany({
+            data: generalTips.map((tip, index) => ({
+              itineraryId: itinerary.id,
+              sortOrder: index,
+              content: tip,
+            })),
+          });
+        }
+
+        // 3. Create days, their weather snapshots, and activities sequentially
+        for (const day of (generated.days ?? [])) {
+          const mappedDay = this.mapSingleDay(
+            day,
+            createItineraryDto.startDate,
+            weatherData,
+            attractions,
+          );
+
+          // Create the ItineraryDay record
+          const createdDay = await tx.itineraryDay.create({
             data: {
-              dayId: createdDay.id,
-              ...mappedDay.weather.create,
+              itineraryId: itinerary.id,
+              dayNumber: mappedDay.dayNumber,
+              date: mappedDay.date,
+              theme: mappedDay.theme,
+            },
+          });
+
+          // Create the ItineraryWeatherSnapshot record
+          if (mappedDay.weather?.create) {
+            await tx.itineraryWeatherSnapshot.create({
+              data: {
+                dayId: createdDay.id,
+                ...mappedDay.weather.create,
+              },
+            });
+          }
+
+          // Create the ItineraryActivity records
+          if (mappedDay.activities?.create) {
+            const activitiesData = Array.isArray(mappedDay.activities.create)
+              ? mappedDay.activities.create
+              : [mappedDay.activities.create];
+
+            if (activitiesData.length > 0) {
+              await tx.itineraryActivity.createMany({
+                data: activitiesData.map((act) => ({
+                  dayId: createdDay.id,
+                  ...act,
+                })),
+              });
+            }
+          }
+        }
+
+        // 4. If groupId is provided, automatically link the itinerary to the group
+        if (createItineraryDto.groupId) {
+          await tx.groupItinerary.create({
+            data: {
+              groupId: createItineraryDto.groupId,
+              itineraryId: itinerary.id,
+              addedById: userId,
             },
           });
         }
 
-        // Create the ItineraryActivity records
-        if (mappedDay.activities?.create) {
-          const activitiesData = Array.isArray(mappedDay.activities.create)
-            ? mappedDay.activities.create
-            : [mappedDay.activities.create];
-
-          if (activitiesData.length > 0) {
-            await tx.itineraryActivity.createMany({
-              data: activitiesData.map((act) => ({
-                dayId: createdDay.id,
-                ...act,
-              })),
-            });
-          }
-        }
-      }
-
-      // 4. If groupId is provided, automatically link the itinerary to the group
-      if (createItineraryDto.groupId) {
-        await tx.groupItinerary.create({
-          data: {
-            groupId: createItineraryDto.groupId,
-            itineraryId: itinerary.id,
-            addedById: userId,
-          },
-        });
-      }
-
-      return itinerary;
-    });
+        return itinerary;
+      },
+      {
+        timeout: 15000, // 15 seconds timeout to prevent transaction cancellation during remote DB writes
+      },
+    );
   }
 
   mapDaysForNestedWrite(
