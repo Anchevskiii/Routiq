@@ -54,7 +54,35 @@ export const ItineraryPage: React.FC = () => {
   const reorderActivitiesMutation = useMutation({
     mutationFn: ({ dayId, activityIds }: { dayId: string; activityIds: string[] }) =>
       itineraryApi.reorderActivities(id!, dayId, activityIds),
-    onSuccess: invalidate,
+
+    onMutate: async ({ dayId, activityIds }) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
+      const previous = queryClient.getQueryData(QUERY_KEYS.itinerary(id!))
+
+      queryClient.setQueryData(QUERY_KEYS.itinerary(id!), (old: typeof itinerary) => {
+        if (!old?.days) return old
+        return {
+          ...old,
+          days: old.days.map(day => {
+            if (day.id !== dayId || !day.activities) return day
+            const reordered = activityIds
+              .map((actId, i) => {
+                const act = day.activities!.find(a => a.id === actId)
+                return act ? { ...act, sortOrder: i } : null
+              })
+              .filter(Boolean) as typeof day.activities
+            return { ...day, activities: reordered }
+          }),
+        }
+      })
+      return { previous }
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(QUERY_KEYS.itinerary(id!), context.previous)
+    },
+
+    onSettled: invalidate,
   })
 
   const reorderDaysMutation = useMutation({
