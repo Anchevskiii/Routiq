@@ -5,16 +5,16 @@ import { PrismaService } from '../prisma/prisma.service';
 
 const SETTING_KEY: Record<NotificationType, string> = {
   GROUP_INVITATION: 'groupInvitations',
-  COMMENT:          'comments',
-  VOTE:             'votes',
-  TRIP_REMINDER:    'tripReminders',
+  COMMENT: 'comments',
+  VOTE: 'votes',
+  TRIP_REMINDER: 'tripReminders',
 };
 
 const DEFAULT_SETTINGS: Record<string, boolean> = {
   groupInvitations: true,
-  comments:         true,
-  votes:            true,
-  tripReminders:    true,
+  comments: true,
+  votes: true,
+  tripReminders: true,
 };
 
 @Injectable()
@@ -62,7 +62,14 @@ export class NotificationsService {
       this.prisma.notification.count({ where: { userId } }),
       this.prisma.notification.count({ where: { userId, readAt: null } }),
     ]);
-    return { notifications, total, unread, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      notifications,
+      total,
+      unread,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getUnreadCount(userId: string): Promise<number> {
@@ -122,7 +129,9 @@ export class NotificationsService {
     }
 
     if (upcomingTrips.length > 0) {
-      this.logger.log(`Sent ${upcomingTrips.length} trip reminder notifications`);
+      this.logger.log(
+        `Sent ${upcomingTrips.length} trip reminder notifications`,
+      );
     }
   }
 }

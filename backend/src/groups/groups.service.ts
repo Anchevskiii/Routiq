@@ -311,11 +311,17 @@ export class GroupsService {
     return group;
   }
 
-  async uploadGroupImage(groupId: string, userId: string, buffer: Buffer, mimetype: string): Promise<{ imageUrl: string }> {
+  async uploadGroupImage(
+    groupId: string,
+    userId: string,
+    buffer: Buffer,
+    mimetype: string,
+  ): Promise<{ imageUrl: string }> {
     await this.requireRole(groupId, userId, [GroupRole.OWNER, GroupRole.ADMIN]);
 
     const client = this.supabaseService.getClient();
-    if (!client) throw new InternalServerErrorException('Storage service unavailable');
+    if (!client)
+      throw new InternalServerErrorException('Storage service unavailable');
 
     const ext = mimetype.split('/')[1] ?? 'jpg';
     const path = `groups/${groupId}/${Date.now()}.${ext}`;
@@ -332,7 +338,10 @@ export class GroupsService {
     const { data } = client.storage.from('group-images').getPublicUrl(path);
     const imageUrl = data.publicUrl;
 
-    await this.prisma.group.update({ where: { id: groupId }, data: { imageUrl } });
+    await this.prisma.group.update({
+      where: { id: groupId },
+      data: { imageUrl },
+    });
 
     return { imageUrl };
   }
@@ -476,13 +485,17 @@ export class GroupsService {
         groupId,
       );
       // In-app notification — fire-and-forget, never block the invite flow
-      this.notificationsService.createNotification(
-        userToInvite.id,
-        NotificationType.GROUP_INVITATION,
-        `${inviter.name} invited you to "${group.name}"`,
-        'Tap to view the invitation.',
-        { groupId },
-      ).catch(err => this.logger.warn(`Notification failed: ${err?.message}`));
+      this.notificationsService
+        .createNotification(
+          userToInvite.id,
+          NotificationType.GROUP_INVITATION,
+          `${inviter.name} invited you to "${group.name}"`,
+          'Tap to view the invitation.',
+          { groupId },
+        )
+        .catch((err) =>
+          this.logger.warn(`Notification failed: ${err?.message}`),
+        );
     }
 
     return newMember;
@@ -906,15 +919,23 @@ export class GroupsService {
 
     // Notify all group members except the commenter
     const [groupInfo, members] = await Promise.all([
-      this.prisma.group.findUnique({ where: { id: groupId }, select: { name: true } }),
+      this.prisma.group.findUnique({
+        where: { id: groupId },
+        select: { name: true },
+      }),
       this.prisma.groupMember.findMany({
-        where: { groupId, status: 'ACCEPTED', deletedAt: null, userId: { not: userId } },
+        where: {
+          groupId,
+          status: 'ACCEPTED',
+          deletedAt: null,
+          userId: { not: userId },
+        },
         select: { userId: true },
       }),
     ]);
     const commenter = comment.user.name;
     await Promise.allSettled(
-      members.map(m =>
+      members.map((m) =>
         this.notificationsService.createNotification(
           m.userId,
           NotificationType.COMMENT,
@@ -1031,7 +1052,7 @@ export class GroupsService {
       },
       update: {
         voteType: mappedVoteType,
-        deletedAt: null,   // clear soft-delete if vote was previously removed
+        deletedAt: null, // clear soft-delete if vote was previously removed
       },
       create: {
         groupItineraryId,
@@ -1062,7 +1083,11 @@ export class GroupsService {
           NotificationType.VOTE,
           `${vote.user.name} voted on your "${itinerary.destination}" itinerary`,
           `${mappedVoteType === 'UPVOTE' ? '👍 Upvote' : '👎 Downvote'} in group`,
-          { groupId, groupItineraryId, itineraryId: groupItinerary.itineraryId },
+          {
+            groupId,
+            groupItineraryId,
+            itineraryId: groupItinerary.itineraryId,
+          },
         );
       }
     } catch (err) {

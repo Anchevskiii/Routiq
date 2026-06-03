@@ -70,7 +70,7 @@ export class ItineraryService {
   async getUserItineraries(userId: string, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
-    const baseWhere = { userId, deletedAt: null }
+    const baseWhere = { userId, deletedAt: null };
 
     const [itineraries, total, sharedCount] = await Promise.all([
       this.prisma.itinerary.findMany({

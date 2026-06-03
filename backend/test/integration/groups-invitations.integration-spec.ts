@@ -29,7 +29,10 @@ describe('GroupsService (integration - invitations)', () => {
       providers: [
         GroupsService,
         { provide: MailService, useValue: { sendGroupInvitation: jest.fn() } },
-        { provide: NotificationsService, useValue: { createNotification: jest.fn().mockResolvedValue(null) } },
+        {
+          provide: NotificationsService,
+          useValue: { createNotification: jest.fn().mockResolvedValue(null) },
+        },
         { provide: SupabaseService, useValue: { getClient: () => null } },
       ],
     }).compile();
