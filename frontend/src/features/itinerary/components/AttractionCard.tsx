@@ -39,23 +39,35 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
   useEffect(() => {
     let cancelled = false
 
-    const fetchPhoto = async () => {
-      // Use Wikipedia opensearch to find the best matching article title
-      const query = activity.title
-      try {
-        const searchRes = await fetch(
-          `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
-        )
-        const [, titles] = await searchRes.json() as [string, string[]]
-        const bestTitle = titles?.[0]
-        if (!bestTitle || cancelled) return
+    // Strip generic venue-type words to get a more searchable core term
+    const stripVenueType = (s: string) =>
+      s.replace(/\s*(workshop|restaurant|cafe|temple|shrine|museum|park|garden|gallery|center|centre|hall|house|church|cathedral|palace|castle|market|square|tower|walk|trail|tour|site|nature|cutting)\b.*/i, '').trim()
 
-        const summaryRes = await fetch(
-          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestTitle)}`
-        )
-        const data = await summaryRes.json()
-        const url = data.thumbnail?.source
-        if (url && !cancelled) setPhotoUrl(url)
+    const trySearch = async (query: string): Promise<string | null> => {
+      if (query.length < 3) return null
+      const res = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
+      )
+      const [, titles] = await res.json() as [string, string[]]
+      const title = titles?.[0]
+      if (!title) return null
+      const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`)
+      const data = await summary.json()
+      return data.thumbnail?.source ?? null
+    }
+
+    const fetchPhoto = async () => {
+      try {
+        const queries = [
+          activity.title,
+          stripVenueType(activity.title),
+          activity.title.split(' ').slice(0, 2).join(' '),
+        ].filter((q, i, arr) => q.length > 2 && arr.indexOf(q) === i) // dedupe
+
+        for (const q of queries) {
+          const url = await trySearch(q)
+          if (url && !cancelled) { setPhotoUrl(url); return }
+        }
       } catch { /* keep icon fallback */ }
     }
 
