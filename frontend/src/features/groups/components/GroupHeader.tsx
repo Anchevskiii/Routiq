@@ -10,9 +10,10 @@ interface Props {
   group: Group
   onImport: () => void
   onGenerate: () => void
+  onSettings: () => void
 }
 
-export const GroupHeader: React.FC<Props> = ({ group, onImport, onGenerate }) => (
+export const GroupHeader: React.FC<Props> = ({ group, onImport, onGenerate, onSettings }) => (
   <div className="grp-panel rounded-[22px] overflow-hidden mb-[22px] border border-gray-200 dark:border-white/[0.07]">
     {/* Cover */}
     {group.imageUrl ? (
@@ -76,8 +77,8 @@ export const GroupHeader: React.FC<Props> = ({ group, onImport, onGenerate }) =>
           )}
         </div>
 
-        {/* Invite and Settings buttons removed */}
         <GhostBtn icon={<Plus size={13} />}     label="Import itinerary" onClick={onImport} />
+        <GhostBtn icon={<Settings size={13} />} label="Settings"         onClick={onSettings} />
         <button
           onClick={onGenerate}
           className="grp-aurora inline-flex items-center gap-1.5 px-[13px] py-[9px] rounded-[11px] border-none text-white text-[13px] font-medium cursor-pointer shadow-[0_8px_22px_-8px_rgba(37,99,235,0.6)] hover:-translate-y-px transition-transform"
