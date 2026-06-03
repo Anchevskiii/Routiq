@@ -2,12 +2,11 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { Sun, Moon, Settings } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
-import { useAuth } from '@/app/Providers'
 import { useTheme } from '@/hooks/useTheme'
 import { NotificationsDropdown } from '@/components/layout/NotificationsDropdown'
 
 export const DashboardTopbar: React.FC = () => {
-  const { user: _user } = useAuth()
+
   const { isDark, toggle } = useTheme()
 
   return (
