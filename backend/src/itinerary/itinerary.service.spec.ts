@@ -23,10 +23,21 @@ const mockPrisma = {
     delete: jest.fn(),
     count: jest.fn(),
   },
-  itineraryDay: { create: jest.fn() },
-  itineraryActivity: { create: jest.fn() },
+  itineraryDay: {
+    create: jest.fn(),
+    update: jest.fn(),
+  },
+  itineraryActivity: {
+    create: jest.fn(),
+    update: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+  },
   itineraryTip: { create: jest.fn() },
-  itineraryWeatherSnapshot: { create: jest.fn() },
+  itineraryWeatherSnapshot: {
+    create: jest.fn(),
+    upsert: jest.fn(),
+  },
   groupItinerary: { updateMany: jest.fn() },
   $transaction: jest.fn(),
 };
@@ -583,4 +594,129 @@ describe('ItineraryService', () => {
       ).toBe('string');
     });
   });
+
+  // =========================================================================
+  // reorderDays
+  // =========================================================================
+
+  describe('reorderDays', () => {
+    it('should reorder days in two transaction phases and return result', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryDay.update.mockResolvedValue({ id: 'day-1', dayNumber: 1 });
+      mockPrisma.$transaction.mockResolvedValue([{ id: 'day-1', dayNumber: 1 }]);
+
+      const result = await service.reorderDays(itineraryId, userId, {
+        dayIds: ['day-1', 'day-2'],
+      });
+
+      expect(mockPrisma.itinerary.findFirst).toHaveBeenCalledWith({
+        where: { id: itineraryId, userId },
+      });
+      expect(mockPrisma.itineraryDay.update).toHaveBeenCalled();
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(result).toBeDefined();
+    });
+
+    it('should throw NotFoundException if itinerary is not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.reorderDays(itineraryId, userId, { dayIds: ['day-1'] }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // =========================================================================
+  // reorderActivities
+  // =========================================================================
+
+  describe('reorderActivities', () => {
+    it('should update sortOrder of activities in transaction and return sorted activities', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.update.mockResolvedValue({});
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        { id: 'act-1', sortOrder: 1 },
+        { id: 'act-2', sortOrder: 2 },
+      ]);
+
+      const result = await service.reorderActivities(itineraryId, 'day-1', userId, {
+        activityIds: ['act-2', 'act-1'],
+      });
+
+      expect(mockPrisma.itineraryActivity.update).toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  // =========================================================================
+  // updateActivity
+  // =========================================================================
+
+  describe('updateActivity', () => {
+    it('should update and return the activity', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({ id: 'act-1', dayId: 'day-1' });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({ id: 'act-1', title: 'New Title' });
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([]);
+
+      const result = await service.updateActivity(itineraryId, 'act-1', userId, {
+        title: 'New Title',
+      });
+
+      expect(result.title).toBe('New Title');
+    });
+
+    it('should throw NotFoundException if activity is not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateActivity(itineraryId, 'act-1', userId, { title: 'New Title' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // =========================================================================
+  // addActivity
+  // =========================================================================
+
+  describe('addActivity', () => {
+    it('should add activity and reorder remaining activities if needed', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        { id: 'act-1', sortOrder: 1, startTime: '10:00', durationMinutes: 60 },
+      ]);
+      mockPrisma.itineraryActivity.create.mockResolvedValue({ id: 'act-2', title: 'New Act' });
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 30,
+      });
+
+      expect(mockPrisma.itineraryActivity.create).toHaveBeenCalled();
+      expect(result.title).toBe('New Act');
+    });
+  });
+
+  // =========================================================================
+  // deleteActivity
+  // =========================================================================
+
+  describe('deleteActivity', () => {
+    it('should soft-delete activity and shift remaining activity orders', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({ id: 'act-1', dayId: 'day-1' });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({});
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        { id: 'act-2', sortOrder: 2 },
+      ]);
+
+      const result = await service.deleteActivity(itineraryId, 'act-1', userId);
+
+      expect(mockPrisma.itineraryActivity.update).toHaveBeenCalled();
+      expect(result.message).toBe('Activity deleted successfully');
+    });
+  });
 });
+
