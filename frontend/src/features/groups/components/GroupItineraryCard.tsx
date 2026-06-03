@@ -54,8 +54,42 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
   const voteMutation = useMutation({
     mutationFn: (voteType: 'UPVOTE' | 'DOWNVOTE') =>
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) }),
-    onError: () => toast.error('Failed to register vote'),
+
+    onMutate: async (newVoteType) => {
+      // Optimistically update score in cache so UI responds instantly
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+      const previous = queryClient.getQueryData(QUERY_KEYS.group(groupId!))
+
+      queryClient.setQueryData(QUERY_KEYS.group(groupId!), (old: { itineraries?: GroupItinerary[] } | undefined) => {
+        if (!old?.itineraries) return old
+        return {
+          ...old,
+          itineraries: old.itineraries.map(gi => {
+            if (gi.id !== groupItinerary.id) return gi
+            const prevVote = gi.votes?.find(v => v.userId === currentUserId)?.voteType ?? null
+            const scoreDelta =
+              (newVoteType === 'UPVOTE' ? 1 : -1) -
+              (prevVote === 'UPVOTE' ? 1 : prevVote === 'DOWNVOTE' ? -1 : 0)
+            const updatedVotes = [
+              ...(gi.votes ?? []).filter(v => v.userId !== currentUserId),
+              { userId: currentUserId!, voteType: newVoteType, user: { id: currentUserId!, name: '', avatarUrl: null } },
+            ]
+            return { ...gi, score: gi.score + scoreDelta, votes: updatedVotes }
+          }),
+        }
+      })
+      return { previous }
+    },
+
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(QUERY_KEYS.group(groupId!), ctx.previous)
+      toast.error('Failed to register vote')
+    },
+
+    onSettled: () => {
+      // Background refetch to confirm server state
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+    },
   })
 
   const removeMutation = useMutation({
