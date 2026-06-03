@@ -1,5 +1,4 @@
 import React from 'react'
-import { ListFilter } from 'lucide-react'
 import { GroupItineraryCard } from './GroupItineraryCard'
 import type { GroupItinerary, GroupRole } from '@/types/group.types'
 
@@ -23,9 +22,7 @@ export const GroupItinerariesTab: React.FC<Props> = ({
       <span className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-[#a3a1c8] bg-gray-100 dark:bg-white/[0.04] border border-dashed border-gray-300 dark:border-white/[0.14] px-2.5 py-1.5 rounded-full whitespace-nowrap">
         You're a <strong className="text-gray-900 dark:text-[#f0eeff] font-semibold ml-0.5">{ROLE_LABELS[currentUserRole]}</strong>
       </span>
-      <button className="ml-auto flex items-center gap-1.5 text-xs text-gray-500 dark:text-[#a3a1c8] px-2.5 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.05] hover:text-gray-700 dark:hover:text-[#f0eeff] transition-colors border-none bg-transparent cursor-pointer">
-        <ListFilter size={12} /> Top voted
-      </button>
+      {/* Top voted button removed */}
     </div>
 
     {!toastDismissed && (

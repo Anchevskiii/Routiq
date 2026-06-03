@@ -50,7 +50,7 @@ export const DashboardPage: React.FC = () => {
             <StatRow
               total={itinData?.meta?.total ?? 0}
               groups={groups.length}
-              shared={itineraries.filter(it => it.groupItineraries && it.groupItineraries.length > 0).length}
+              shared={itinData?.meta?.sharedCount ?? 0}
             />
 
             <motion.div variants={fadeUp}>

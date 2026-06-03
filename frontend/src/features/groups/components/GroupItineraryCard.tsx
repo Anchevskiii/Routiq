@@ -38,25 +38,54 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
   const navigate = useNavigate()
   const { id: groupId } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
-  const { itinerary, score, votes } = groupItinerary
+  const { itinerary, votes } = groupItinerary
 
-  const myVote = votes?.find(v => v.userId === currentUserId)
-  const userVote = myVote?.voteType ?? null
-  const upvoters = votes?.filter(v => v.voteType === 'UPVOTE') ?? []
+  // Derive score and userVote directly from votes prop — always in sync with server
+  // Score = upvote count only (downvotes don't subtract)
+  const serverScore    = (votes ?? []).filter(v => v.voteType === 'UPVOTE').length
+  const serverUserVote = votes?.find(
+    v => v.userId === currentUserId || v.user?.id === currentUserId
+  )?.voteType ?? null
 
-  const days = differenceInDays(new Date(itinerary.endDate), new Date(itinerary.startDate)) + 1
-  const thumbCls = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]
-  const travelType = getTravelTypeByValue(itinerary.travelType)
-  const emoji = travelType?.icon ?? '📍'
 
+  // Pending vote (optimistic only while mutation is in-flight)
+  const [pendingVote, setPendingVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
 
   const voteMutation = useMutation({
     mutationFn: (voteType: 'UPVOTE' | 'DOWNVOTE') =>
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) }),
-    onError: () => toast.error('Failed to register vote'),
+    onMutate: (newVoteType) => { setPendingVote(newVoteType) },
+    onError: () => { setPendingVote(null); toast.error('Failed to register vote') },
+    onSettled: () => { setPendingVote(null); queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) }) },
   })
+
+  const removeVoteMutation = useMutation({
+    mutationFn: () => groupsApi.removeVote(groupId!, groupItinerary.id),
+    onMutate: () => { setPendingVote('REMOVE' as never) },
+    onError: () => { setPendingVote(null); toast.error('Failed to remove vote') },
+    onSettled: () => { setPendingVote(null); queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) }) },
+  })
+
+  // Display values: optimistic while pending, server values otherwise
+  const isAnyPending = voteMutation.isPending || removeVoteMutation.isPending
+  const displayVote  = isAnyPending
+    ? (removeVoteMutation.isPending ? null : pendingVote)
+    : serverUserVote
+  // Optimistic displayScore: score = upvotes only
+  const displayScore = isAnyPending
+    ? serverScore
+      - (serverUserVote === 'UPVOTE' ? 1 : 0)  // remove old upvote contribution
+      + (removeVoteMutation.isPending ? 0 : pendingVote === 'UPVOTE' ? 1 : 0)  // add new upvote if any
+    : serverScore
+
+  // Show ALL voters (upvote + downvote) so count matches score awareness
+  const allVoters = votes ?? []
+
+  const days = differenceInDays(new Date(itinerary.endDate), new Date(itinerary.startDate)) + 1
+  const thumbCls = THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]
+  const travelType = getTravelTypeByValue(itinerary.travelType)
+  const emoji = travelType?.icon ?? '📍'
 
   const removeMutation = useMutation({
     mutationFn: () => groupsApi.removeItineraryFromGroup(groupId!, groupItinerary.id),
@@ -107,35 +136,38 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
           </span>
         </div>
 
-        {/* Voter avatars */}
-        {upvoters.length > 0 && (
+        {/* Voter avatars — show ALL voters with up/down indicator */}
+        {allVoters.length > 0 && (
           <div className="flex items-center gap-2">
             <div className="flex">
-              {upvoters.slice(0, 4).map((v, i) => (
-                <div
-                  key={v.id}
-                  className={`w-[18px] h-[18px] rounded-full bg-gradient-to-br ${avatarGrad(v.user.name)} border-[1.5px] border-gray-100 dark:border-[#0f1022] flex items-center justify-center text-[7px] font-bold text-white${i === 0 ? '' : ' -ml-1.5'}`}
-                >
-                  {initials(v.user.name)}
+              {allVoters.slice(0, 4).map((v, i) => (
+                <div key={v.userId} className="relative" style={{ marginLeft: i === 0 ? 0 : -6 }}>
+                  <div className={`w-[18px] h-[18px] rounded-full bg-gradient-to-br ${avatarGrad(v.user.name)} border-[1.5px] border-gray-100 dark:border-[#0f1022] flex items-center justify-center text-[7px] font-bold text-white`}>
+                    {initials(v.user.name)}
+                  </div>
+                  <span className={`absolute -bottom-0.5 -right-0.5 text-[7px] leading-none ${v.voteType === 'UPVOTE' ? 'text-emerald-500' : 'text-red-400'}`}>
+                    {v.voteType === 'UPVOTE' ? '▲' : '▼'}
+                  </span>
                 </div>
               ))}
-              {upvoters.length > 4 && (
+              {allVoters.length > 4 && (
                 <div className="w-[18px] h-[18px] rounded-full bg-gray-200/60 dark:bg-white/[0.08] border-[1.5px] border-gray-100 dark:border-[#0f1022] flex items-center justify-center text-[8px] text-gray-500 dark:text-[#a3a1c8] -ml-1.5">
-                  +{upvoters.length - 4}
+                  +{allVoters.length - 4}
                 </div>
               )}
             </div>
-            <span className="text-[11px] text-gray-500 dark:text-[#a3a1c8]">{upvoters.length} voted</span>
+            <span className="text-[11px] text-gray-500 dark:text-[#a3a1c8]">{allVoters.length} voted</span>
           </div>
         )}
       </div>
 
       <div className="flex flex-col items-center gap-2">
         <VoteWidget
-          score={score}
-          userVote={userVote}
-          isPending={voteMutation.isPending}
+          score={displayScore}
+          userVote={displayVote}
+          isPending={isAnyPending}
           onVote={dir => voteMutation.mutate(dir)}
+          onRemoveVote={() => removeVoteMutation.mutate()}
         />
         <button
           onClick={e => {

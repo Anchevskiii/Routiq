@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AttractionsModule } from './attractions/attractions.module';
 import { AuthModule } from './auth/auth.module';
@@ -16,6 +17,7 @@ import { UsersModule } from './users/users.module';
 import { WeatherModule } from './weather/weather.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { MailModule } from './mail/mail.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -29,6 +31,9 @@ import { MailModule } from './mail/mail.module';
     // Database
     PrismaModule,
     SupabaseModule,
+
+    // Cron jobs
+    ScheduleModule.forRoot(),
 
     // Rate limiting
     ThrottlerModule.forRoot([
@@ -55,6 +60,7 @@ import { MailModule } from './mail/mail.module';
     ExportModule,
     HealthModule,
     MailModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [

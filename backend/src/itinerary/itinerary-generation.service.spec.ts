@@ -20,6 +20,7 @@ const mockPrisma = {
 
 const mockAttractionsService = {
   getCuratedPlaces: jest.fn(),
+  geocodeAddress: jest.fn().mockResolvedValue({ lat: 48.8566, lng: 2.3522 }),
 };
 
 const mockWeatherService = {
@@ -134,8 +135,12 @@ describe('ItineraryGenerationService', () => {
         itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-1' }) },
         itineraryTip: { createMany: jest.fn().mockResolvedValue({ count: 3 }) },
         itineraryDay: { create: jest.fn().mockResolvedValue({ id: 'day-1' }) },
-        itineraryWeatherSnapshot: { create: jest.fn().mockResolvedValue({ id: 'weather-1' }) },
-        itineraryActivity: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        itineraryWeatherSnapshot: {
+          create: jest.fn().mockResolvedValue({ id: 'weather-1' }),
+        },
+        itineraryActivity: {
+          createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        },
       };
       mockPrisma.$transaction.mockImplementation(
         (cb: (txClient: unknown) => unknown) => cb(tx),
