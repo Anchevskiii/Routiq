@@ -8,6 +8,7 @@ import { groupsApi } from '@/api/groups.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/app/Providers'
+import { uploadGroupImage } from '@/utils/upload'
 import { THEME_COLORS } from './CreateGroupInfoStep'
 import type { Group, GroupMember, GroupRole } from '@/types/group.types'
 
@@ -46,12 +47,11 @@ export const GroupSettingsModal: React.FC<Props> = ({ group, currentUserRole, on
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      let imageUrl = group.imageUrl
+      let imageUrl = group.imageUrl ?? undefined
       if (imageFile) {
-        // Upload image as base64 data URL for now (backend may support URL)
-        imageUrl = previewUrl
+        imageUrl = await uploadGroupImage(imageFile)
       }
-      return groupsApi.updateGroup(group.id, { name, description: desc || undefined, themeColor: color, imageUrl: imageUrl ?? undefined })
+      return groupsApi.updateGroup(group.id, { name, description: desc || undefined, themeColor: color, imageUrl })
     },
     onSuccess: () => { toast.success('Group updated'); invalidate() },
     onError: () => toast.error('Failed to update group'),
