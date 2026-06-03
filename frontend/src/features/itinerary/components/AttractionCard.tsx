@@ -37,28 +37,31 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
   const [photoUrl, setPhotoUrl]         = useState<string | null>(null)
 
   useEffect(() => {
-    // Try multiple search terms in order until we find a photo
-    const terms = [
-      activity.title,
-      activity.title.split(' ').slice(0, 3).join(' '),  // first 3 words
-      activity.title.split(' ').slice(0, 2).join(' '),  // first 2 words
-      activity.location ?? '',
-    ].filter(t => t.length > 2)
-
     let cancelled = false
-    const tryNext = async (i: number) => {
-      if (i >= terms.length || cancelled) return
+
+    const fetchPhoto = async () => {
+      // Use Wikipedia opensearch to find the best matching article title
+      const query = activity.title
       try {
-        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(terms[i])}`)
-        const data = await res.json()
+        const searchRes = await fetch(
+          `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
+        )
+        const [, titles] = await searchRes.json() as [string, string[]]
+        const bestTitle = titles?.[0]
+        if (!bestTitle || cancelled) return
+
+        const summaryRes = await fetch(
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestTitle)}`
+        )
+        const data = await summaryRes.json()
         const url = data.thumbnail?.source
         if (url && !cancelled) setPhotoUrl(url)
-        else tryNext(i + 1)
-      } catch { tryNext(i + 1) }
+      } catch { /* keep icon fallback */ }
     }
-    tryNext(0)
+
+    fetchPhoto()
     return () => { cancelled = true }
-  }, [activity.title, activity.location])
+  }, [activity.title])
 
   const deleteMutation = useMutation({
     mutationFn: () => {
