@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useTheme } from '@/hooks/useTheme'
 import type { FormattedPlace } from '@/types/attractions.types'
 import type { StreamingDay } from '@/types/itinerary.types'
@@ -278,7 +279,7 @@ export const GenerationLoading: React.FC<Props> = ({
   const glow1      = isDark ? 'rgba(59,130,246,.3)'          : '#bfdbfe'
   const glow2      = isDark ? 'rgba(96,165,250,.18)'         : '#dbeafe'
 
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes twinkleGL   { 0%,100%{opacity:.65}50%{opacity:.25} }
@@ -359,6 +360,7 @@ export const GenerationLoading: React.FC<Props> = ({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   )
 }
