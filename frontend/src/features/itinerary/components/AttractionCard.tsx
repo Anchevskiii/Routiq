@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { MapPin, Clock, ExternalLink, Utensils, Camera, GripVertical } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import type { DraggableSyntheticListeners, DraggableAttributes } from '@dnd-kit/core'
@@ -34,6 +34,14 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
   const [editState, setEditState]       = useState<EditState>('idle')
   const [editTime, setEditTime]         = useState(activity.startTime ?? '')
   const [editDuration, setEditDuration] = useState(String(activity.durationMinutes ?? 60))
+  const [photoUrl, setPhotoUrl]         = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(activity.title)}`)
+      .then(r => r.json())
+      .then(data => { const url = data.thumbnail?.source; if (url) setPhotoUrl(url) })
+      .catch(() => {})
+  }, [activity.title])
 
   const deleteMutation = useMutation({
     mutationFn: () => {
@@ -92,8 +100,11 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
       {/* card */}
       <div className="flex flex-col gap-2">
         <div className="bg-white dark:bg-white/[0.025] border border-gray-100 dark:border-white/[0.07] rounded-[12px] p-3 flex items-center gap-3 hover:bg-sky-50/50 dark:hover:bg-white/[0.04] hover:border-sky-200 dark:hover:border-white/[0.14] hover:translate-x-0.5 cursor-pointer transition-all shadow-[0_1px_4px_-1px_rgba(0,0,0,0.08)] dark:shadow-none">
-          <div className={`w-10 h-10 rounded-[10px] flex-shrink-0 grid place-items-center ${iconBg}`}>
-            {iconEl}
+          <div className={`w-10 h-10 rounded-[10px] flex-shrink-0 overflow-hidden ${photoUrl ? '' : `grid place-items-center ${iconBg}`}`}>
+            {photoUrl
+              ? <img src={photoUrl} alt={activity.title} className="w-full h-full object-cover" />
+              : iconEl
+            }
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
