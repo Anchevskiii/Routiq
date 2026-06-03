@@ -13,7 +13,7 @@ const COLORS = [
   '#ef4444', '#3b82f6', '#06b6d4', '#84cc16',
 ]
 
-export function usePlacedActivities(days: Day[], destination: string, isLoaded: boolean) {
+export function usePlacedActivities(days: Day[], isLoaded: boolean) {
   const [placed, setPlaced] = useState<PlacedActivity[]>([])
   const [loading, setLoading] = useState(false)
 
