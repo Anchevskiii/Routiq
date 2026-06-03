@@ -14,13 +14,6 @@ import type { Group, GroupMember, GroupRole } from '@/types/group.types'
 
 type Tab = 'general' | 'members' | 'danger'
 
-const ROLE_OPTIONS: { value: GroupRole; label: string }[] = [
-  { value: 'OWNER',     label: 'Owner'     },
-  { value: 'ADMIN',     label: 'Admin'     },
-  { value: 'MODERATOR', label: 'Moderator' },
-  { value: 'MEMBER',    label: 'Member'    },
-]
-
 interface Props {
   group: Group
   currentUserRole: GroupRole
@@ -51,23 +44,32 @@ export const GroupSettingsModal: React.FC<Props> = ({ group, currentUserRole, on
       if (imageFile) {
         imageUrl = await uploadGroupImage(imageFile)
       }
-      return groupsApi.updateGroup(group.id, { name, description: desc || undefined, themeColor: color, imageUrl })
+      return groupsApi.updateGroup(group.id, { name: name.trim(), description: desc.trim() || undefined, themeColor: color, imageUrl })
     },
     onSuccess: () => { toast.success('Group updated'); invalidate() },
-    onError: () => toast.error('Failed to update group'),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+      toast.error(msg ?? 'Failed to update group')
+    },
   })
 
   const roleMutation = useMutation({
     mutationFn: ({ memberId, role }: { memberId: string; role: string }) =>
       groupsApi.updateMemberRole(group.id, memberId, role),
     onSuccess: () => { toast.success('Role updated'); invalidate() },
-    onError: () => toast.error('Failed to update role'),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+      toast.error(msg ?? 'Failed to update role')
+    },
   })
 
   const removeMutation = useMutation({
     mutationFn: (userId: string) => groupsApi.removeMember(group.id, userId),
     onSuccess: () => { toast.success('Member removed'); invalidate() },
-    onError: () => toast.error('Failed to remove member'),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+      toast.error(msg ?? 'Failed to remove member')
+    },
   })
 
   const deleteMutation = useMutation({
@@ -81,9 +83,38 @@ export const GroupSettingsModal: React.FC<Props> = ({ group, currentUserRole, on
     onError: () => toast.error('Failed to delete group'),
   })
 
-  const canManageRole = (member: GroupMember) => {
-    if (currentUserRole === 'OWNER') return member.userId !== user?.id
-    if (currentUserRole === 'ADMIN') return member.role === 'MEMBER' || member.role === 'MODERATOR'
+  // Role hierarchy: OWNER=4, ADMIN=3, MODERATOR=2, MEMBER=1
+  const HIERARCHY: Record<GroupRole, number> = { OWNER: 4, ADMIN: 3, MODERATOR: 2, MEMBER: 1 }
+
+  // Can the current user change this member's role?
+  const canChangeRole = (member: GroupMember): boolean => {
+    if (member.userId === user?.id) return false                        // can't change own role
+    if (member.status !== 'ACCEPTED') return false
+    if (currentUserRole === 'OWNER') return member.role !== 'OWNER'    // OWNER can change all except other OWNERs
+    if (currentUserRole === 'ADMIN') return HIERARCHY[member.role] < HIERARCHY['ADMIN']  // ADMIN only below themselves
+    return false
+  }
+
+  // Which roles can the current user assign?
+  const assignableRoles = (): { value: GroupRole; label: string }[] => {
+    if (currentUserRole === 'OWNER') return [
+      { value: 'ADMIN',     label: 'Admin'     },
+      { value: 'MODERATOR', label: 'Moderator' },
+      { value: 'MEMBER',    label: 'Member'    },
+    ]
+    if (currentUserRole === 'ADMIN') return [
+      { value: 'MODERATOR', label: 'Moderator' },
+      { value: 'MEMBER',    label: 'Member'    },
+    ]
+    return []
+  }
+
+  // Can the current user remove this member?
+  const canRemove = (member: GroupMember): boolean => {
+    if (member.userId === user?.id) return false
+    if (member.status !== 'ACCEPTED') return false
+    if (currentUserRole === 'OWNER') return member.role !== 'OWNER'
+    if (currentUserRole === 'ADMIN') return HIERARCHY[member.role] < HIERARCHY['ADMIN']
     return false
   }
 
@@ -195,6 +226,7 @@ export const GroupSettingsModal: React.FC<Props> = ({ group, currentUserRole, on
             <div className="flex flex-col gap-2">
               {group.members
                 .filter(m => m.status === 'ACCEPTED')
+                .sort((a, b) => (HIERARCHY[b.role] ?? 0) - (HIERARCHY[a.role] ?? 0))
                 .map(member => (
                   <div key={member.id} className="flex items-center gap-3 py-2.5 px-3 rounded-[12px] bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06]">
                     <div className="w-8 h-8 rounded-full bg-blue-500/20 dark:bg-blue-500/15 grid place-items-center text-[11px] font-bold text-blue-600 dark:text-blue-400 shrink-0 overflow-hidden">
@@ -211,15 +243,16 @@ export const GroupSettingsModal: React.FC<Props> = ({ group, currentUserRole, on
                       <div className="text-[11px] text-gray-400 dark:text-[#6e6c93] truncate">{member.user.email}</div>
                     </div>
 
-                    {/* Role selector */}
-                    {canManageRole(member) ? (
+                    {/* Role selector or badge */}
+                    {canChangeRole(member) ? (
                       <div className="relative">
                         <select
                           value={member.role}
                           onChange={e => roleMutation.mutate({ memberId: member.id, role: e.target.value })}
-                          className="appearance-none bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] rounded-[8px] pl-2.5 pr-6 py-1.5 text-[12px] font-medium text-gray-700 dark:text-[#c8c6e8] outline-none cursor-pointer"
+                          disabled={roleMutation.isPending}
+                          className="appearance-none bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] rounded-[8px] pl-2.5 pr-6 py-1.5 text-[12px] font-medium text-gray-700 dark:text-[#c8c6e8] outline-none cursor-pointer disabled:opacity-50"
                         >
-                          {ROLE_OPTIONS.filter(r => r.value !== 'OWNER').map(r => (
+                          {assignableRoles().map(r => (
                             <option key={r.value} value={r.value}>{r.label}</option>
                           ))}
                         </select>
@@ -231,8 +264,8 @@ export const GroupSettingsModal: React.FC<Props> = ({ group, currentUserRole, on
                       </span>
                     )}
 
-                    {/* Remove */}
-                    {canManageRole(member) && (
+                    {/* Remove button */}
+                    {canRemove(member) && (
                       <button
                         onClick={() => removeMutation.mutate(member.userId)}
                         disabled={removeMutation.isPending}
