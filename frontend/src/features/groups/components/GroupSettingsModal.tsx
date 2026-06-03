@@ -8,7 +8,6 @@ import { groupsApi } from '@/api/groups.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
 import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/app/Providers'
-import { uploadGroupImage } from '@/utils/upload'
 import { THEME_COLORS } from './CreateGroupInfoStep'
 import type { Group, GroupMember, GroupRole } from '@/types/group.types'
 
@@ -40,16 +39,22 @@ export const GroupSettingsModal: React.FC<Props> = ({ group, currentUserRole, on
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      let imageUrl = group.imageUrl ?? undefined
+      // Upload image via backend (bypasses Supabase RLS)
       if (imageFile) {
-        imageUrl = await uploadGroupImage(imageFile)
+        await groupsApi.uploadGroupImage(group.id, imageFile)
       }
-      return groupsApi.updateGroup(group.id, { name: name.trim(), description: desc.trim() || undefined, themeColor: color, imageUrl })
+      // Update other fields (exclude imageUrl — upload handles it separately)
+      return groupsApi.updateGroup(group.id, {
+        name: name.trim(),
+        description: desc.trim() || undefined,
+        themeColor: color,
+      })
     },
     onSuccess: () => { toast.success('Group updated'); invalidate() },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
-      toast.error(msg ?? 'Failed to update group')
+      const apiMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+      const localMsg = (err as Error)?.message
+      toast.error(apiMsg ?? localMsg ?? 'Failed to update group')
     },
   })
 
@@ -248,7 +253,7 @@ export const GroupSettingsModal: React.FC<Props> = ({ group, currentUserRole, on
                       <div className="relative">
                         <select
                           value={member.role}
-                          onChange={e => roleMutation.mutate({ memberId: member.id, role: e.target.value })}
+                          onChange={e => roleMutation.mutate({ memberId: member.userId, role: e.target.value })}
                           disabled={roleMutation.isPending}
                           className="appearance-none bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] rounded-[8px] pl-2.5 pr-6 py-1.5 text-[12px] font-medium text-gray-700 dark:text-[#c8c6e8] outline-none cursor-pointer disabled:opacity-50"
                         >
