@@ -3,13 +3,11 @@ import { Link } from 'react-router-dom'
 import { Sun, Moon, Bell, Settings } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ROUTES } from '@/constants/routes'
-import { useAuth } from '@/app/Providers'
 import { useTheme } from '@/hooks/useTheme'
 import { groupsApi } from '@/api/groups.api'
 import type { Invitation } from '@/types/group.types'
 
 export const DashboardTopbar: React.FC = () => {
-  const { user: _user } = useAuth()
   const { isDark, toggle } = useTheme()
 
   const { data: invitations } = useQuery({
