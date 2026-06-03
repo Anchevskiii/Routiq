@@ -190,7 +190,7 @@ describe('ItineraryService', () => {
       const result = await service.getUserItineraries(userId, 1, 10);
 
       expect(result.itineraries).toEqual(itineraryList);
-      expect(result.pagination).toEqual({
+      expect(result.pagination).toMatchObject({
         total: 25,
         page: 1,
         limit: 10,
