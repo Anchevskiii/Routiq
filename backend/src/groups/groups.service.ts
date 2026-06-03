@@ -475,14 +475,14 @@ export class GroupsService {
         group.name,
         groupId,
       );
-      // In-app notification for the invited user
-      await this.notificationsService.createNotification(
+      // In-app notification — fire-and-forget, never block the invite flow
+      this.notificationsService.createNotification(
         userToInvite.id,
         NotificationType.GROUP_INVITATION,
         `${inviter.name} invited you to "${group.name}"`,
         'Tap to view the invitation.',
         { groupId },
-      );
+      ).catch(err => this.logger.warn(`Notification failed: ${err?.message}`));
     }
 
     return newMember;
