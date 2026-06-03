@@ -79,6 +79,11 @@ const fakeAttractionsService = {
       },
     ];
   },
+  async geocodeAddress(
+    address: string,
+  ): Promise<{ lat: number; lng: number } | null> {
+    return { lat: 48.8566, lng: 2.3522 };
+  },
 };
 
 const fakeWeatherService = {

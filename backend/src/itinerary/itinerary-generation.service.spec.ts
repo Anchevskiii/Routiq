@@ -20,6 +20,7 @@ const mockPrisma = {
 
 const mockAttractionsService = {
   getCuratedPlaces: jest.fn(),
+  geocodeAddress: jest.fn().mockResolvedValue({ lat: 48.8566, lng: 2.3522 }),
 };
 
 const mockWeatherService = {
