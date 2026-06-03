@@ -1052,20 +1052,23 @@ export class GroupsService {
       },
     });
 
-    // Notify itinerary owner (not the voter)
-    const itinerary = await this.prisma.itinerary.findUnique({
-      where: { id: groupItinerary.itineraryId },
-      select: { userId: true, destination: true },
-    });
-    if (itinerary && itinerary.userId !== userId) {
-      const voter = vote.user.name;
-      await this.notificationsService.createNotification(
-        itinerary.userId,
-        NotificationType.VOTE,
-        `${voter} voted on your "${itinerary.destination}" itinerary`,
-        `${mappedVoteType === 'UPVOTE' ? '👍 Upvote' : '👎 Downvote'} in group`,
-        { groupId, groupItineraryId, itineraryId: groupItinerary.itineraryId },
-      ).catch(() => {});
+    // Notify itinerary owner when someone else votes
+    try {
+      const itinerary = await this.prisma.itinerary.findFirst({
+        where: { id: groupItinerary.itineraryId, deletedAt: null },
+        select: { userId: true, destination: true },
+      });
+      if (itinerary && itinerary.userId !== userId) {
+        await this.notificationsService.createNotification(
+          itinerary.userId,
+          NotificationType.VOTE,
+          `${vote.user.name} voted on your "${itinerary.destination}" itinerary`,
+          `${mappedVoteType === 'UPVOTE' ? '👍 Upvote' : '👎 Downvote'} in group`,
+          { groupId, groupItineraryId, itineraryId: groupItinerary.itineraryId },
+        );
+      }
+    } catch (err) {
+      this.logger.warn(`Vote notification failed: ${err}`);
     }
 
     return vote;
