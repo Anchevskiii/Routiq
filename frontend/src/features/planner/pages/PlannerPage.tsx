@@ -42,6 +42,7 @@ export const PlannerPage: React.FC = () => {
   const [attractions, setAttractions]       = useState<FormattedPlace[]>([])
   const [generatedDays, setGeneratedDays]   = useState<StreamingDay[]>([])
   const [elapsedTime, setElapsedTime]       = useState(0)
+  const [destination, setDestination]       = useState('')
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
@@ -57,7 +58,7 @@ export const PlannerPage: React.FC = () => {
     if (days <= 0) { toast.error('End date must be after start date'); return }
     if (days > 14) { toast.error('Trip duration cannot exceed 14 days'); return }
 
-    setProgress(''); setAttractions([]); setGeneratedDays([])
+    setProgress(''); setAttractions([]); setGeneratedDays([]); setDestination(values.destination)
 
     stream(ITINERARY_ENDPOINTS.GENERATE, { ...values, days }, {
       onProgress: (data) => {
@@ -117,6 +118,7 @@ export const PlannerPage: React.FC = () => {
               attractions={attractions}
               generatedDays={generatedDays}
               elapsedTime={elapsedTime}
+              destination={destination}
             />
           ) : (
             <PlannerForm onSubmit={handleGenerate} isLoading={isLoading} />
