@@ -85,6 +85,7 @@ export const PlannerPage: React.FC = () => {
   }
 
   return (
+    <>
     <div className="relative h-full overflow-hidden bg-gray-50 dark:bg-[#08091a]">
 
       {/* Orbs — pinned to container, do not scroll */}
@@ -129,5 +130,6 @@ export const PlannerPage: React.FC = () => {
         destination={destination}
       />
     )}
+    </>
   )
 }
