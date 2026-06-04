@@ -387,12 +387,25 @@ sequenceDiagram
     rect rgb(255, 240, 215)
         Note over U,DB: Glasovanje
         U->>FE: Klikne ▲ UPVOTE ali ▼ DOWNVOTE
+        FE->>FE: Optimistično posodobi score (pending state)
         FE->>BE: POST /groups/:gid/itineraries/:giid/vote\n{ voteType: 'UPVOTE' | 'DOWNVOTE' }
         BE->>DB: Preveri članstvo (status=ACCEPTED)
         BE->>DB: UPSERT Vote\n(en glas na userja — zamenja prejšnji)
-        DB-->>BE: Posodobljeni glas + skupno število
-        BE-->>FE: { upvotes: N, downvotes: M, userVote: 'UPVOTE' }
-        FE->>FE: Posodobi VoteWidget + sortira itinerarje po glasovih
+        BE->>DB: (fire-and-forget) CREATE Notification\nza lastnika itinerarja
+        DB-->>BE: Posodobljeni glas
+        BE-->>FE: { id, voteType, userId, ... }
+        FE->>FE: Invalidira query → posodobi UI s svežimi podatki
+        Note right of FE: Score = število UPVOTE glasov\n(downvoti se ne odštevajo)
+    end
+
+    rect rgb(240, 255, 240)
+        Note over U,DB: Odstranitev glasu
+        U->>FE: Klikne aktiven gumb (toggle off)
+        FE->>BE: DELETE /groups/:gid/itineraries/:giid/vote
+        BE->>DB: Soft delete Vote (deletedAt = now)
+        DB-->>BE: OK
+        BE-->>FE: { success: true }
+        FE->>FE: Invalidira query → osveži score
     end
 ```
 

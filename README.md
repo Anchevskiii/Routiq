@@ -54,7 +54,8 @@ Podroben deployment diagram → [Arhitektura sistema](docs/architecture.md#deplo
 | **AI generiranje** | Google Gemini 2.5 Flash generira itinerar prek SSE streaming — vsak dan se prikaže sproti |
 | **Interaktivni zemljevid** | Google Maps z atrakcijami, optimizirano potjo in vremensko napovedjo |
 | **Urejanje itinerarja** | Drag & drop razporejanje aktivnosti, dodajanje in brisanje |
-| **Skupinska potovanja** | Kreiranje skupin, e-mail povabila (Resend), glasovanje za itinerarje |
+| **Skupinska potovanja** | Kreiranje skupin, e-mail povabila (Resend), glasovanje za itinerarje (score = upvoti) |
+| **In-app obvestila** | Obvestila za glasovanje, komentarje in skupinska povabila z unread badge |
 | **Klepet** | Komentarji s threading (podrejenimi odgovori) in emoji reakcijami |
 | **Izvoz** | PDF (klient, @react-pdf/renderer) in .ics (strežnik) |
 | **Avtentikacija** | E-mail/geslo + Google OAuth, JWT prek Supabase Auth |
@@ -77,6 +78,7 @@ Podroben deployment diagram → [Arhitektura sistema](docs/architecture.md#deplo
 | **E-pošta** | Resend (transakcijska e-pošta) |
 | **Deploy FE** | Vercel |
 | **Deploy BE** | Render.com |
+| **Kakovost kode** | SonarCloud |
 
 > ⚠️ **Axios 1.14.0 je pinana** — verziji 1.14.1 in 0.30.4 sta bili marca 2026 kompromitirani v supply chain napadu. Ne posodabljaj brez preveritve. Podrobnosti: [Izzivi in rešitve](docs/challenges.md#supply-chain-napad-na-axios).
 
@@ -176,11 +178,13 @@ routiq/                         # Monorepo koren
 │       ├── attractions/        # Google Places proxy
 │       ├── weather/            # Google Weather proxy + cache
 │       ├── groups/             # Skupinska potovanja
+│       ├── notifications/      # In-app obvestila (vote, invite, komentar)
 │       ├── export/             # .ics generiranje
 │       ├── mail/               # Resend e-pošta
 │       └── common/             # Guards, filters, interceptors, utils
 ├── .github/workflows/
-│   └── ci.yml                  # GitHub Actions CI pipeline
+│   ├── ci.yml                  # GitHub Actions CI pipeline (backend + frontend)
+│   └── sonarcloud.yml          # SonarCloud analiza pokritosti kode
 └── docs/                       # Detajlna dokumentacija (→ kazalo zgoraj)
 ```
 
@@ -191,10 +195,18 @@ Popoln pregled vseh datotek: [DIRECTORY.md](DIRECTORY.md)
 ## Testi
 
 ```bash
+# Backend (Jest)
 cd backend
 npx jest                    # Vsi unit testi
-npx jest --coverage         # Z poročilom pokritosti
+npx jest --coverage         # Z LCOV poročilom pokritosti
 npx jest --watch            # Watch mode
+npm run test:integration    # Integration testi (zahteva PostgreSQL)
+
+# Frontend (Vitest)
+cd frontend
+npm run test:unit:run       # Enkratni tek
+npm run test:unit           # Watch mode
+npx vitest run --coverage   # Z LCOV pokritostjo
 ```
 
 Podrobna dokumentacija testov: [Testiranje](docs/testing.md)
@@ -207,6 +219,7 @@ Podrobna dokumentacija testov: [Testiranje](docs/testing.md)
 |---|---|---|
 | Frontend | Vercel | `main` |
 | Backend | Render.com | `main` |
+| CI teki | GitHub Actions | `main`, `development` |
 
 CI/CD pipeline se sproži ob vsakem PR/push na `main`. Podrobnosti: [CI/CD pipeline](docs/ci-cd.md)
 
