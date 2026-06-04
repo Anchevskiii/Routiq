@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { withRetry } from '../common';
 import { AppConfigService } from '../config/config.service';
 import { WeatherService } from './weather.service';
 import { WeatherData } from './types';
@@ -23,6 +24,14 @@ describe('WeatherService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedAxios.isAxiosError.mockImplementation((err: unknown) => {
+      return (
+        typeof err === 'object' &&
+        err !== null &&
+        'isAxiosError' in err &&
+        (err as { isAxiosError: boolean }).isAxiosError === true
+      );
+    });
     mockConfigService = {
       getGoogleWeatherApiKey: jest.fn().mockReturnValue('fake-weather-key'),
       getGooglePlacesApiKey: jest.fn().mockReturnValue('fake-places-key'),
@@ -158,6 +167,128 @@ describe('WeatherService', () => {
       expect(result.location).toBe('Paris');
       expect(result.forecast).toHaveLength(3);
     });
+
+    it('should test shouldRetry function inside geocoding and currentConditions lookup', async () => {
+      const mockGeocodeError429 = {
+        isAxiosError: true,
+        response: { status: 429 },
+      };
+      const mockGeocodeError400 = {
+        isAxiosError: true,
+        response: { status: 400 },
+      };
+      const mockNonAxiosError = new Error('generic');
+
+      const mockedWithRetry = withRetry as jest.Mock;
+
+      mockedAxios.get.mockResolvedValue({ data: { status: 'ZERO_RESULTS' } });
+      await service.getForecast('Paris', '2026-06-04', 1);
+
+      const geocodeOptions = mockedWithRetry.mock.calls[0][1];
+      expect(geocodeOptions.shouldRetry(mockGeocodeError429)).toBe(true);
+      expect(geocodeOptions.shouldRetry(mockGeocodeError400)).toBe(false);
+      expect(geocodeOptions.shouldRetry(mockNonAxiosError)).toBe(true);
+    });
+
+    it('should test shouldRetry for currentConditions and forecast lookup', async () => {
+      const mockedWithRetry = withRetry as jest.Mock;
+
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
+            },
+          });
+        }
+        return Promise.resolve({ data: {} });
+      });
+
+      await service.getForecast('Paris', '2026-06-04', 1);
+
+      const currentConditionsOptions = mockedWithRetry.mock.calls[1][1];
+      const forecastOptions = mockedWithRetry.mock.calls[2][1];
+
+      const mockError500 = { isAxiosError: true, response: { status: 500 } };
+      const mockError404 = { isAxiosError: true, response: { status: 404 } };
+
+      expect(currentConditionsOptions.shouldRetry(mockError500)).toBe(true);
+      expect(currentConditionsOptions.shouldRetry(mockError404)).toBe(false);
+      expect(forecastOptions.shouldRetry(mockError500)).toBe(true);
+      expect(forecastOptions.shouldRetry(mockError404)).toBe(false);
+    });
+
+    it('should fill missing days using fallback close match when requested days exceed API returned days', async () => {
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
+            },
+          });
+        }
+        if (url.includes('currentConditions')) {
+          return Promise.resolve({
+            data: {
+              temperature: { degrees: 22 },
+              weatherCondition: { description: { text: 'Clear' } },
+              relativeHumidity: 45,
+              wind: { speed: { value: 12 } },
+            },
+          });
+        }
+        if (url.includes('forecast/days')) {
+          return Promise.resolve({
+            data: {
+              forecastDays: [
+                {
+                  displayDate: { year: 2026, month: 6, day: 4 },
+                  minTemperature: { degrees: 15 },
+                  maxTemperature: { degrees: 25 },
+                  daytimeForecast: {
+                    weatherCondition: { description: { text: 'Clear' } },
+                    relativeHumidity: 45,
+                    wind: { speed: { value: 12 } },
+                    precipitation: { probability: { percent: 10 } },
+                  },
+                },
+              ],
+            },
+          });
+        }
+        return Promise.reject(new Error('Unknown url'));
+      });
+
+      const result = await service.getForecast('Paris', '2026-06-04', 3);
+      expect(result.forecast).toHaveLength(3);
+      expect(result.forecast[1].date).toBe('2026-06-05');
+      expect(result.forecast[2].date).toBe('2026-06-06');
+    });
+
+    it('should catch geocoding errors and log debug info', async () => {
+      mockedAxios.get.mockRejectedValue(new Error('Geocoding network error'));
+      const result = await service.getForecast('Paris', '2026-06-04', 1);
+      expect(result.location).toBe('Paris');
+      expect(result.forecast).toHaveLength(1);
+    });
+
+    it('should catch general errors inside getForecast and return mock data', async () => {
+      jest
+        .spyOn(
+          service as unknown as { getCoordinates: () => Promise<unknown> },
+          'getCoordinates',
+        )
+        .mockRejectedValue('Unstructured error string');
+      const result = await service.getForecast('Paris', '2026-06-04', 1);
+      expect(result.location).toBe('Paris');
+      expect(result.forecast).toHaveLength(1);
+    });
   });
 
   describe('Cache actions', () => {
@@ -180,6 +311,50 @@ describe('WeatherService', () => {
       const stats = service.getCacheStats();
       expect(stats.size).toBe(1);
       expect(stats.keys).toEqual(['key1']);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Missing API key coverage (line 65)
+  // -------------------------------------------------------------------------
+
+  describe('getForecast when Google Weather API key is not configured', () => {
+    it('falls back to mock weather without calling weather API', async () => {
+      const noKeyConfigService = {
+        getGoogleWeatherApiKey: jest.fn().mockReturnValue(null),
+        getGooglePlacesApiKey: jest.fn().mockReturnValue('fake-places-key'),
+      };
+      const noKeyService = new WeatherService(
+        noKeyConfigService as unknown as AppConfigService,
+      );
+
+      // Geocoding mock to return valid coordinates
+      mockedAxios.get.mockImplementation((url: string) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [
+                {
+                  geometry: { location: { lat: 48.8566, lng: 2.3522 } },
+                },
+              ],
+            },
+          });
+        }
+        return Promise.reject(new Error('Should not be called'));
+      });
+
+      const result = await noKeyService.getForecast('Paris', '2026-06-04', 1);
+
+      // Should return mock weather (fallback)
+      expect(result.location).toBe('Paris');
+      expect(result.forecast).toHaveLength(1);
+      // The Google Weather endpoint should NOT have been called
+      const weatherCallCount = mockedAxios.get.mock.calls.filter((args) =>
+        (args[0] as string).includes('weather.googleapis.com/v1/weather'),
+      ).length;
+      expect(weatherCallCount).toBe(0);
     });
   });
 });
