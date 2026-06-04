@@ -183,6 +183,7 @@ function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: {
                 })()
               : false
             const isRangeEdge = !isDisabled && anchor && hover && isSameDay(date, hover) && !isSameDay(date, anchor)
+            const isRangeAnchorEdge = !isDisabled && rangeAnchor && hover && isSameDay(date, rangeAnchor) && !isSameDay(date, hover)
 
             return (
               <button key={i} type="button" disabled={isDisabled}
@@ -192,7 +193,7 @@ function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: {
                   'relative h-8 w-full rounded-lg text-[13px] font-medium transition-all',
                   isDisabled   && 'text-gray-300 dark:text-[#2e2c45] cursor-not-allowed',
                   isSel        && 'bg-blue-600 text-white font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.45)] dark:shadow-[0_2px_12px_rgba(37,99,235,0.55)] z-10',
-                  isRangeEdge && !isSel && 'bg-blue-400/80 dark:bg-blue-500/70 text-white font-semibold rounded-lg',
+                  (isRangeEdge || isRangeAnchorEdge) && !isSel && 'bg-blue-400/80 dark:bg-blue-500/70 text-white font-semibold rounded-lg',
                   isInRange    && 'bg-blue-50 dark:bg-blue-500/[0.12] text-blue-700 dark:text-blue-300 rounded-none',
                   isTodayDay  && !isSel && !isInRange && 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20',
                   !isDisabled && !isSel && !isTodayDay && !isInRange && !isRangeEdge && 'text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-100 dark:hover:bg-white/[0.06]',
