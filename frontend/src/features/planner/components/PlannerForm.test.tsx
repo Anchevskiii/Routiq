@@ -52,6 +52,25 @@ describe('PlannerForm', () => {
 
     expect(destInput).toHaveValue('Rome')
   })
+
+  it('displays the correct missing fields count on the submit button', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<PlannerForm onSubmit={onSubmit} isLoading={false} />)
+
+    // Initially 4 required fields are missing
+    expect(screen.getByRole('button', { name: /Complete 4 fields/i })).toBeInTheDocument()
+
+    // Fill destination
+    const destInput = screen.getByPlaceholderText('e.g. Tokyo, Lisbon, Reykjavík…')
+    await user.type(destInput, 'Rome')
+    expect(screen.getByRole('button', { name: /Complete 3 fields/i })).toBeInTheDocument()
+
+    // Click experience type
+    const culturalBtn = screen.getAllByRole('button', { name: /Cultural/i })[0]
+    await user.click(culturalBtn)
+    expect(screen.getByRole('button', { name: /Complete 2 fields/i })).toBeInTheDocument()
+  })
 })
 
 // Helper act wrapper for rendering/fireEvent in react-hook-form
