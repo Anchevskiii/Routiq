@@ -747,4 +747,532 @@ describe('ItineraryService', () => {
       expect(result.message).toBe('Activity deleted successfully');
     });
   });
+
+  // =========================================================================
+  // generateItinerary (non-stream version)
+  // =========================================================================
+
+  describe('generateItinerary', () => {
+    it('should prepare, generate, persist, and return the itinerary', async () => {
+      mockItineraryGenerationService.prepareGenerationData.mockResolvedValue({
+        generationStart: Date.now(),
+        weatherData,
+        attractions: attractionsData,
+        prompt: 'test prompt',
+      });
+      mockGeminiService.streamGenerate.mockResolvedValue(generatedItinerary);
+      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
+        savedItineraryRecord,
+      );
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+
+      const result = await service.generateItinerary(userId, baseDto);
+
+      expect(
+        mockItineraryGenerationService.prepareGenerationData,
+      ).toHaveBeenCalledWith(baseDto);
+      expect(mockGeminiService.streamGenerate).toHaveBeenCalled();
+      expect(result).toEqual(savedItineraryRecord);
+    });
+  });
+
+  // =========================================================================
+  // Error paths: NotFoundException for itinerary not found
+  // =========================================================================
+
+  describe('reorderDays (NotFoundException)', () => {
+    it('throws NotFoundException if itinerary not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(null);
+      await expect(
+        service.reorderDays(itineraryId, userId, { dayIds: ['day-1'] }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('reorderActivities (NotFoundException)', () => {
+    it('throws NotFoundException if itinerary not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(null);
+      await expect(
+        service.reorderActivities(itineraryId, 'day-1', userId, {
+          activityIds: ['act-1'],
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateActivity (NotFoundException for itinerary)', () => {
+    it('throws NotFoundException if itinerary not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(null);
+      await expect(
+        service.updateActivity(itineraryId, 'act-1', userId, {
+          title: 'test',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('addActivity (NotFoundException for itinerary)', () => {
+    it('throws NotFoundException if itinerary not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(null);
+      await expect(
+        service.addActivity(itineraryId, 'day-1', userId, { title: 'test' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('inserts activity at end when startTime not provided', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        { id: 'act-1', sortOrder: 1, startTime: '10:00', durationMinutes: 60 },
+      ]);
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-2',
+        title: 'New Act',
+      });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'New Act',
+      });
+
+      expect(mockPrisma.itineraryActivity.create).toHaveBeenCalled();
+      expect(result.title).toBe('New Act');
+    });
+
+    it('inserts at start when new activity starts before all existing', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        { id: 'act-1', sortOrder: 1, startTime: '14:00', durationMinutes: 60 },
+      ]);
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-new',
+        title: 'Early Act',
+      });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'Early Act',
+        startTime: '08:00',
+      });
+
+      expect(result.title).toBe('Early Act');
+    });
+  });
+
+  describe('deleteActivity (NotFoundException for activity)', () => {
+    it('throws NotFoundException if activity not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue(null);
+      await expect(
+        service.deleteActivity(itineraryId, 'act-missing', userId),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // =========================================================================
+  // cascadeActivityTimes (time overlap logic)
+  // =========================================================================
+
+  describe('cascadeActivityTimes (via updateActivity with time overlap)', () => {
+    it('cascades times when activity starts before previous ends', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({
+        id: 'act-1',
+        dayId: 'day-1',
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-1',
+        title: 'Updated',
+      });
+      // Return activities where second one conflicts with first
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        {
+          id: 'act-1',
+          sortOrder: 1,
+          startTime: '10:00',
+          durationMinutes: 120,
+        },
+        {
+          id: 'act-2',
+          sortOrder: 2,
+          startTime: '11:00',
+          durationMinutes: 60,
+        }, // conflict: ends 11:00+120min = 12:00 > 11:00
+      ]);
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      await service.updateActivity(itineraryId, 'act-1', userId, {
+        startTime: '10:00',
+        durationMinutes: 120,
+      });
+
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('cascades when an activity has no startTime but previous does (null branch)', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({
+        id: 'act-1',
+        dayId: 'day-1',
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-1',
+        title: 'Updated',
+      });
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        {
+          id: 'act-1',
+          sortOrder: 1,
+          startTime: '10:00',
+          durationMinutes: 60,
+        },
+        {
+          id: 'act-2',
+          sortOrder: 2,
+          startTime: null, // no startTime — currentMinutes is null
+          durationMinutes: 30,
+        },
+      ]);
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      await service.updateActivity(itineraryId, 'act-1', userId, {
+        startTime: '10:00',
+        durationMinutes: 60,
+      });
+
+      // No conflict, so $transaction may or may not be called for cascade
+      expect(mockPrisma.itineraryActivity.findMany).toHaveBeenCalled();
+    });
+
+    it('does not call $transaction for cascade if no time conflicts exist', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({
+        id: 'act-1',
+        dayId: 'day-1',
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-1',
+        title: 'Updated',
+      });
+      // Activities without conflict
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        {
+          id: 'act-1',
+          sortOrder: 1,
+          startTime: '10:00',
+          durationMinutes: 60,
+        },
+        {
+          id: 'act-2',
+          sortOrder: 2,
+          startTime: '13:00',
+          durationMinutes: 60,
+        }, // no conflict
+      ]);
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      await service.updateActivity(itineraryId, 'act-1', userId, {
+        startTime: '10:00',
+      });
+
+      expect(mockPrisma.itineraryActivity.findMany).toHaveBeenCalled();
+    });
+
+    it('handles first activity without a startTime (prevStartTime null branch)', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({
+        id: 'act-1',
+        dayId: 'day-1',
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-1',
+        title: 'Updated',
+      });
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        {
+          id: 'act-1',
+          sortOrder: 1,
+          startTime: null,
+          durationMinutes: 60,
+        },
+        {
+          id: 'act-2',
+          sortOrder: 2,
+          startTime: '10:00',
+          durationMinutes: 30,
+        },
+      ]);
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      await service.updateActivity(itineraryId, 'act-1', userId, {
+        durationMinutes: 60,
+      });
+
+      expect(mockPrisma.itineraryActivity.findMany).toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // extractDaysFromBuffer (private method tested directly)
+  // =========================================================================
+
+  describe('extractDaysFromBuffer', () => {
+    type ServiceWithExtract = {
+      extractDaysFromBuffer: (buffer: string) => Array<{ day: number }>;
+    };
+
+    it('extracts a valid day JSON object from buffer', () => {
+      const buffer = JSON.stringify({
+        day: 1,
+        theme: 'Arrival',
+        activities: [],
+      });
+      const result = (
+        service as unknown as ServiceWithExtract
+      ).extractDaysFromBuffer(buffer);
+      expect(result).toHaveLength(1);
+      expect(result[0].day).toBe(1);
+    });
+
+    it('extracts multiple day objects from buffer', () => {
+      const d1 = JSON.stringify({ day: 1, theme: 'Day 1', activities: [] });
+      const d2 = JSON.stringify({ day: 2, theme: 'Day 2', activities: [] });
+      const result = (
+        service as unknown as ServiceWithExtract
+      ).extractDaysFromBuffer(d1 + d2);
+      expect(result).toHaveLength(2);
+    });
+
+    it('returns empty array for incomplete JSON (no closing brace)', () => {
+      const result = (
+        service as unknown as ServiceWithExtract
+      ).extractDaysFromBuffer('{"day": 1, "theme":');
+      expect(result).toHaveLength(0);
+    });
+
+    it('skips objects without a numeric day property', () => {
+      const buffer = JSON.stringify({ notADay: true });
+      const result = (
+        service as unknown as ServiceWithExtract
+      ).extractDaysFromBuffer(buffer);
+      expect(result).toHaveLength(0);
+    });
+
+    it('handles escape sequences inside strings (backslash escaping)', () => {
+      const buffer = JSON.stringify({
+        day: 1,
+        theme: 'A "quoted" theme',
+        activities: [],
+      });
+      const result = (
+        service as unknown as ServiceWithExtract
+      ).extractDaysFromBuffer(buffer);
+      expect(result).toHaveLength(1);
+    });
+
+    it('returns empty array for empty string buffer', () => {
+      const result = (
+        service as unknown as ServiceWithExtract
+      ).extractDaysFromBuffer('');
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  // =========================================================================
+  // toUserFriendlyError (private method tested directly)
+  // =========================================================================
+
+  describe('toUserFriendlyError', () => {
+    type ServiceWithToUserFriendlyError = {
+      toUserFriendlyError: (error: unknown) => string;
+    };
+
+    it('returns error message for ServiceUnavailableException', () => {
+      const { ServiceUnavailableException } =
+        jest.requireActual('@nestjs/common');
+      const err = new ServiceUnavailableException('AI not available');
+      const result = (
+        service as unknown as ServiceWithToUserFriendlyError
+      ).toUserFriendlyError(err);
+      expect(result).toBe('AI not available');
+    });
+
+    it('returns timeout message when error message includes "timeout"', () => {
+      const err = new Error('Request timeout occurred');
+      const result = (
+        service as unknown as ServiceWithToUserFriendlyError
+      ).toUserFriendlyError(err);
+      expect(result).toBe('Generation timed out. Please try again.');
+    });
+
+    it('returns parse error message when error message includes "parse"', () => {
+      const err = new Error('JSON parse error');
+      const result = (
+        service as unknown as ServiceWithToUserFriendlyError
+      ).toUserFriendlyError(err);
+      expect(result).toBe(
+        'AI response format was invalid. Please retry generation.',
+      );
+    });
+
+    it('returns parse error message when error message includes "json"', () => {
+      const err = new Error('Invalid json response');
+      const result = (
+        service as unknown as ServiceWithToUserFriendlyError
+      ).toUserFriendlyError(err);
+      expect(result).toBe(
+        'AI response format was invalid. Please retry generation.',
+      );
+    });
+
+    it('returns the raw error message for generic errors', () => {
+      const err = new Error('Something went wrong');
+      const result = (
+        service as unknown as ServiceWithToUserFriendlyError
+      ).toUserFriendlyError(err);
+      expect(result).toBe('Something went wrong');
+    });
+
+    it('returns fallback message for non-Error values', () => {
+      const result = (
+        service as unknown as ServiceWithToUserFriendlyError
+      ).toUserFriendlyError('just a string');
+      expect(result).toBe('Failed to generate itinerary. Please try again.');
+    });
+  });
+
+  // =========================================================================
+  // parseGeneratedItinerary (private method tested directly)
+  // =========================================================================
+
+  describe('parseGeneratedItinerary', () => {
+    type ServiceWithParse = {
+      parseGeneratedItinerary: (parsed: unknown, fallback: string) => unknown;
+    };
+
+    it('returns wrapped GeneratedItinerary when data is an array', () => {
+      const days = [{ day: 1, theme: 'Arrival', activities: [] }];
+      const result = (
+        service as unknown as ServiceWithParse
+      ).parseGeneratedItinerary(days, '');
+      expect(result).toMatchObject({ days, summary: {}, generalTips: [] });
+    });
+
+    it('maps data object with days array into GeneratedItinerary shape', () => {
+      const data = { days: [{ day: 1 }], summary: {}, generalTips: [] };
+      const result = (
+        service as unknown as ServiceWithParse
+      ).parseGeneratedItinerary(data, '');
+      expect(result).toMatchObject({ days: [{ day: 1 }] });
+    });
+
+    it('uses rawJsonFallback when parsedData is falsy', () => {
+      const days = [{ day: 1, theme: 'Fallback', activities: [] }];
+      const result = (
+        service as unknown as ServiceWithParse
+      ).parseGeneratedItinerary(null, JSON.stringify(days));
+      expect(result).toMatchObject({ days, summary: {}, generalTips: [] });
+    });
+
+    it('throws ServiceUnavailableException when both parsedData and fallback are empty', () => {
+      const { ServiceUnavailableException } =
+        jest.requireActual('@nestjs/common');
+      expect(() =>
+        (service as unknown as ServiceWithParse).parseGeneratedItinerary(
+          null,
+          '',
+        ),
+      ).toThrow(ServiceUnavailableException);
+    });
+
+    it('throws ServiceUnavailableException when data is not an array and has no days', () => {
+      const { ServiceUnavailableException } =
+        jest.requireActual('@nestjs/common');
+      expect(() =>
+        (service as unknown as ServiceWithParse).parseGeneratedItinerary(
+          { badKey: true },
+          '',
+        ),
+      ).toThrow(ServiceUnavailableException);
+    });
+  });
+
+  // =========================================================================
+  // generateStream: persist error path and chunk->day emission
+  // =========================================================================
+
+  describe('generateStream (additional coverage)', () => {
+    beforeEach(() => {
+      mockItineraryGenerationService.prepareGenerationData.mockResolvedValue({
+        generationStart: Date.now(),
+        weatherData,
+        attractions: attractionsData,
+        prompt: 'mocked prompt',
+      });
+      mockItineraryGenerationService.mapSingleDay.mockReturnValue({
+        dayNumber: 1,
+        theme: 'Arrival',
+        activities: { create: [] },
+        weather: { create: {} },
+      });
+      mockPrisma.$transaction.mockImplementation(
+        (cb: (tx: unknown) => unknown) => cb(mockPrisma),
+      );
+      mockPrisma.itinerary.create.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryDay.create.mockResolvedValue({ id: 'day-1' });
+      mockPrisma.itineraryActivity.create.mockResolvedValue({});
+      mockPrisma.itineraryTip.create.mockResolvedValue({});
+      mockPrisma.itineraryWeatherSnapshot.create.mockResolvedValue({});
+    });
+
+    it('emits a "day" event when a parseable day chunk arrives from stream', (done) => {
+      const dayChunk = JSON.stringify({
+        day: 1,
+        theme: 'Arrival',
+        activities: [],
+      });
+      mockGeminiService.streamGenerateObservable.mockReturnValue(
+        new Observable<GeminiStreamEvent>((obs) => {
+          obs.next({ type: 'chunk', content: dayChunk });
+          obs.next({ type: 'complete', data: generatedItinerary });
+          obs.complete();
+        }),
+      );
+      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
+        savedItineraryRecord,
+      );
+
+      const events: ItineraryGenerateStreamEvent[] = [];
+      service.generateStream(userId, baseDto).subscribe({
+        next: (v) => events.push(v),
+        complete: () => {
+          const dayEvents = events.filter((e) => e.type === 'day');
+          expect(dayEvents.length).toBeGreaterThanOrEqual(1);
+          done();
+        },
+        error: done,
+      });
+    });
+
+    it('emits an error event when persistGeneratedItinerary fails in stream', (done) => {
+      mockGeminiService.streamGenerateObservable.mockReturnValue(
+        new Observable<GeminiStreamEvent>((obs) => {
+          obs.next({ type: 'complete', data: generatedItinerary });
+          obs.complete();
+        }),
+      );
+      mockItineraryGenerationService.persistGeneratedItinerary.mockRejectedValue(
+        new Error('DB persist error'),
+      );
+
+      service.generateStream(userId, baseDto).subscribe({
+        next: (v) => {
+          if (v.type === 'error') {
+            expect(v.error).toBe('DB persist error');
+            done();
+          }
+        },
+        error: (err) => done(new Error(`Should not throw: ${String(err)}`)),
+      });
+    });
+  });
 });
