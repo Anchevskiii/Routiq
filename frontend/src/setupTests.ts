@@ -1,8 +1,8 @@
 import '@testing-library/jest-dom/vitest'
 
-// Mock window.crypto.getRandomValues for JSDOM in test environment
-if (typeof window !== 'undefined' && !window.crypto) {
-  Object.defineProperty(window, 'crypto', {
+// Mock globalThis.crypto.getRandomValues for JSDOM in test environment
+if (typeof globalThis !== 'undefined' && !globalThis.crypto) {
+  Object.defineProperty(globalThis, 'crypto', {
     value: {
       getRandomValues: <T extends ArrayBufferView | null>(array: T): T => {
         if (!array) return array;
@@ -14,8 +14,8 @@ if (typeof window !== 'undefined' && !window.crypto) {
       },
     },
   });
-} else if (typeof window !== 'undefined' && window.crypto && !window.crypto.getRandomValues) {
-  window.crypto.getRandomValues = <T extends ArrayBufferView | null>(array: T): T => {
+} else if (typeof globalThis !== 'undefined' && globalThis.crypto && !globalThis.crypto.getRandomValues) {
+  globalThis.crypto.getRandomValues = <T extends ArrayBufferView | null>(array: T): T => {
     if (!array) return array;
     const view = new Uint32Array(array.buffer, array.byteOffset, array.byteLength / 4);
     for (let i = 0; i < view.length; i++) {

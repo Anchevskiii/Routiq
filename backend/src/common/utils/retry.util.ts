@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { randomInt } from 'crypto';
+import { randomInt } from 'node:crypto';
 
 export interface RetryOptions {
   maxRetries?: number;

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { randomInt } from 'crypto';
+import { randomInt } from 'node:crypto';
 import axios from 'axios';
 import { AppConfigService } from '../config/config.service';
 import { withRetry } from '../common';
@@ -28,7 +28,10 @@ export class WeatherService {
   private readonly googleWeatherBaseUrl = 'https://weather.googleapis.com/v1';
 
   // Cache weather data for 1 hour
-  private cache = new Map<string, { data: WeatherData; timestamp: number }>();
+  private readonly cache = new Map<
+    string,
+    { data: WeatherData; timestamp: number }
+  >();
   private readonly cacheDuration = 60 * 60 * 1000; // 1 hour in milliseconds
 
   constructor(private readonly configService: AppConfigService) {
@@ -230,7 +233,7 @@ export class WeatherService {
       const exists = mappedForecast.some((f) => f.date === targetDateStr);
       if (!exists) {
         // Find closest existing day or use defaults
-        const lastKnown = mappedForecast[mappedForecast.length - 1];
+        const lastKnown = mappedForecast.at(-1);
         // Add some variation for predicted days so they don't look identical
         const variance = Math.sin(i) * 2;
         mappedForecast.push({

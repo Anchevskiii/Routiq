@@ -134,7 +134,7 @@ export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
     const array = new Uint32Array(1)
-    window.crypto.getRandomValues(array)
+    globalThis.crypto.getRandomValues(array)
     const j = Math.floor((array[0] / 0xffffffff) * (i + 1));
     [a[i], a[j]] = [a[j], a[i]]
   }

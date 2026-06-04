@@ -365,7 +365,9 @@ describe('WeatherService', () => {
           return Promise.resolve({
             data: {
               status: 'OK',
-              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
             },
           });
         }
@@ -374,7 +376,7 @@ describe('WeatherService', () => {
 
       try {
         await service.getForecast('Paris', '2026-06-04', 5);
-      } catch (err) {
+      } catch {
         // ignore
       }
 
@@ -385,7 +387,9 @@ describe('WeatherService', () => {
           return Promise.resolve({
             data: {
               status: 'OK',
-              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
             },
           });
         }
@@ -397,10 +401,10 @@ describe('WeatherService', () => {
 
       try {
         await service.getForecast('Paris', '2026-06-04', 5);
-      } catch (err) {
+      } catch {
         // ignore
       }
-      
+
       const calls = jest.mocked(withRetry).mock.calls;
       expect(calls.length).toBeGreaterThanOrEqual(2);
       for (let i = 0; i < calls.length; i++) {
@@ -409,19 +413,34 @@ describe('WeatherService', () => {
         if (options && typeof options.shouldRetry === 'function') {
           expect(options.shouldRetry(new Error('Generic'))).toBe(true);
 
-          const axiosErrNoRes = new Error('AxiosError') as any;
+          const axiosErrNoRes = new Error('AxiosError') as unknown as {
+            isAxiosError: boolean;
+            response?: { status: number };
+          };
           axiosErrNoRes.isAxiosError = true;
-          expect(options.shouldRetry(axiosErrNoRes)).toBe(true);
+          expect(options.shouldRetry(axiosErrNoRes as unknown as Error)).toBe(
+            true,
+          );
 
-          const axiosErr429 = new Error('AxiosError') as any;
+          const axiosErr429 = new Error('AxiosError') as unknown as {
+            isAxiosError: boolean;
+            response?: { status: number };
+          };
           axiosErr429.isAxiosError = true;
           axiosErr429.response = { status: 429 };
-          expect(options.shouldRetry(axiosErr429)).toBe(true);
+          expect(options.shouldRetry(axiosErr429 as unknown as Error)).toBe(
+            true,
+          );
 
-          const axiosErr400 = new Error('AxiosError') as any;
+          const axiosErr400 = new Error('AxiosError') as unknown as {
+            isAxiosError: boolean;
+            response?: { status: number };
+          };
           axiosErr400.isAxiosError = true;
           axiosErr400.response = { status: 400 };
-          expect(options.shouldRetry(axiosErr400)).toBe(false);
+          expect(options.shouldRetry(axiosErr400 as unknown as Error)).toBe(
+            false,
+          );
         }
       }
     });

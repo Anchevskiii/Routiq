@@ -13,7 +13,7 @@ export function useToast() {
 
   const addToast = useCallback((message: string, variant: ToastVariant = 'info') => {
     const array = new Uint32Array(1)
-    window.crypto.getRandomValues(array)
+    globalThis.crypto.getRandomValues(array)
     const id = array[0].toString(36)
     setToasts((prev) => [...prev, { id, message, variant }])
 
