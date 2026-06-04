@@ -6,8 +6,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
-  DefaultValuePipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,6 +17,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtPayload } from '../common/types/jwt-payload.type';
 import { NotificationsService } from './notifications.service';
+import { GetNotificationsDto } from './dto/get-notifications.dto';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -32,13 +31,12 @@ export class NotificationsController {
   @Get()
   getUserNotifications(
     @CurrentUser() user: JwtPayload,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query() query: GetNotificationsDto,
   ) {
     return this.notificationsService.getUserNotifications(
       user.sub,
-      page,
-      limit,
+      query.page ?? 1,
+      query.limit ?? 20,
     );
   }
 

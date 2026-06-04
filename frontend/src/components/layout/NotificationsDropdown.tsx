@@ -74,6 +74,7 @@ export const NotificationsDropdown: React.FC = () => {
       {/* Bell button */}
       <button
         onClick={() => setOpen(o => !o)}
+        aria-label="Notifications"
         className="relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-blue-900/30 transition-colors"
       >
         <Bell className="w-[17px] h-[17px]" />

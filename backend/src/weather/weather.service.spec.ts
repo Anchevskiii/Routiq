@@ -318,7 +318,9 @@ describe('WeatherService', () => {
           return Promise.resolve({
             data: {
               status: 'OK',
-              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
             },
           });
         }
@@ -335,7 +337,9 @@ describe('WeatherService', () => {
           return Promise.resolve({
             data: {
               status: 'OK',
-              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
             },
           });
         }
@@ -524,4 +528,3 @@ describe('WeatherService', () => {
     });
   });
 });
-

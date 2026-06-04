@@ -7,6 +7,7 @@ import { useAuth } from '@/app/Providers'
 import { initials, avatarGrad } from '@/utils/avatar.utils'
 import { CommentItem } from './CommentItem'
 import { EmojiPickerPanel } from './EmojiPickerPanel'
+import type { Comment, CommentReaction } from '@/types/group.types'
 
 interface Props {
   groupId: string
@@ -31,9 +32,9 @@ export const GroupComments: React.FC<Props> = ({ groupId }) => {
       groupsApi.addComment(groupId, text, parentId),
     onMutate: async ({ text, parentId }) => {
       await queryClient.cancelQueries({ queryKey: ['group-comments', groupId] })
-      const previousComments = queryClient.getQueryData<any[]>(['group-comments', groupId])
+      const previousComments = queryClient.getQueryData<Comment[]>(['group-comments', groupId])
 
-      const newComment = {
+      const newComment: Comment = {
         id: `temp-${Date.now()}`,
         groupId,
         userId: user?.id ?? '',
@@ -49,7 +50,7 @@ export const GroupComments: React.FC<Props> = ({ groupId }) => {
         reactions: [],
       }
 
-      queryClient.setQueryData<any[]>(['group-comments', groupId], (old) => {
+      queryClient.setQueryData<Comment[]>(['group-comments', groupId], (old) => {
         if (!old) return [newComment]
         if (parentId) {
           return old.map(c => {
@@ -83,12 +84,12 @@ export const GroupComments: React.FC<Props> = ({ groupId }) => {
       groupsApi.toggleReaction(groupId, commentId, emoji),
     onMutate: async ({ commentId, emoji }) => {
       await queryClient.cancelQueries({ queryKey: ['group-comments', groupId] })
-      const previousComments = queryClient.getQueryData<any[]>(['group-comments', groupId])
+      const previousComments = queryClient.getQueryData<Comment[]>(['group-comments', groupId])
 
-      queryClient.setQueryData<any[]>(['group-comments', groupId], (old) => {
+      queryClient.setQueryData<Comment[]>(['group-comments', groupId], (old) => {
         if (!old) return []
 
-        const updateCommentReactions = (c: any): any => {
+        const updateCommentReactions = (c: Comment): Comment => {
           if (c.id !== commentId) {
             if (c.replies?.length) {
               return { ...c, replies: c.replies.map(updateCommentReactions) }
@@ -98,7 +99,7 @@ export const GroupComments: React.FC<Props> = ({ groupId }) => {
 
           const existingReactions = c.reactions ?? []
           const userReactionIdx = existingReactions.findIndex(
-            (r: any) => r.emoji === emoji && r.userId === user?.id
+            (r: CommentReaction) => r.emoji === emoji && r.userId === user?.id
           )
 
           const newReactions = [...existingReactions]
