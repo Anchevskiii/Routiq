@@ -1,5 +1,6 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { ActivityType } from '@prisma/client';
+import * as ics from 'ics';
 import { ExportService } from './export.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -102,6 +103,39 @@ describe('ExportService', () => {
       expect(buffer).toBeInstanceOf(Buffer);
       const icsString = buffer.toString();
       expect(icsString).toContain('Notre Dame');
+    });
+
+    it('should throw BadRequestException if ICS generation fails', async () => {
+      const mockItinerary = {
+        id: 'itin-123',
+        destination: 'Paris',
+        days: [
+          {
+            dayNumber: 1,
+            date: new Date('2026-06-04'),
+            activities: [
+              {
+                title: 'Notre Dame',
+                description: null,
+                location: null,
+                startTime: null,
+                durationMinutes: null,
+                activityType: ActivityType.ATTRACTION,
+                sortOrder: 1,
+              },
+            ],
+          },
+        ],
+      };
+      mockPrisma.itinerary.findFirst.mockResolvedValue(mockItinerary);
+      
+      const spy = jest.spyOn(ics as any, 'createEvents').mockImplementation((events: any, callback: any) => {
+        callback(new Error('ICS Error'), '');
+        return { error: new Error('ICS Error'), value: '' };
+      });
+
+      await expect(service.exportToIcs('itin-123')).rejects.toThrow(BadRequestException);
+      spy.mockRestore();
     });
   });
 
