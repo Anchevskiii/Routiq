@@ -35,4 +35,15 @@ describe('withRetry', () => {
     expect(fn).toHaveBeenCalledTimes(1);
     expect(shouldRetry).toHaveBeenCalledTimes(1);
   });
+
+  it('should log correctly when error is not an instance of Error', async () => {
+    const fn = jest
+      .fn()
+      .mockRejectedValueOnce('string error')
+      .mockResolvedValueOnce('success');
+    const result = await withRetry(fn, { backoffMs: 1 });
+    expect(result).toBe('success');
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
 });
+
