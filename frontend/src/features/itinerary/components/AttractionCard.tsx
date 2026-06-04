@@ -21,6 +21,23 @@ interface AttractionCardProps {
 type ConfirmState = 'idle' | 'confirming'
 type EditState = 'idle' | 'editing'
 
+// Strip generic venue-type words to get a more searchable core term
+const stripVenueType = (s: string) =>
+  s.replace(/\s*(workshop|restaurant|cafe|temple|shrine|museum|park|garden|gallery|center|centre|hall|house|church|cathedral|palace|castle|market|square|tower|walk|trail|tour|site|nature|cutting)\b.*/i, '').trim()
+
+const trySearch = async (query: string): Promise<string | null> => {
+  if (query.length < 3) return null
+  const res = await fetch(
+    `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
+  )
+  const [, titles] = await res.json() as [string, string[]]
+  const title = titles?.[0]
+  if (!title) return null
+  const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`)
+  const data = await summary.json()
+  return data.thumbnail?.source ?? null
+}
+
 export const AttractionCard: React.FC<AttractionCardProps> = ({
   activity,
   itineraryId,
@@ -38,23 +55,6 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
 
   useEffect(() => {
     let cancelled = false
-
-    // Strip generic venue-type words to get a more searchable core term
-    const stripVenueType = (s: string) =>
-      s.replace(/\s*(workshop|restaurant|cafe|temple|shrine|museum|park|garden|gallery|center|centre|hall|house|church|cathedral|palace|castle|market|square|tower|walk|trail|tour|site|nature|cutting)\b.*/i, '').trim()
-
-    const trySearch = async (query: string): Promise<string | null> => {
-      if (query.length < 3) return null
-      const res = await fetch(
-        `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
-      )
-      const [, titles] = await res.json() as [string, string[]]
-      const title = titles?.[0]
-      if (!title) return null
-      const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`)
-      const data = await summary.json()
-      return data.thumbnail?.source ?? null
-    }
 
     const fetchPhoto = async () => {
       try {
@@ -109,7 +109,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
     : 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-400/10 border border-sky-200 dark:border-sky-400/25'
 
   return (
-    <div className="relative grid gap-3.5 py-2.5 group/act" style={{ gridTemplateColumns: '28px 72px 1fr auto' }}>
+    <div className="relative grid grid-cols-[28px_72px_1fr_auto] gap-3.5 py-2.5 group/act">
       {/* dot */}
       <div className="flex justify-center pt-1.5">
         <div className={`w-3.5 h-3.5 rounded-full bg-white dark:bg-[#08091a] border-[3px] z-10 ${dotBorder} ${dotShadow}`} />
