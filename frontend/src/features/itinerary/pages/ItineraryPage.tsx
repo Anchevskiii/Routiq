@@ -42,11 +42,18 @@ function updateActivitiesOrder(days: Day[], dayId: string, activityIds: string[]
   })
 }
 
-function updateDaysOrder(days: Day[], dayIds: string[]): Day[] {
+function updateDaysOrder(days: Day[], dayIds: string[], startDateStr?: string | null): Day[] {
+  const startDate = startDateStr ? new Date(startDateStr) : null
   return dayIds
     .map((dayId, i) => {
       const day = days.find(d => d.id === dayId)
-      return day ? { ...day, dayNumber: i + 1 } : null
+      if (!day) return null
+      if (startDate) {
+        const date = new Date(startDate)
+        date.setDate(startDate.getDate() + i)
+        return { ...day, dayNumber: i + 1, date: date.toISOString() }
+      }
+      return { ...day, dayNumber: i + 1 }
     })
     .filter((d): d is Day => d !== null)
 }
@@ -112,7 +119,7 @@ export const ItineraryPage: React.FC = () => {
       const previous = queryClient.getQueryData(QUERY_KEYS.itinerary(id!))
       queryClient.setQueryData(QUERY_KEYS.itinerary(id!), (old: typeof itinerary) => {
         if (!old?.days) return old
-        return { ...old, days: updateDaysOrder(old.days, dayIds) }
+        return { ...old, days: updateDaysOrder(old.days, dayIds, old.startDate) }
       })
       return { previous }
     },

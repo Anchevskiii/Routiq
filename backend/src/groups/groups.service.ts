@@ -6,11 +6,10 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { GroupRole, InvitationStatus } from '@prisma/client';
+import { GroupRole, InvitationStatus, NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationType } from '@prisma/client';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -242,63 +241,65 @@ export class GroupsService {
   }
 
   async createGroup(
-  userId: string,
-  createGroupDto: CreateGroupDto,
-  imageBuffer?: Buffer,
-  imageMimetype?: string,
-) {
-  const group = await this.prisma.group.create({
-    data: {
-      name: createGroupDto.name,
-      description: createGroupDto.description,
-      imageUrl: createGroupDto.imageUrl,
-      themeColor: createGroupDto.themeColor,
-      createdById: userId,
-      members: {
-        create: {
-          userId,
-          role: GroupRole.OWNER,
-          status: InvitationStatus.ACCEPTED,
-          joinedAt: new Date(),
-          respondedAt: new Date(),
-        },
-      },
-    },
-    include: {
-      createdBy: {
-        select: { id: true, name: true, avatarUrl: true },
-      },
-      members: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, avatarUrl: true },
+    userId: string,
+    createGroupDto: CreateGroupDto,
+    imageBuffer?: Buffer,
+    imageMimetype?: string,
+  ) {
+    const group = await this.prisma.group.create({
+      data: {
+        name: createGroupDto.name,
+        description: createGroupDto.description,
+        imageUrl: createGroupDto.imageUrl,
+        themeColor: createGroupDto.themeColor,
+        createdById: userId,
+        members: {
+          create: {
+            userId,
+            role: GroupRole.OWNER,
+            status: InvitationStatus.ACCEPTED,
+            joinedAt: new Date(),
+            respondedAt: new Date(),
           },
         },
       },
-    },
-  });
+      include: {
+        createdBy: {
+          select: { id: true, name: true, avatarUrl: true },
+        },
+        members: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, avatarUrl: true },
+            },
+          },
+        },
+      },
+    });
 
-  // Group + membership now exist, safe to upload image
-  if (imageBuffer && imageMimetype) {
-    try {
-      const { imageUrl } = await this.uploadGroupImage(
-        group.id,
-        userId,
-        imageBuffer,
-        imageMimetype,
-      );
-      group.imageUrl = imageUrl;
-    } catch (err) {
-      this.logger.warn(
-        `Image upload during group creation failed: ${err instanceof Error ? err.message : err}`,
-      );
+    // Group + membership now exist, safe to upload image
+    if (imageBuffer && imageMimetype) {
+      try {
+        const { imageUrl } = await this.uploadGroupImage(
+          group.id,
+          userId,
+          imageBuffer,
+          imageMimetype,
+        );
+        group.imageUrl = imageUrl;
+      } catch (err) {
+        this.logger.warn(
+          `Image upload during group creation failed: ${err instanceof Error ? err.message : err}`,
+        );
+      }
     }
+
+    await this.logActivity(group.id, userId, 'GROUP_CREATED', {
+      groupName: group.name,
+    });
+
+    return group;
   }
-
-  await this.logActivity(group.id, userId, 'GROUP_CREATED', { groupName: group.name });
-
-  return group;
-}
 
   async updateGroup(
     groupId: string,

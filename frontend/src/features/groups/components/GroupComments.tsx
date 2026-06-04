@@ -7,9 +7,42 @@ import { useAuth } from '@/app/Providers'
 import { initials, avatarGrad } from '@/utils/avatar.utils'
 import { CommentItem } from './CommentItem'
 import { EmojiPickerPanel } from './EmojiPickerPanel'
+import type { Comment } from '@/types/group.types'
 
 interface Props {
   groupId: string
+}
+
+function toggleCommentReaction(
+  comments: Comment[],
+  commentId: string,
+  emoji: string,
+  userId?: string
+): Comment[] {
+  const updateComment = (c: Comment): Comment => {
+    if (c.id !== commentId) {
+      if (c.replies?.length) {
+        return { ...c, replies: c.replies.map(updateComment) }
+      }
+      return c
+    }
+
+    const existingReactions = c.reactions ?? []
+    const userReactionIdx = existingReactions.findIndex(
+      (r) => r.emoji === emoji && r.userId === userId
+    )
+
+    const newReactions = [...existingReactions]
+    if (userReactionIdx > -1) {
+      newReactions.splice(userReactionIdx, 1)
+    } else {
+      newReactions.push({ emoji, userId: userId ?? '' })
+    }
+
+    return { ...c, reactions: newReactions }
+  }
+
+  return comments.map(updateComment)
 }
 
 export const GroupComments: React.FC<Props> = ({ groupId }) => {
@@ -29,19 +62,78 @@ export const GroupComments: React.FC<Props> = ({ groupId }) => {
   const commentMutation = useMutation({
     mutationFn: ({ text, parentId }: { text: string; parentId?: string }) =>
       groupsApi.addComment(groupId, text, parentId),
-    onSuccess: () => {
+    onMutate: async ({ text, parentId }) => {
+      await queryClient.cancelQueries({ queryKey: ['group-comments', groupId] })
+      const previousComments = queryClient.getQueryData<Comment[]>(['group-comments', groupId])
+
+      const newComment: Comment = {
+        id: `temp-${Date.now()}`,
+        groupId,
+        userId: user?.id ?? '',
+        parentId,
+        content: text,
+        createdAt: new Date().toISOString(),
+        user: {
+          id: user?.id ?? '',
+          name: user?.name ?? 'Me',
+          avatarUrl: user?.avatarUrl,
+        },
+        replies: [],
+        reactions: [],
+      }
+
+      queryClient.setQueryData<Comment[]>(['group-comments', groupId], (old) => {
+        if (!old) return [newComment]
+        if (parentId) {
+          return old.map(c => {
+            if (c.id === parentId) {
+              return { ...c, replies: [...(c.replies ?? []), newComment] }
+            }
+            return c
+          })
+        }
+        return [...old, newComment]
+      })
+
       setContent('')
       setReplyTo(null)
+
+      return { previousComments }
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(['group-comments', groupId], context.previousComments)
+      }
+      toast.error('Failed to add comment')
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['group-comments', groupId] })
     },
-    onError: () => toast.error('Failed to add comment'),
   })
 
   const reactionMutation = useMutation({
     mutationFn: ({ commentId, emoji }: { commentId: string; emoji: string }) =>
       groupsApi.toggleReaction(groupId, commentId, emoji),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['group-comments', groupId] }),
-    onError: () => toast.error('Failed to update reaction'),
+    onMutate: async ({ commentId, emoji }) => {
+      await queryClient.cancelQueries({ queryKey: ['group-comments', groupId] })
+      const previousComments = queryClient.getQueryData<Comment[]>(['group-comments', groupId])
+
+      queryClient.setQueryData<Comment[]>(['group-comments', groupId], (old) => {
+        if (!old) return []
+        return toggleCommentReaction(old, commentId, emoji, user?.id)
+      })
+
+      return { previousComments }
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(['group-comments', groupId], context.previousComments)
+      }
+      toast.error('Failed to update reaction')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-comments', groupId] })
+    },
   })
 
   useEffect(() => {
@@ -65,24 +157,31 @@ export const GroupComments: React.FC<Props> = ({ groupId }) => {
     inputRef.current?.focus()
   }
 
+  let commentsContent: React.ReactNode
+  if (isLoading) {
+    commentsContent = (
+      <p className="py-5 text-center text-xs text-gray-400 dark:text-[#6e6c93]">Loading…</p>
+    )
+  } else if (!comments || comments.length === 0) {
+    commentsContent = (
+      <p className="py-6 text-center text-xs text-gray-400 dark:text-[#6e6c93]">No messages yet. Start the conversation!</p>
+    )
+  } else {
+    commentsContent = comments.map(comment => (
+      <CommentItem
+        key={comment.id}
+        comment={comment}
+        currentUserId={user?.id}
+        onReply={handleReply}
+        onToggleReact={(commentId, emoji) => reactionMutation.mutate({ commentId, emoji })}
+      />
+    ))
+  }
+
   return (
     <>
       <div ref={listRef} className="px-3.5 pt-2.5 pb-1 max-h-80 overflow-y-auto">
-        {isLoading ? (
-          <p className="py-5 text-center text-xs text-gray-400 dark:text-[#6e6c93]">Loading…</p>
-        ) : !comments?.length ? (
-          <p className="py-6 text-center text-xs text-gray-400 dark:text-[#6e6c93]">No messages yet. Start the conversation!</p>
-        ) : (
-          comments.map(comment => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              currentUserId={user?.id}
-              onReply={handleReply}
-              onToggleReact={(commentId, emoji) => reactionMutation.mutate({ commentId, emoji })}
-            />
-          ))
-        )}
+        {commentsContent}
       </div>
 
       <form
