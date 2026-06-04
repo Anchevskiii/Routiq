@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import React, { useState } from 'react'
+import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AttractionCard } from './AttractionCard'
 import { ItinerarySelectionProvider, useItinerarySelection } from '../context/ItinerarySelectionContext'
