@@ -311,7 +311,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 01 Destination */}
             <div className="mb-[22px]">
-              <FieldLabel n="01" text="Destination" req ok={fields.destination} />
+              <FieldLabel text="Destination" req />
               <div className="relative">
                 <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40 pointer-events-none" />
                 <input
@@ -409,7 +409,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 04 Experience type */}
             <div className="mb-[22px]">
-              <FieldLabel n="04" text="Experience type" req ok={fields.travelType} />
+              <FieldLabel text="Experience type" req />
               <div className="grid grid-cols-4 gap-2.5">
                 {EXP_TYPES.map(opt => {
                   const selected = travelType === opt.value
@@ -459,7 +459,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 05 Budget */}
             <div className="mb-[22px]">
-              <FieldLabel n="05" text="Budget" ok />
+              <FieldLabel text="Budget" />
               <div className="grid grid-cols-3 gap-1.5 bg-gray-100 dark:bg-[rgba(8,9,26,0.4)] border border-gray-200 dark:border-white/[0.07] rounded-[11px] p-[3px]">
                 {BUDGET_OPTS.map(o => (
                   <button key={o.id} type="button" onClick={() => setBudget(o.id)}
@@ -475,7 +475,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 06 Pace */}
             <div className="mb-[22px]">
-              <FieldLabel n="06" text="Pace" ok />
+              <FieldLabel text="Pace" />
               <div className="grid grid-cols-3 gap-1.5 bg-gray-100 dark:bg-[rgba(8,9,26,0.4)] border border-gray-200 dark:border-white/[0.07] rounded-[11px] p-[3px]">
                 {PACE_OPTS.map(o => (
                   <button key={o.id} type="button" onClick={() => setPace(o.id)}
@@ -491,7 +491,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 07 Travelers */}
             <div className="mb-[26px]">
-              <FieldLabel n="07" text="Travelers" ok />
+              <FieldLabel text="Travelers" />
               <div className="inline-flex items-center gap-3 bg-gray-50 dark:bg-[rgba(8,9,26,0.4)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] px-3.5 py-2.5">
                 <button type="button" onClick={() => setTravelers(t => Math.max(1, t - 1))}
                   className="w-8 h-8 rounded-[9px] bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-500 dark:text-[#a3a1c8] hover:text-gray-900 dark:hover:text-[#f0eeff] hover:border-gray-300 dark:hover:border-white/[0.14] transition-all">
