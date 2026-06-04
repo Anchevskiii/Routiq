@@ -21,6 +21,41 @@ interface AttractionCardProps {
 type ConfirmState = 'idle' | 'confirming'
 type EditState = 'idle' | 'editing'
 
+const VENUE_WORDS = new Set([
+  'workshop', 'restaurant', 'cafe', 'temple', 'shrine', 'museum', 'park',
+  'garden', 'gallery', 'center', 'centre', 'hall', 'house', 'church',
+  'cathedral', 'palace', 'castle', 'market', 'square', 'tower', 'walk',
+  'trail', 'tour', 'site', 'nature', 'cutting'
+])
+
+// Strip generic venue-type words to get a more searchable core term
+const stripVenueType = (s: string): string => {
+  const words = s.split(/\s+/)
+  for (const word of words) {
+    const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '')
+    if (VENUE_WORDS.has(cleanWord)) {
+      const idx = s.toLowerCase().indexOf(word.toLowerCase())
+      if (idx !== -1) {
+        return s.slice(0, idx).trim()
+      }
+    }
+  }
+  return s.trim()
+}
+
+const trySearch = async (query: string): Promise<string | null> => {
+  if (query.length < 3) return null
+  const res = await fetch(
+    `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
+  )
+  const [, titles] = await res.json() as [string, string[]]
+  const title = titles?.[0]
+  if (!title) return null
+  const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`)
+  const data = await summary.json()
+  return data.thumbnail?.source ?? null
+}
+
 export const AttractionCard: React.FC<AttractionCardProps> = ({
   activity,
   itineraryId,
@@ -38,23 +73,6 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
 
   useEffect(() => {
     let cancelled = false
-
-    // Strip generic venue-type words to get a more searchable core term
-    const stripVenueType = (s: string) =>
-      s.replace(/\s*(workshop|restaurant|cafe|temple|shrine|museum|park|garden|gallery|center|centre|hall|house|church|cathedral|palace|castle|market|square|tower|walk|trail|tour|site|nature|cutting)\b.*/i, '').trim()
-
-    const trySearch = async (query: string): Promise<string | null> => {
-      if (query.length < 3) return null
-      const res = await fetch(
-        `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
-      )
-      const [, titles] = await res.json() as [string, string[]]
-      const title = titles?.[0]
-      if (!title) return null
-      const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`)
-      const data = await summary.json()
-      return data.thumbnail?.source ?? null
-    }
 
     const fetchPhoto = async () => {
       try {
@@ -108,8 +126,12 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
     ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-400/10 border border-orange-200 dark:border-orange-400/25'
     : 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-400/10 border border-sky-200 dark:border-sky-400/25'
 
+  const photoContainerClass = photoUrl
+    ? 'w-10 h-10 rounded-[10px] flex-shrink-0 overflow-hidden'
+    : `w-10 h-10 rounded-[10px] flex-shrink-0 overflow-hidden grid place-items-center ${iconBg}`
+
   return (
-    <div className="relative grid gap-3.5 py-2.5 group/act" style={{ gridTemplateColumns: '28px 72px 1fr auto' }}>
+    <div className="relative grid grid-cols-[28px_72px_1fr_auto] gap-3.5 py-2.5 group/act">
       {/* dot */}
       <div className="flex justify-center pt-1.5">
         <div className={`w-3.5 h-3.5 rounded-full bg-white dark:bg-[#08091a] border-[3px] z-10 ${dotBorder} ${dotShadow}`} />
@@ -132,7 +154,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
       {/* card */}
       <div className="flex flex-col gap-2">
         <div className="bg-white dark:bg-white/[0.025] border border-gray-100 dark:border-white/[0.07] rounded-[12px] p-3 flex items-center gap-3 hover:bg-sky-50/50 dark:hover:bg-white/[0.04] hover:border-sky-200 dark:hover:border-white/[0.14] hover:translate-x-0.5 cursor-pointer transition-all shadow-[0_1px_4px_-1px_rgba(0,0,0,0.08)] dark:shadow-none">
-          <div className={`w-10 h-10 rounded-[10px] flex-shrink-0 overflow-hidden ${photoUrl ? '' : `grid place-items-center ${iconBg}`}`}>
+          <div className={photoContainerClass}>
             {photoUrl
               ? <img src={photoUrl} alt={activity.title} className="w-full h-full object-cover" />
               : iconEl
