@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
 
 export interface RetryOptions {
   maxRetries?: number;
@@ -19,13 +20,16 @@ export async function withRetry<T>(
   const shouldRetry = options.shouldRetry ?? (() => true);
 
   let attempt = 0;
-  while (true) {
+  let lastError: unknown;
+
+  while (attempt <= maxRetries) {
     try {
       return await fn();
     } catch (error) {
+      lastError = error;
       attempt++;
       if (attempt > maxRetries || !shouldRetry(error)) {
-        throw error;
+        break;
       }
 
       // Exponential backoff with jitter
@@ -33,7 +37,7 @@ export async function withRetry<T>(
         backoffMs * Math.pow(2, attempt - 1),
         maxBackoffMs,
       );
-      const jitter = Math.random() * 200;
+      const jitter = randomInt(0, 200);
       const finalDelay = delay + jitter;
 
       logger.warn(
@@ -45,4 +49,6 @@ export async function withRetry<T>(
       await new Promise((resolve) => setTimeout(resolve, finalDelay));
     }
   }
+
+  throw lastError;
 }
