@@ -91,9 +91,16 @@ export const ItineraryPage: React.FC = () => {
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
       const previous = queryClient.getQueryData(QUERY_KEYS.itinerary(id!))
       queryClient.setQueryData(QUERY_KEYS.itinerary(id!), (old: typeof itinerary) => {
-        if (!old?.days) return old
+        if (!old?.days || !old.startDate) return old
+        const startDate = new Date(old.startDate)
         const reordered = dayIds
-          .map((dayId, i) => { const day = old.days!.find(d => d.id === dayId); return day ? { ...day, dayNumber: i + 1 } : null })
+          .map((dayId, i) => {
+            const day = old.days!.find(d => d.id === dayId)
+            if (!day) return null
+            const date = new Date(startDate)
+            date.setDate(startDate.getDate() + i)
+            return { ...day, dayNumber: i + 1, date: date.toISOString() }
+          })
           .filter(Boolean) as typeof old.days
         return { ...old, days: reordered }
       })

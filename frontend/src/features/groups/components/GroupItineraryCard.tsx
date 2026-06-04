@@ -57,8 +57,8 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
     onMutate: (newVoteType) => { setPendingVote(newVoteType) },
     onError: () => { setPendingVote(null); toast.error('Failed to register vote') },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
       setPendingVote(null)
     },
   })
@@ -67,8 +67,8 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
     mutationFn: () => groupsApi.removeVote(groupId!, groupItinerary.id),
     onMutate: () => { setPendingVote('REMOVE' as never) },
     onError: () => { setPendingVote(null); toast.error('Failed to remove vote') },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
       setPendingVote(null)
     },
   })

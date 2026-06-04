@@ -29,19 +29,102 @@ export const GroupComments: React.FC<Props> = ({ groupId }) => {
   const commentMutation = useMutation({
     mutationFn: ({ text, parentId }: { text: string; parentId?: string }) =>
       groupsApi.addComment(groupId, text, parentId),
-    onSuccess: () => {
+    onMutate: async ({ text, parentId }) => {
+      await queryClient.cancelQueries({ queryKey: ['group-comments', groupId] })
+      const previousComments = queryClient.getQueryData<any[]>(['group-comments', groupId])
+
+      const newComment = {
+        id: `temp-${Date.now()}`,
+        groupId,
+        userId: user?.id ?? '',
+        parentId,
+        content: text,
+        createdAt: new Date().toISOString(),
+        user: {
+          id: user?.id ?? '',
+          name: user?.name ?? 'Me',
+          avatarUrl: user?.avatarUrl,
+        },
+        replies: [],
+        reactions: [],
+      }
+
+      queryClient.setQueryData<any[]>(['group-comments', groupId], (old) => {
+        if (!old) return [newComment]
+        if (parentId) {
+          return old.map(c => {
+            if (c.id === parentId) {
+              return { ...c, replies: [...(c.replies ?? []), newComment] }
+            }
+            return c
+          })
+        }
+        return [...old, newComment]
+      })
+
       setContent('')
       setReplyTo(null)
+
+      return { previousComments }
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(['group-comments', groupId], context.previousComments)
+      }
+      toast.error('Failed to add comment')
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['group-comments', groupId] })
     },
-    onError: () => toast.error('Failed to add comment'),
   })
 
   const reactionMutation = useMutation({
     mutationFn: ({ commentId, emoji }: { commentId: string; emoji: string }) =>
       groupsApi.toggleReaction(groupId, commentId, emoji),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['group-comments', groupId] }),
-    onError: () => toast.error('Failed to update reaction'),
+    onMutate: async ({ commentId, emoji }) => {
+      await queryClient.cancelQueries({ queryKey: ['group-comments', groupId] })
+      const previousComments = queryClient.getQueryData<any[]>(['group-comments', groupId])
+
+      queryClient.setQueryData<any[]>(['group-comments', groupId], (old) => {
+        if (!old) return []
+
+        const updateCommentReactions = (c: any): any => {
+          if (c.id !== commentId) {
+            if (c.replies?.length) {
+              return { ...c, replies: c.replies.map(updateCommentReactions) }
+            }
+            return c
+          }
+
+          const existingReactions = c.reactions ?? []
+          const userReactionIdx = existingReactions.findIndex(
+            (r: any) => r.emoji === emoji && r.userId === user?.id
+          )
+
+          const newReactions = [...existingReactions]
+          if (userReactionIdx > -1) {
+            newReactions.splice(userReactionIdx, 1)
+          } else {
+            newReactions.push({ emoji, userId: user?.id ?? '' })
+          }
+
+          return { ...c, reactions: newReactions }
+        }
+
+        return old.map(updateCommentReactions)
+      })
+
+      return { previousComments }
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(['group-comments', groupId], context.previousComments)
+      }
+      toast.error('Failed to update reaction')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-comments', groupId] })
+    },
   })
 
   useEffect(() => {
