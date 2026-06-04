@@ -1121,13 +1121,15 @@ describe('GroupsService', () => {
     it('uploads group image when caller is admin/owner and client is set up', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(adminMembership);
       const mockUpload = jest.fn().mockResolvedValue({ error: null });
-      const mockGetPublicUrl = jest.fn().mockReturnValue({ data: { publicUrl: 'http://pub.url/image.jpg' } });
+      const mockGetPublicUrl = jest
+        .fn()
+        .mockReturnValue({ data: { publicUrl: 'http://pub.url/image.jpg' } });
       const mockFrom = jest.fn().mockReturnValue({
         upload: mockUpload,
         getPublicUrl: mockGetPublicUrl,
       });
       const mockClient = { storage: { from: mockFrom } };
-      
+
       const customService = new GroupsService(
         mockPrisma as unknown as PrismaService,
         mockMailService as unknown as MailService,
@@ -1143,24 +1145,28 @@ describe('GroupsService', () => {
         groupId,
         ownerId,
         Buffer.from('test'),
-        'image/png'
+        'image/png',
       );
       expect(res).toEqual({ imageUrl: 'http://pub.url/image.jpg' });
       expect(mockUpload).toHaveBeenCalled();
-      expect(mockPrisma.group.update).toHaveBeenCalledWith(expect.objectContaining({
-        where: { id: groupId },
-        data: { imageUrl: 'http://pub.url/image.jpg' }
-      }));
+      expect(mockPrisma.group.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: groupId },
+          data: { imageUrl: 'http://pub.url/image.jpg' },
+        }),
+      );
     });
 
     it('throws InternalServerErrorException when upload fails', async () => {
       mockPrisma.groupMember.findFirst.mockResolvedValue(adminMembership);
-      const mockUpload = jest.fn().mockResolvedValue({ error: { message: 'upload error' } });
+      const mockUpload = jest
+        .fn()
+        .mockResolvedValue({ error: { message: 'upload error' } });
       const mockFrom = jest.fn().mockReturnValue({
         upload: mockUpload,
       });
       const mockClient = { storage: { from: mockFrom } };
-      
+
       const customService = new GroupsService(
         mockPrisma as unknown as PrismaService,
         mockMailService as unknown as MailService,
@@ -1173,7 +1179,12 @@ describe('GroupsService', () => {
       );
 
       await expect(
-        customService.uploadGroupImage(groupId, ownerId, Buffer.from('test'), 'image/png')
+        customService.uploadGroupImage(
+          groupId,
+          ownerId,
+          Buffer.from('test'),
+          'image/png',
+        ),
       ).rejects.toThrow(InternalServerErrorException);
     });
 
@@ -1191,7 +1202,12 @@ describe('GroupsService', () => {
       );
 
       await expect(
-        customService.uploadGroupImage(groupId, ownerId, Buffer.from('test'), 'image/png')
+        customService.uploadGroupImage(
+          groupId,
+          ownerId,
+          Buffer.from('test'),
+          'image/png',
+        ),
       ).rejects.toThrow(InternalServerErrorException);
     });
   });
