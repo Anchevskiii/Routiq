@@ -313,4 +313,49 @@ describe('WeatherService', () => {
       expect(stats.keys).toEqual(['key1']);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Missing API key coverage (line 65)
+  // -------------------------------------------------------------------------
+
+  describe('getForecast when Google Weather API key is not configured', () => {
+    it('falls back to mock weather without calling weather API', async () => {
+      const noKeyConfigService = {
+        getGoogleWeatherApiKey: jest.fn().mockReturnValue(null),
+        getGooglePlacesApiKey: jest.fn().mockReturnValue('fake-places-key'),
+      };
+      const noKeyService = new WeatherService(
+        noKeyConfigService as unknown as AppConfigService,
+      );
+
+      // Geocoding mock to return valid coordinates
+      mockedAxios.get.mockImplementation((url: string) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [
+                {
+                  geometry: { location: { lat: 48.8566, lng: 2.3522 } },
+                },
+              ],
+            },
+          });
+        }
+        return Promise.reject(new Error('Should not be called'));
+      });
+
+      const result = await noKeyService.getForecast('Paris', '2026-06-04', 1);
+
+      // Should return mock weather (fallback)
+      expect(result.location).toBe('Paris');
+      expect(result.forecast).toHaveLength(1);
+      // The Google Weather endpoint should NOT have been called
+      const weatherCallCount = mockedAxios.get.mock.calls.filter(
+        (args) => (args[0] as string).includes('weather.googleapis.com/v1/weather'),
+      ).length;
+      expect(weatherCallCount).toBe(0);
+    });
+  });
 });
+
