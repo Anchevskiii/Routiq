@@ -260,4 +260,118 @@ describe('UsersService', () => {
       expect(result).toEqual({ message: 'Account deleted successfully' });
     });
   });
+
+  // =========================================================================
+  // findById
+  // =========================================================================
+
+  describe('findById', () => {
+    it('calls prisma.user.findUnique with the given id and correct select', async () => {
+      const user = {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        avatarUrl: null,
+        metadata: null,
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockPrisma.user.findUnique.mockResolvedValue(user);
+
+      const result = await service.findById('user-1');
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatarUrl: true,
+          metadata: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      expect(result).toEqual(user);
+    });
+
+    it('returns null when user is not found', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const result = await service.findById('nonexistent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  // =========================================================================
+  // findByEmail
+  // =========================================================================
+
+  describe('findByEmail', () => {
+    it('calls prisma.user.findUnique with the given email', async () => {
+      const user = { id: 'user-1', email: 'test@example.com' };
+      mockPrisma.user.findUnique.mockResolvedValue(user);
+
+      const result = await service.findByEmail('test@example.com');
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+      });
+      expect(result).toEqual(user);
+    });
+
+    it('returns null when user is not found by email', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const result = await service.findByEmail('unknown@example.com');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  // =========================================================================
+  // uploadAvatar
+  // =========================================================================
+
+  describe('uploadAvatar', () => {
+    it('updates and returns avatarUrl when user exists', async () => {
+      const user = { id: 'user-1', email: 'test@example.com' };
+      mockPrisma.user.findUnique.mockResolvedValue(user);
+      mockPrisma.user.update.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        avatarUrl: 'https://cdn.example.com/avatar.png',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.uploadAvatar(
+        'user-1',
+        'https://cdn.example.com/avatar.png',
+      );
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+      });
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { avatarUrl: 'https://cdn.example.com/avatar.png' },
+        select: expect.objectContaining({ id: true, email: true }),
+      });
+      expect(result).toMatchObject({ avatarUrl: 'https://cdn.example.com/avatar.png' });
+    });
+
+    it('throws NotFoundException when user does not exist', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.uploadAvatar('nonexistent', 'https://cdn.example.com/x.png'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });
+

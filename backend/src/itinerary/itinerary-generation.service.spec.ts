@@ -596,3 +596,131 @@ describe('ItineraryGenerationService', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Supplementary: private helpers via type casting
+// ---------------------------------------------------------------------------
+
+describe('ItineraryGenerationService private helpers', () => {
+  let service: ItineraryGenerationService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new ItineraryGenerationService(
+      mockPrisma as unknown as PrismaService,
+      mockAttractionsService as unknown as AttractionsService,
+      mockWeatherService as unknown as WeatherService,
+      mockConfigService as unknown as AppConfigService,
+    );
+  });
+
+  type ServicePrivates = {
+    buildTravelTimeContext: (attractions: FormattedPlace[]) => string;
+    calculateHaversineDistance: (lat1: number, lon1: number, lat2: number, lon2: number) => number;
+  };
+
+  // =========================================================================
+  // buildTravelTimeContext
+  // =========================================================================
+
+  describe('buildTravelTimeContext', () => {
+    it('returns fallback when fewer than 2 attractions are provided', () => {
+      const result = (service as unknown as ServicePrivates).buildTravelTimeContext([]);
+      expect(result).toBe('Not enough attractions for travel time matrix.');
+    });
+
+    it('returns fallback for a single attraction', () => {
+      const result = (service as unknown as ServicePrivates).buildTravelTimeContext([
+        attractions[0],
+      ] as FormattedPlace[]);
+      expect(result).toBe('Not enough attractions for travel time matrix.');
+    });
+
+    it('returns travel time lines for 2+ attractions', () => {
+      const twoAttractions: FormattedPlace[] = [
+        {
+          id: 'a1',
+          name: 'Place A',
+          address: 'Addr A',
+          description: 'D1',
+          type: 't1',
+          sourceType: 'mainstream',
+          photos: [],
+          rating: 4.0,
+          userRatingsTotal: 100,
+          location: { lat: 48.8566, lng: 2.3522 },
+        },
+        {
+          id: 'a2',
+          name: 'Place B',
+          address: 'Addr B',
+          description: 'D2',
+          type: 't2',
+          sourceType: 'niche',
+          photos: [],
+          rating: 3.5,
+          userRatingsTotal: 50,
+          location: { lat: 48.8606, lng: 2.3376 },
+        },
+      ];
+
+      const result = (service as unknown as ServicePrivates).buildTravelTimeContext(twoAttractions);
+      expect(result).toContain('Place A -> Place B');
+      expect(result).toContain('min');
+      expect(result).toContain('km');
+    });
+
+    it('sorts by rating descending and slices to 8 for the matrix', () => {
+      // Create 10 attractions with varying ratings
+      const manyAttractions: FormattedPlace[] = Array.from({ length: 10 }, (_, i) => ({
+        id: `p${i}`,
+        name: `Place ${i}`,
+        address: `Addr ${i}`,
+        description: 'D',
+        type: 't',
+        sourceType: 'mainstream',
+        photos: [],
+        rating: i * 0.5,
+        userRatingsTotal: i * 10,
+        location: { lat: 48.8 + i * 0.01, lng: 2.3 + i * 0.01 },
+      }));
+
+      const result = (service as unknown as ServicePrivates).buildTravelTimeContext(manyAttractions);
+      // At most 8 * 7 / 2 = 28 pair lines
+      const lines = result.split('\n').filter((l) => l.length > 0);
+      expect(lines.length).toBeLessThanOrEqual(28);
+    });
+  });
+
+  // =========================================================================
+  // calculateHaversineDistance
+  // =========================================================================
+
+  describe('calculateHaversineDistance', () => {
+    it('returns 0 for identical coordinates', () => {
+      const dist = (service as unknown as ServicePrivates).calculateHaversineDistance(
+        48.8566, 2.3522, 48.8566, 2.3522,
+      );
+      expect(dist).toBeCloseTo(0, 5);
+    });
+
+    it('returns correct approximate distance between Paris and London', () => {
+      // Paris: 48.8566, 2.3522 — London: 51.5074, -0.1278
+      // ~340 km
+      const dist = (service as unknown as ServicePrivates).calculateHaversineDistance(
+        48.8566, 2.3522, 51.5074, -0.1278,
+      );
+      expect(dist).toBeGreaterThan(300);
+      expect(dist).toBeLessThan(400);
+    });
+
+    it('is symmetric (a->b == b->a)', () => {
+      const d1 = (service as unknown as ServicePrivates).calculateHaversineDistance(
+        48.8566, 2.3522, 51.5074, -0.1278,
+      );
+      const d2 = (service as unknown as ServicePrivates).calculateHaversineDistance(
+        51.5074, -0.1278, 48.8566, 2.3522,
+      );
+      expect(d1).toBeCloseTo(d2, 5);
+    });
+  });
+});
