@@ -23,22 +23,11 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'mp', label: 'Map' },
 ]
 
+import type { Day, Activity } from '@/types/itinerary.types'
+
 // ─── Helpers to avoid deep nesting and unnecessary assertions ─────────────────
 
-interface ActivityItem {
-  id: string
-  sortOrder: number
-  [key: string]: unknown
-}
-
-interface DayItem {
-  id: string
-  dayNumber: number
-  activities?: ActivityItem[]
-  [key: string]: unknown
-}
-
-function updateActivitiesOrder(days: DayItem[], dayId: string, activityIds: string[]): DayItem[] {
+function updateActivitiesOrder(days: Day[], dayId: string, activityIds: string[]): Day[] {
   return days.map(day => {
     if (day.id !== dayId || !day.activities) return day
     const acts = day.activities
@@ -47,18 +36,18 @@ function updateActivitiesOrder(days: DayItem[], dayId: string, activityIds: stri
         const act = acts.find(a => a.id === actId)
         return act ? { ...act, sortOrder: i } : null
       })
-      .filter((a): a is ActivityItem => a !== null)
+      .filter((a): a is Activity => a !== null)
     return { ...day, activities: reordered }
   })
 }
 
-function updateDaysOrder(days: DayItem[], dayIds: string[]): DayItem[] {
+function updateDaysOrder(days: Day[], dayIds: string[]): Day[] {
   return dayIds
     .map((dayId, i) => {
       const day = days.find(d => d.id === dayId)
       return day ? { ...day, dayNumber: i + 1 } : null
     })
-    .filter((d): d is DayItem => d !== null)
+    .filter((d): d is Day => d !== null)
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
