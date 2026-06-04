@@ -383,42 +383,38 @@ export class ItineraryService {
   }
 
   async updateActivity(
-    itineraryId: string,
-    activityId: string,
-    userId: string,
-    dto: UpdateActivityDto,
-  ) {
-    const itinerary = await this.prisma.itinerary.findFirst({
-      where: { id: itineraryId, userId },
-    });
-    if (!itinerary) {
-      throw new NotFoundException('Itinerary not found');
-    }
+  itineraryId: string,
+  activityId: string,
+  userId: string,
+  dto: UpdateActivityDto,
+) {
+  const itinerary = await this.prisma.itinerary.findFirst({
+    where: { id: itineraryId, userId },
+  });
+  if (!itinerary) throw new NotFoundException('Itinerary not found');
 
-    const activity = await this.prisma.itineraryActivity.findFirst({
-      where: { id: activityId, deletedAt: null },
-    });
-    if (!activity) {
-      throw new NotFoundException('Activity not found');
-    }
+  const activity = await this.prisma.itineraryActivity.findFirst({
+    where: { id: activityId, deletedAt: null },
+  });
+  if (!activity) throw new NotFoundException('Activity not found');
 
-    const updated = await this.prisma.itineraryActivity.update({
-      where: { id: activityId },
-      data: {
-        ...(dto.title !== undefined && { title: dto.title }),
-        ...(dto.startTime !== undefined && { startTime: dto.startTime }),
-        ...(dto.durationMinutes !== undefined && {
-          durationMinutes: dto.durationMinutes,
-        }),
-      },
-    });
+  // Apply the update first
+  const updated = await this.prisma.itineraryActivity.update({
+    where: { id: activityId },
+    data: {
+      ...(dto.title !== undefined && { title: dto.title }),
+      ...(dto.startTime !== undefined && { startTime: dto.startTime }),
+      ...(dto.durationMinutes !== undefined && { durationMinutes: dto.durationMinutes }),
+    },
+  });
 
-    if (dto.startTime !== undefined || dto.durationMinutes !== undefined) {
-      await this.cascadeActivityTimes(activity.dayId);
-    }
-
-    return updated;
+  if (dto.startTime !== undefined || dto.durationMinutes !== undefined) {
+    // Re-sort activities by startTime, then cascade
+    await this.resortAndCascade(activity.dayId, activityId);
   }
+
+  return updated;
+}
 
   async addActivity(
     itineraryId: string,
@@ -564,48 +560,86 @@ export class ItineraryService {
     );
   }
 
-  private async cascadeActivityTimes(dayId: string): Promise<void> {
-    const activities = await this.prisma.itineraryActivity.findMany({
-      where: { dayId, deletedAt: null },
-      orderBy: { sortOrder: 'asc' },
+  /**
+ * Re-sorts all activities in a day by their startTime, reassigns sortOrder,
+ * then cascades times forward to resolve any overlaps.
+ */
+private async resortAndCascade(dayId: string, priorityId?: string): Promise<void> {
+  const activities = await this.prisma.itineraryActivity.findMany({
+    where: { dayId, deletedAt: null },
+    orderBy: { sortOrder: 'asc' },
+  });
+
+  const withTime = activities
+    .filter((a) => a.startTime !== null && a.startTime !== undefined)
+    .sort((a, b) => {
+      const timeDiff = this.parseTime(a.startTime!) - this.parseTime(b.startTime!);
+      if (timeDiff !== 0) return timeDiff;
+      // Tie-break: priority activity comes first
+      if (a.id === priorityId) return -1;
+      if (b.id === priorityId) return 1;
+      return 0;
     });
 
-    const updates: { id: string; startTime: string }[] = [];
-    let prevStartTime: string | null = null;
-    let prevDuration: number | null = null;
+  const withoutTime = activities.filter(
+    (a) => a.startTime === null || a.startTime === undefined,
+  );
 
-    for (const activity of activities) {
-      if (prevStartTime !== null && prevDuration !== null) {
-        const prevEndMinutes = this.parseTime(prevStartTime) + prevDuration;
-        const currentMinutes =
-          activity.startTime !== null && activity.startTime !== undefined
-            ? this.parseTime(activity.startTime)
-            : null;
+  const sorted = [...withTime, ...withoutTime];
 
-        if (currentMinutes !== null && currentMinutes < prevEndMinutes) {
-          const newStartTime = this.formatTime(prevEndMinutes);
-          updates.push({ id: activity.id, startTime: newStartTime });
-          prevStartTime = newStartTime;
-        } else {
-          prevStartTime = activity.startTime ?? null;
-        }
-      } else {
-        prevStartTime = activity.startTime ?? null;
-      }
-      prevDuration = activity.durationMinutes ?? null;
+  await this.prisma.$transaction(
+    sorted.map((a, index) =>
+      this.prisma.itineraryActivity.update({
+        where: { id: a.id },
+        data: { sortOrder: index + 1 },
+      }),
+    ),
+  );
+
+  await this.cascadeActivityTimes(dayId);
+}
+
+private async cascadeActivityTimes(dayId: string): Promise<void> {
+  const activities = await this.prisma.itineraryActivity.findMany({
+    where: { dayId, deletedAt: null },
+    orderBy: { sortOrder: 'asc' },
+  });
+
+  const updates: { id: string; startTime: string }[] = [];
+  let prevEndMinutes: number | null = null;
+
+  for (const activity of activities) {
+    if (activity.startTime === null || activity.startTime === undefined) {
+      // No time set — don't touch it, stop cascading
+      prevEndMinutes = null;
+      continue;
     }
 
-    if (updates.length > 0) {
-      await this.prisma.$transaction(
-        updates.map((u) =>
-          this.prisma.itineraryActivity.update({
-            where: { id: u.id },
-            data: { startTime: u.startTime },
-          }),
-        ),
-      );
+    let resolvedStart = this.parseTime(activity.startTime);
+
+    if (prevEndMinutes !== null && resolvedStart < prevEndMinutes) {
+      // Overlap — push this activity to start when the previous one ends
+      resolvedStart = prevEndMinutes;
+      updates.push({ id: activity.id, startTime: this.formatTime(resolvedStart) });
     }
+
+    prevEndMinutes =
+      activity.durationMinutes !== null && activity.durationMinutes !== undefined
+        ? resolvedStart + activity.durationMinutes
+        : null;
   }
+
+  if (updates.length > 0) {
+    await this.prisma.$transaction(
+      updates.map((u) =>
+        this.prisma.itineraryActivity.update({
+          where: { id: u.id },
+          data: { startTime: u.startTime },
+        }),
+      ),
+    );
+  }
+}
 
   private parseTime(time: string): number {
     const [hours, minutes] = time.split(':').map(Number);

@@ -114,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       <div className="mt-5">
         {!collapsed && (
           <div className="px-4 mb-1">
-            <span className="text-[10px] font-bold tracking-widest text-slate-400 dark:text-slate-500">OTHER</span>
+            {/* <span className="text-[10px] font-bold tracking-widest text-slate-400 dark:text-slate-500">OTHER</span> */}
           </div>
         )}
         <nav className="flex flex-col gap-px px-2">

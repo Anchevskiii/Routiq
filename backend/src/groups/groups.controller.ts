@@ -99,12 +99,25 @@ export class GroupsController {
   @ApiBody({ type: CreateGroupDto })
   @ApiResponse({ status: 201, description: 'Group created successfully.' })
   @Post()
-  async createGroup(
-    @CurrentUser() user: JwtPayload,
-    @Body() createGroupDto: CreateGroupDto,
-  ) {
-    return this.groupsService.createGroup(user.sub, createGroupDto);
-  }
+@UseInterceptors(
+  FileInterceptor('image', { limits: { fileSize: 5 * 1024 * 1024 } }),
+)
+async createGroup(
+  @CurrentUser() user: JwtPayload,
+  @Body() createGroupDto: CreateGroupDto,
+  @UploadedFile(
+    new ParseFilePipe({
+      validators: [
+        new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024, message: 'Max 5MB' }),
+        new FileTypeValidator({ fileType: /image\/(jpeg|png|webp|gif|heic|heif)/ }),
+      ],
+      fileIsRequired: false, // image is optional during creation
+    }),
+  )
+  file?: MulterFile,
+) {
+  return this.groupsService.createGroup(user.sub, createGroupDto, file?.buffer, file?.mimetype);
+}
 
   @ApiOperation({ summary: 'Update group details' })
   @ApiParam({ name: 'id', description: 'Group ID' })

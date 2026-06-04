@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { groupsApi } from '@/api/groups.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
-import { uploadGroupImage } from '@/utils/upload'
 import { X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { CreateGroupInfoStep, type InfoStepResult } from './CreateGroupInfoStep'
@@ -24,15 +23,21 @@ export const CreateGroupModal: React.FC<Props> = ({ onClose }) => {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (!info) return
-      let imageUrl: string | undefined
-      if (info.file) imageUrl = await uploadGroupImage(info.file)
-      const group = await groupsApi.createGroup({ name: info.name, description: info.description, themeColor: info.themeColor, imageUrl })
-      await Promise.allSettled([
-        ...members.map(m => groupsApi.inviteMember(group.id, m.email)),
-        ...[...selectedIds].map(id => groupsApi.addItineraryToGroup(group.id, id)),
-      ])
-    },
+  if (!info) return
+
+  const formData = new FormData()
+  formData.append('name', info.name)
+  if (info.description) formData.append('description', info.description)
+  if (info.themeColor) formData.append('themeColor', info.themeColor)
+  if (info.file) formData.append('image', info.file)  // file sent with creation
+
+  const group = await groupsApi.createGroup(formData)  // send as FormData
+
+  await Promise.allSettled([
+    ...members.map(m => groupsApi.inviteMember(group.id, m.email)),
+    ...[...selectedIds].map(id => groupsApi.addItineraryToGroup(group.id, id)),
+  ])
+},
     onSuccess: () => {
       toast.success('Group created!')
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.groups })
