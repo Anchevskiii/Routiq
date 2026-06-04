@@ -57,14 +57,20 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
     onMutate: (newVoteType) => { setPendingVote(newVoteType) },
     onError: () => { setPendingVote(null); toast.error('Failed to register vote') },
-    onSettled: () => { setPendingVote(null); queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) }) },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+      setPendingVote(null)
+    },
   })
 
   const removeVoteMutation = useMutation({
     mutationFn: () => groupsApi.removeVote(groupId!, groupItinerary.id),
     onMutate: () => { setPendingVote('REMOVE' as never) },
     onError: () => { setPendingVote(null); toast.error('Failed to remove vote') },
-    onSettled: () => { setPendingVote(null); queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) }) },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+      setPendingVote(null)
+    },
   })
 
   // Display values: optimistic while pending, server values otherwise
