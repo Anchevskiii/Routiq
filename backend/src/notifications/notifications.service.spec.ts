@@ -88,6 +88,37 @@ describe('NotificationsService', () => {
         },
       });
     });
+
+    it('should fallback to default settings if metadata is null', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ metadata: null });
+      mockPrisma.notification.create.mockResolvedValue({ id: 'n2' });
+      const res = await service.createNotification(
+        'u1',
+        NotificationType.VOTE,
+        'title',
+      );
+      expect(res).toEqual({ id: 'n2' });
+      expect(mockPrisma.notification.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'u1',
+          type: NotificationType.VOTE,
+          title: 'title',
+          body: undefined,
+          data: {},
+        },
+      });
+    });
+
+    it('should fallback to default settings if metadata is empty', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ metadata: {} });
+      mockPrisma.notification.create.mockResolvedValue({ id: 'n3' });
+      const res = await service.createNotification(
+        'u1',
+        NotificationType.VOTE,
+        'title',
+      );
+      expect(res).toEqual({ id: 'n3' });
+    });
   });
 
   describe('getUserNotifications', () => {
@@ -114,6 +145,20 @@ describe('NotificationsService', () => {
         orderBy: [{ readAt: 'asc' }, { createdAt: 'desc' }],
         skip: 10,
         take: 10,
+      });
+    });
+
+    it('should use default page and limit values if omitted', async () => {
+      mockPrisma.notification.findMany.mockResolvedValue([]);
+      mockPrisma.notification.count.mockResolvedValue(0);
+      const res = await service.getUserNotifications('u1');
+      expect(res.page).toBe(1);
+      expect(res.limit).toBe(20);
+      expect(mockPrisma.notification.findMany).toHaveBeenCalledWith({
+        where: { userId: 'u1' },
+        orderBy: [{ readAt: 'asc' }, { createdAt: 'desc' }],
+        skip: 0,
+        take: 20,
       });
     });
   });
