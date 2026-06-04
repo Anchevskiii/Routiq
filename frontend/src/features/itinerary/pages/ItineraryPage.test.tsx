@@ -18,6 +18,14 @@ vi.mock('../components/SortableDaysList', () => ({
 vi.mock('@/features/groups/components/GroupDetailSidebar', () => ({
   GroupDetailSidebar: () => <div data-testid="group-sidebar" />,
 }))
+vi.mock('@/api/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+    },
+  },
+}))
 vi.mock('@/app/Providers', () => ({
   useAuth: () => ({ user: { id: 'user-1' } }),
 }))
