@@ -7,6 +7,7 @@ import { itineraryApi } from '@/api/itinerary.api'
 import { Activity, ActivityType } from '@/types/itinerary.types'
 import { ActivityEditForm } from './ActivityEditForm'
 import { ActivityDeleteConfirm } from './ActivityDeleteConfirm'
+import { useItinerarySelection } from '../context/ItinerarySelectionContext'
 
 interface AttractionCardProps {
   activity: Activity
@@ -118,6 +119,9 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
     setEditState('editing')
   }
 
+  const { selectedActivityId, setSelectedActivityId } = useItinerarySelection()
+  const isSelected = selectedActivityId === activity.id
+
   const dotBorder  = isMeal ? 'border-orange-400' : 'border-sky-400'
   const dotShadow  = 'shadow-[0_0_0_3px_white] dark:shadow-[0_0_0_3px_rgba(8,9,26,1)]'
   const iconEl     = isMeal ? <Utensils className="w-4 h-4 text-orange-500 dark:text-orange-400" /> : <Camera className="w-4 h-4 text-sky-500 dark:text-sky-400" />
@@ -153,7 +157,17 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
 
       {/* card */}
       <div className="flex flex-col gap-2">
-        <div className="bg-white dark:bg-white/[0.025] border border-gray-100 dark:border-white/[0.07] rounded-[12px] p-3 flex items-center gap-3 hover:bg-sky-50/50 dark:hover:bg-white/[0.04] hover:border-sky-200 dark:hover:border-white/[0.14] hover:translate-x-0.5 cursor-pointer transition-all shadow-[0_1px_4px_-1px_rgba(0,0,0,0.08)] dark:shadow-none">
+        <button
+          type="button"
+          onClick={() => setSelectedActivityId(isSelected ? null : activity.id)}
+          className={[
+            'w-full text-left flex items-center gap-3 cursor-pointer transition-all shadow-[0_1px_4px_-1px_rgba(0,0,0,0.08)] dark:shadow-none',
+            'bg-white dark:bg-white/[0.025] rounded-[12px] p-3',
+            isSelected
+              ? 'border-2 border-blue-500 dark:border-blue-400 bg-blue-50/40 dark:bg-blue-500/[0.08] shadow-[0_0_0_3px_rgba(59,130,246,0.15)]'
+              : 'border border-gray-100 dark:border-white/[0.07] hover:bg-sky-50/50 dark:hover:bg-white/[0.04] hover:border-sky-200 dark:hover:border-white/[0.14] hover:translate-x-0.5',
+          ].join(' ')}
+        >
           <div className={photoContainerClass}>
             {photoUrl
               ? <img src={photoUrl} alt={activity.title} className="w-full h-full object-cover" />
@@ -182,7 +196,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
               )}
             </div>
           </div>
-        </div>
+        </button>
 
         {editState === 'editing' && itineraryId && (
           <ActivityEditForm

@@ -15,6 +15,7 @@ import { ItineraryHeader } from '../components/ItineraryHeader'
 import { ItineraryMap } from '../components/ItineraryMap'
 import { SortableDaysList } from '../components/SortableDaysList'
 import { GroupDetailSidebar } from '@/features/groups/components/GroupDetailSidebar'
+import { ItinerarySelectionProvider } from '../context/ItinerarySelectionContext'
 
 type Tab = 'it' | 'mp'
 
@@ -172,6 +173,7 @@ export const ItineraryPage: React.FC = () => {
 
   /* ── group view ── */
   if (groupId && group) return (
+    <ItinerarySelectionProvider>
     <div className="px-8 py-6 pb-16">
       <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
         <Link to={ROUTES.GROUPS} className="hover:text-[#a3a1c8] transition-colors">Groups</Link>
@@ -200,10 +202,12 @@ export const ItineraryPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </ItinerarySelectionProvider>
   )
 
   /* ── standard view ── */
   return (
+    <ItinerarySelectionProvider>
     <div className="px-6 py-6 pb-16 max-w-[1400px] mx-auto">
       <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
         <Link to="/dashboard" className="hover:text-[#a3a1c8] transition-colors">Routiq</Link>
@@ -277,5 +281,6 @@ export const ItineraryPage: React.FC = () => {
         </div>
       )}
     </div>
+    </ItinerarySelectionProvider>
   )
 }
