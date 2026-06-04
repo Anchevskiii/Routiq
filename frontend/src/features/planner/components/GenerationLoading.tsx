@@ -5,13 +5,13 @@ import type { FormattedPlace } from '@/types/attractions.types'
 import type { StreamingDay } from '@/types/itinerary.types'
 
 interface Props {
-  progress: string
-  attractions: FormattedPlace[]
-  generatedDays: StreamingDay[]
-  elapsedTime: number
-  destination?: string
-  totalDays?: number
-  isComplete?: boolean
+  readonly progress: string
+  readonly attractions: readonly FormattedPlace[]
+  readonly generatedDays: readonly StreamingDay[]
+  readonly elapsedTime: number
+  readonly destination?: string
+  readonly totalDays?: number
+  readonly isComplete?: boolean
 }
 
 // ─── Fun facts ────────────────────────────────────────────────────────────────
@@ -49,8 +49,30 @@ const ALL_FACTS = [
   { emoji: '🎭', cat: 'CULTURE',     text: 'Venice has no roads — it has 150 canals and 400 bridges connecting its 118 islands.' },
 ]
 
-// Shuffle once per session so facts appear in random order
-const FACTS = [...ALL_FACTS].sort(() => Math.random() - 0.5)
+// Cryptographically secure shuffle to avoid Math.random security hotspots
+function secureShuffle<T>(array: readonly T[]): T[] {
+  const result = [...array]
+  if (typeof window === 'undefined' && typeof globalThis === 'undefined') {
+    return result
+  }
+  const cryptoObj = (typeof window !== 'undefined' ? window.crypto : globalThis.crypto)
+  if (!cryptoObj || !cryptoObj.getRandomValues) {
+    // Fallback if crypto is not supported
+    return result
+  }
+  const randomValues = new Uint32Array(result.length)
+  cryptoObj.getRandomValues(randomValues)
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = randomValues[i] % (i + 1)
+    const temp = result[i]
+    result[i] = result[j]
+    result[j] = temp
+  }
+  return result
+}
+
+// Shuffle once per session
+const FACTS = secureShuffle(ALL_FACTS)
 
 // ─── Stage labels ─────────────────────────────────────────────────────────────
 
@@ -65,7 +87,7 @@ const STAGES = [
 
 // ─── Route header ─────────────────────────────────────────────────────────────
 
-function RouteHeader({ progress, destination }: { progress: number; destination: string }) {
+function RouteHeader({ progress, destination }: Readonly<{ progress: number; destination: string }>) {
   const pathRef  = useRef<SVGPathElement>(null)
   const planeRef = useRef<SVGGElement>(null)
 
@@ -82,10 +104,10 @@ function RouteHeader({ progress, destination }: { progress: number; destination:
   }, [progress])
 
   const pins = [
-    { x: 70,  y: 96, t: 0  },
-    { x: 200, y: 64, t: 30 },
-    { x: 330, y: 104, t: 60 },
-    { x: 470, y: 70, t: 90 },
+    { id: 'pin-0', x: 70,  y: 96, t: 0  },
+    { id: 'pin-1', x: 200, y: 64, t: 30 },
+    { id: 'pin-2', x: 330, y: 104, t: 60 },
+    { id: 'pin-3', x: 470, y: 70, t: 90 },
   ]
 
   return (
@@ -122,7 +144,7 @@ function RouteHeader({ progress, destination }: { progress: number; destination:
             <circle cx="12" cy="12" r="3"/>
           </svg>
         </span>
-        AI PLANNER · CRAFTING YOUR TRIP
+        <span>AI PLANNER · CRAFTING YOUR TRIP</span>
       </span>
 
       {/* Flight path SVG */}
@@ -139,8 +161,8 @@ function RouteHeader({ progress, destination }: { progress: number; destination:
               pathLength={100} strokeDasharray="100"
               style={{ strokeDashoffset: 100 - progress, transition: 'stroke-dashoffset .5s cubic-bezier(.22,.61,.36,1)' }}/>
         {/* Pins */}
-        {pins.map((p, i) => (
-          <g key={i} style={{ opacity: progress >= p.t ? 1 : 0.25, transition: 'opacity .4s' }}>
+        {pins.map((p) => (
+          <g key={p.id} style={{ opacity: progress >= p.t ? 1 : 0.25, transition: 'opacity .4s' }}>
             <circle cx={p.x} cy={p.y}
                     r={progress >= p.t ? 6 : 4}
                     fill={progress >= p.t ? '#fbbf24' : 'rgba(255,255,255,.4)'}
@@ -175,7 +197,7 @@ function RouteHeader({ progress, destination }: { progress: number; destination:
 
 // ─── Fun facts card ───────────────────────────────────────────────────────────
 
-function FunFacts({ isDark }: { isDark: boolean }) {
+function FunFacts({ isDark }: Readonly<{ isDark: boolean }>) {
   const [idx, setIdx] = useState(0)
 
   useEffect(() => {
@@ -189,7 +211,7 @@ function FunFacts({ isDark }: { isDark: boolean }) {
   const wrapBg     = isDark
     ? 'linear-gradient(135deg, rgba(59,130,246,.07) 0%, rgba(96,165,250,.04) 100%)'
     : 'linear-gradient(135deg, #f0f7ff 0%, #f8faff 100%)'
-  const wrapBorder = isDark ? 'rgba(59,130,246,.18)' : 'rgba(59,130,246,.18)'
+  const wrapBorder = 'rgba(59,130,246,.18)'
   const catColor   = isDark ? '#60a5fa'               : '#2563eb'
   const catBg      = isDark ? 'rgba(59,130,246,.12)'  : 'rgba(59,130,246,.1)'
   const textColor  = isDark ? '#f0eeff'               : '#0f172a'
@@ -216,7 +238,7 @@ function FunFacts({ isDark }: { isDark: boolean }) {
         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
         fontSize: 11, fontWeight: 800, letterSpacing: '1.2px', color: eyebrowC,
       }}>
-        DID YOU KNOW?
+        <span>DID YOU KNOW?</span>
         <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${eyebrowC}55, transparent)` }}/>
       </div>
 
@@ -247,12 +269,12 @@ function FunFacts({ isDark }: { isDark: boolean }) {
 
       {/* Progress dots */}
       <div style={{ display: 'flex', gap: 5, marginTop: 16 }}>
-        {FACTS.map((_, i) => (
-          <div key={i} style={{
+        {FACTS.map((fact) => (
+          <div key={fact.text} style={{
             height: 4, borderRadius: 3, flex: 1, overflow: 'hidden', position: 'relative',
-            background: i < pos ? dotDone : dotEmpty,
+            background: FACTS.indexOf(fact) < pos ? dotDone : dotEmpty,
           }}>
-            {i === pos && (
+            {FACTS.indexOf(fact) === pos && (
               <div style={{
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
@@ -267,9 +289,66 @@ function FunFacts({ isDark }: { isDark: boolean }) {
   )
 }
 
+// ─── Sub-component to reduce Cognitive Complexity ─────────────────────────────
+
+const ProgressSection: React.FC<Readonly<{
+  displayProgress: number
+  numericProgress: number
+  isComplete: boolean
+  stageLabel: string
+  textMain: string
+  textDim: string
+  trackBg: string
+}>> = ({
+  displayProgress,
+  numericProgress,
+  isComplete,
+  stageLabel,
+  textMain,
+  textDim,
+  trackBg,
+}) => {
+  return (
+    <>
+      {/* Progress bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 7 }}>
+        <div style={{ flex: 1, height: 8, background: trackBg, borderRadius: 5, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', borderRadius: 5, width: `${displayProgress}%`,
+            background: isComplete
+              ? 'linear-gradient(90deg, #10b981, #34d399)'
+              : 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
+            backgroundSize: '200% 100%',
+            boxShadow: isComplete ? '0 0 10px rgba(16,185,129,.5)' : '0 0 10px rgba(59,130,246,.4)',
+            transition: 'width .3s ease-out, background .5s ease, box-shadow .5s ease',
+            animation: isComplete ? 'none' : 'shimmerGL 2s linear infinite',
+          }}/>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 800, minWidth: 42, textAlign: 'right', color: isComplete ? '#10b981' : textMain, transition: 'color .4s' }}>
+          {numericProgress}%
+        </span>
+      </div>
+
+      {/* Stage */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: isComplete ? '#10b981' : textDim, marginBottom: 20, transition: 'color .4s' }}>
+        {isComplete ? (
+          <span style={{ fontSize: 14 }}>✓</span>
+        ) : (
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0,
+            boxShadow: '0 0 0 3px rgba(59,130,246,.16)',
+            animation: 'pulseDotGL 1.6s ease-in-out infinite',
+          }}/>
+        )}
+        <span style={{ fontWeight: isComplete ? 700 : 400 }}>{stageLabel}</span>
+      </div>
+    </>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export const GenerationLoading: React.FC<Props> = ({
+export const GenerationLoading: React.FC<Readonly<Props>> = ({
   progress: progressMsg,
   attractions: _attractions,
   generatedDays,
@@ -302,7 +381,12 @@ export const GenerationLoading: React.FC<Props> = ({
       if (current >= target) return
       // Fast when there's a big gap (new day arrived), slow when creeping
       const gap  = target - current
-      const step = gap > 8 ? gap * 0.12 : gap > 2 ? 0.4 : 0.08
+      let step = 0.08
+      if (gap > 8) {
+        step = gap * 0.12
+      } else if (gap > 2) {
+        step = 0.4
+      }
       const next = Math.min(target, current + step)
       displayRef.current = next
       setDisplayProgress(Math.round(next * 10) / 10)
@@ -314,15 +398,20 @@ export const GenerationLoading: React.FC<Props> = ({
 
   const stage = useMemo(() => {
     let s = STAGES[0]
-    for (const st of STAGES) if (numericProgress >= st.at) s = st
+    for (const st of STAGES) {
+      if (numericProgress >= st.at) {
+        s = st
+      }
+    }
     return s
   }, [numericProgress])
 
-  const stageLabel = isComplete
-    ? 'Your itinerary is complete!'
-    : numericProgress >= 95
-      ? 'Finalizing your itinerary…'
-      : progressMsg || stage.label
+  let stageLabel = progressMsg || stage.label
+  if (isComplete) {
+    stageLabel = 'Your itinerary is complete!'
+  } else if (numericProgress >= 95) {
+    stageLabel = 'Finalizing your itinerary…'
+  }
 
   // Color tokens
   const bg         = isDark ? '#08091a'                     : '#f0f4ff'
@@ -387,38 +476,16 @@ export const GenerationLoading: React.FC<Props> = ({
               Routiq is putting together the perfect route — just a moment.
             </p>
 
-            {/* Progress bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 7 }}>
-              <div style={{ flex: 1, height: 8, background: trackBg, borderRadius: 5, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', borderRadius: 5, width: `${displayProgress}%`,
-                  background: isComplete
-                    ? 'linear-gradient(90deg, #10b981, #34d399)'
-                    : 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
-                  backgroundSize: '200% 100%',
-                  boxShadow: isComplete ? '0 0 10px rgba(16,185,129,.5)' : '0 0 10px rgba(59,130,246,.4)',
-                  transition: 'width .3s ease-out, background .5s ease, box-shadow .5s ease',
-                  animation: isComplete ? 'none' : 'shimmerGL 2s linear infinite',
-                }}/>
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 800, minWidth: 42, textAlign: 'right', color: isComplete ? '#10b981' : textMain, transition: 'color .4s' }}>
-                {numericProgress}%
-              </span>
-            </div>
-
-            {/* Stage */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: isComplete ? '#10b981' : textDim, marginBottom: 20, transition: 'color .4s' }}>
-              {isComplete ? (
-                <span style={{ fontSize: 14 }}>✓</span>
-              ) : (
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0,
-                  boxShadow: '0 0 0 3px rgba(59,130,246,.16)',
-                  animation: 'pulseDotGL 1.6s ease-in-out infinite',
-                }}/>
-              )}
-              <span style={{ fontWeight: isComplete ? 700 : 400 }}>{stageLabel}</span>
-            </div>
+            {/* Progress Bar & Stage Section */}
+            <ProgressSection
+              displayProgress={displayProgress}
+              numericProgress={numericProgress}
+              isComplete={isComplete}
+              stageLabel={stageLabel}
+              textMain={textMain}
+              textDim={textDim}
+              trackBg={trackBg}
+            />
 
             {/* Fun facts */}
             <FunFacts isDark={isDark} />
