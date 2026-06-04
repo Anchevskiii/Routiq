@@ -92,7 +92,7 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
 
   if (loadError) return null
 
-  const daysWithPlaces = [...new Set(placed.map(a => a.dayNumber))].sort()
+  const daysWithPlaces = [...new Set(placed.map(a => a.dayNumber))].sort((a, b) => a - b)
 
   return (
     <div className={`rounded-2xl overflow-hidden shadow-sm border border-blue-600/10 ${fullscreen ? 'h-full flex flex-col' : ''}`}>
