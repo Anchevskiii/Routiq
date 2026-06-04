@@ -136,7 +136,17 @@ describe('GroupItineraryCard', () => {
   })
 
   it('calls vote API when vote button is clicked', async () => {
-    vi.mocked(groupsApi.vote).mockResolvedValue({} as any)
+    vi.mocked(groupsApi.vote).mockResolvedValue({
+      id: 'v-new',
+      groupItineraryId: 'gi-123',
+      userId: 'user-different',
+      voteType: 'UPVOTE',
+      createdAt: new Date().toISOString(),
+      user: {
+        id: 'user-different',
+        name: 'Different User',
+      },
+    })
     renderCard({ currentUserId: 'user-different' })
     const user = userEvent.setup()
 
@@ -147,7 +157,7 @@ describe('GroupItineraryCard', () => {
   })
 
   it('calls removeVote API when already active upvote button is clicked', async () => {
-    vi.mocked(groupsApi.removeVote).mockResolvedValue({} as any)
+    vi.mocked(groupsApi.removeVote).mockResolvedValue(undefined)
     renderCard()
     const user = userEvent.setup()
 
@@ -158,7 +168,7 @@ describe('GroupItineraryCard', () => {
   })
 
   it('calls removeItineraryFromGroup API when delete is confirmed', async () => {
-    vi.mocked(groupsApi.removeItineraryFromGroup).mockResolvedValue({} as any)
+    vi.mocked(groupsApi.removeItineraryFromGroup).mockResolvedValue(undefined)
     renderCard()
     const user = userEvent.setup()
 
