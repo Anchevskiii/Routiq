@@ -101,21 +101,27 @@ describe('ItineraryPage', () => {
     mockUseMutation.mockReturnValue(mockMutation)
   })
 
+  // useQuery is called twice: first for itinerary, second for group (disabled when no groupId)
+  const itineraryResult = (data: typeof mockItinerary | undefined, loading = false, error: Error | null = null) =>
+    mockUseQuery
+      .mockReturnValueOnce({ data, isLoading: loading, error }) // itinerary query
+      .mockReturnValue({ data: undefined, isLoading: false, error: null })  // group query
+
   it('renders loading skeleton while fetching', () => {
-    mockUseQuery.mockReturnValue({ data: undefined, isLoading: true, error: null })
+    itineraryResult(undefined, true)
     renderPage()
     expect(document.querySelector('.animate-pulse')).toBeTruthy()
   })
 
   it('renders error state when itinerary is not found', () => {
-    mockUseQuery.mockReturnValue({ data: undefined, isLoading: false, error: new Error('Not found') })
+    itineraryResult(undefined, false, new Error('Not found'))
     renderPage()
     expect(screen.getByText('Itinerary not found')).toBeInTheDocument()
     expect(screen.getByText('Go back to Dashboard')).toBeInTheDocument()
   })
 
   it('renders daily route tab with itinerary on success', () => {
-    mockUseQuery.mockReturnValue({ data: mockItinerary, isLoading: false, error: null })
+    itineraryResult(mockItinerary)
     renderPage()
     expect(screen.getByTestId('itinerary-header')).toBeInTheDocument()
     expect(screen.getByText('Daily Route')).toBeInTheDocument()
@@ -123,14 +129,14 @@ describe('ItineraryPage', () => {
   })
 
   it('switches to map tab and shows fullscreen map', () => {
-    mockUseQuery.mockReturnValue({ data: mockItinerary, isLoading: false, error: null })
+    itineraryResult(mockItinerary)
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: /map/i }))
     expect(screen.getByTestId('itinerary-map')).toBeInTheDocument()
   })
 
   it('map aside has hidden and lg:flex classes for responsive behaviour', () => {
-    mockUseQuery.mockReturnValue({ data: mockItinerary, isLoading: false, error: null })
+    itineraryResult(mockItinerary)
     renderPage()
     const aside = document.querySelector('aside')
     expect(aside).toBeTruthy()

@@ -47,7 +47,7 @@ export const ItineraryPage: React.FC = () => {
     enabled: !!groupId,
   })
 
-  const currentMember = group?.members.find(m => m.userId === user?.id)
+  const currentMember = group?.members?.find(m => m.userId === user?.id)
   const currentUserRole = currentMember?.role ?? 'MEMBER'
   const invalidate = () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
 
