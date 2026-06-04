@@ -24,7 +24,7 @@ function infoHtml(a: PlacedActivity) {
 
 export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = false }) => {
   const { isLoaded, loadError } = useGoogleMaps()
-  const { placed, loading } = usePlacedActivities(days, isLoaded)
+  const { placed, loading } = usePlacedActivities(days, isLoaded, destination)
   const mapRef         = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
   const markersRef     = useRef<{ marker: google.maps.marker.AdvancedMarkerElement; activity: PlacedActivity }[]>([])

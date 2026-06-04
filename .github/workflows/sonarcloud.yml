@@ -2,9 +2,9 @@ name: SonarCloud Analysis
 
 on:
   push:
-    branches: [main, development, feature/sonarqube-testing]
+    branches: [development, feature/sonarqube-testing]
   pull_request:
-    branches: [main, development]
+    branches: [development]
 
 jobs:
   sonarcloud:
@@ -41,8 +41,15 @@ jobs:
       - name: Fix coverage paths for monorepo
         run: sed -i 's|SF:src|SF:backend/src|g' backend/coverage/lcov.info
 
+      - name: Run frontend unit tests with coverage
+        run: cd frontend && npx vitest run --coverage
+
+      - name: Fix frontend coverage paths for monorepo
+        run: sed -i 's|SF:src|SF:frontend/src|g' frontend/coverage/lcov.info
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.ROUTIQ_SONAR }}
-          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_SCANNER_SKIP_JRE_PROVISIONING: true

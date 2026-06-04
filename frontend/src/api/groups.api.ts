@@ -9,15 +9,18 @@ export const groupsApi = {
     return response.data
   },
 
-  async createGroup(payload: { 
-    name: string; 
-    description?: string; 
-    imageUrl?: string; 
-    themeColor?: string; 
-  }): Promise<Group> {
-    const response = await apiClient.post<ApiResponse<Group>>('/groups', payload)
-    return response.data.data
-  },
+  async createGroup(payload: FormData | { 
+  name: string; 
+  description?: string; 
+  imageUrl?: string; 
+  themeColor?: string; 
+}): Promise<Group> {
+  const isFormData = payload instanceof FormData
+  const response = await apiClient.post<ApiResponse<Group>>('/groups', payload, {
+    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+  })
+  return response.data.data
+},
 
   async updateGroup(id: string, payload: {
     name?: string;

@@ -1,5 +1,6 @@
 import { TravelType } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 export interface TestUserInput {
@@ -23,7 +24,7 @@ export async function createTestUser(
   const id = overrides.id ?? randomUUID();
   const email =
     overrides.email ??
-    `test-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
+    `test-${Date.now()}-${randomBytes(4).toString('hex')}@example.com`;
   const name = overrides.name ?? 'Test User';
 
   return prisma.user.create({
