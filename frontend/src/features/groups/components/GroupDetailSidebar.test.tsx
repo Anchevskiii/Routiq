@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { GroupMember } from '@/types/group.types'
 
@@ -53,7 +53,9 @@ describe('GroupDetailSidebar', () => {
 
     await user.click(screen.getByRole('button', { name: /send/i }))
 
-    expect(await screen.findByText('Enter a valid email')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Enter a valid email')).toBeInTheDocument()
+    })
     expect(onInvite).not.toHaveBeenCalled()
   })
 })
