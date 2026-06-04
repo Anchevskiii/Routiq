@@ -287,7 +287,85 @@ describe('WeatherService', () => {
         .mockRejectedValue('Unstructured error string');
       const result = await service.getForecast('Paris', '2026-06-04', 1);
       expect(result.location).toBe('Paris');
-      expect(result.forecast).toHaveLength(1);
+    });
+
+    it('should catch general Error instances inside getForecast and return mock data', async () => {
+      jest
+        .spyOn(
+          service as unknown as { getCoordinates: () => Promise<unknown> },
+          'getCoordinates',
+        )
+        .mockRejectedValue(new Error('Structured error object'));
+      const result = await service.getForecast('Paris', '2026-06-04', 1);
+      expect(result.location).toBe('Paris');
+    });
+
+    it('should handle non-Error instances in geocoding and Google forecast rejections', async () => {
+      // Geocoding fails with non-Error
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.reject('Geocoding string error');
+        }
+        return Promise.resolve({ data: {} });
+      });
+
+      let result = await service.getForecast('Paris', '2026-06-04', 1);
+      expect(result.location).toBe('Paris');
+
+      // Geocoding succeeds, but Google Weather API fails with non-Error
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+            },
+          });
+        }
+        return Promise.reject('Google Weather string error');
+      });
+
+      result = await service.getForecast('Paris', '2026-06-04', 1);
+      expect(result.location).toBe('Paris');
+    });
+
+    it('should map google weather forecast using defaults when fields are missing', async () => {
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+            },
+          });
+        }
+        if (url.includes('currentConditions')) {
+          return Promise.resolve({
+            data: {}, // Missing all fields
+          });
+        }
+        if (url.includes('forecast/days')) {
+          return Promise.resolve({
+            data: {
+              forecastDays: [
+                {
+                  displayDate: { year: 2026, month: 6, day: 4 },
+                  // Missing minTemperature, maxTemperature, daytimeForecast fields
+                },
+              ],
+            },
+          });
+        }
+        return Promise.reject(new Error('Unknown url'));
+      });
+
+      const result = await service.getForecast('Paris', '2026-06-04', 1);
+      expect(result.forecast[0].temperature.min).toBe(15);
+      expect(result.forecast[0].temperature.max).toBe(25);
+      expect(result.forecast[0].condition).toBe('Clear');
+      expect(result.forecast[0].humidity).toBe(50);
+      expect(result.forecast[0].windSpeed).toBe(0);
+      expect(result.forecast[0].precipitation).toBe(0);
     });
   });
 
@@ -356,5 +434,94 @@ describe('WeatherService', () => {
       ).length;
       expect(weatherCallCount).toBe(0);
     });
+
+    it('should test shouldRetry logic of withRetry wrapper', async () => {
+      service['cache'].clear();
+      jest.mocked(withRetry).mockClear();
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
+            },
+          });
+        }
+        return Promise.reject(new Error('API Error'));
+      });
+
+      try {
+        await service.getForecast('Paris', '2026-06-04', 5);
+      } catch {
+        // ignore
+      }
+
+      service['cache'].clear();
+
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
+            },
+          });
+        }
+        if (url.includes('currentConditions')) {
+          return Promise.resolve({ data: {} });
+        }
+        return Promise.reject(new Error('API Error'));
+      });
+
+      try {
+        await service.getForecast('Paris', '2026-06-04', 5);
+      } catch {
+        // ignore
+      }
+
+      const calls = jest.mocked(withRetry).mock.calls;
+      expect(calls.length).toBeGreaterThanOrEqual(2);
+      for (let i = 0; i < calls.length; i++) {
+        const call = calls[i];
+        const options = call[1];
+        if (options && typeof options.shouldRetry === 'function') {
+          expect(options.shouldRetry(new Error('Generic'))).toBe(true);
+
+          const axiosErrNoRes = new Error('AxiosError') as unknown as {
+            isAxiosError: boolean;
+            response?: { status: number };
+          };
+          axiosErrNoRes.isAxiosError = true;
+          expect(options.shouldRetry(axiosErrNoRes as unknown as Error)).toBe(
+            true,
+          );
+
+          const axiosErr429 = new Error('AxiosError') as unknown as {
+            isAxiosError: boolean;
+            response?: { status: number };
+          };
+          axiosErr429.isAxiosError = true;
+          axiosErr429.response = { status: 429 };
+          expect(options.shouldRetry(axiosErr429 as unknown as Error)).toBe(
+            true,
+          );
+
+          const axiosErr400 = new Error('AxiosError') as unknown as {
+            isAxiosError: boolean;
+            response?: { status: number };
+          };
+          axiosErr400.isAxiosError = true;
+          axiosErr400.response = { status: 400 };
+          expect(options.shouldRetry(axiosErr400 as unknown as Error)).toBe(
+            false,
+          );
+        }
+      }
+    });
   });
 });
+

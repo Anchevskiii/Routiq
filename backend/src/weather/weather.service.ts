@@ -1,8 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
 import axios from 'axios';
 import { AppConfigService } from '../config/config.service';
 import { withRetry } from '../common';
 import { ForecastDay, WeatherData } from './types';
+
+function cryptoRandom(): number {
+  return randomInt(0, 1000000) / 1000000;
+}
 
 interface GoogleForecastDay {
   displayDate: { year: number; month: number; day: number };
@@ -23,7 +28,10 @@ export class WeatherService {
   private readonly googleWeatherBaseUrl = 'https://weather.googleapis.com/v1';
 
   // Cache weather data for 1 hour
-  private cache = new Map<string, { data: WeatherData; timestamp: number }>();
+  private readonly cache = new Map<
+    string,
+    { data: WeatherData; timestamp: number }
+  >();
   private readonly cacheDuration = 60 * 60 * 1000; // 1 hour in milliseconds
 
   constructor(private readonly configService: AppConfigService) {
@@ -225,7 +233,7 @@ export class WeatherService {
       const exists = mappedForecast.some((f) => f.date === targetDateStr);
       if (!exists) {
         // Find closest existing day or use defaults
-        const lastKnown = mappedForecast[mappedForecast.length - 1];
+        const lastKnown = mappedForecast.at(-1);
         // Add some variation for predicted days so they don't look identical
         const variance = Math.sin(i) * 2;
         mappedForecast.push({
@@ -270,7 +278,7 @@ export class WeatherService {
       'Light rain',
       'Clear',
     ];
-    const baseTemp = 18 + Math.floor(Math.random() * 7); // 18-25 range
+    const baseTemp = 18 + Math.floor(cryptoRandom() * 7); // 18-25 range
 
     for (let i = 0; i < days; i++) {
       const date = new Date(start);
@@ -278,8 +286,8 @@ export class WeatherService {
 
       // Add some deterministic-ish variance based on the day index
       const dayVariation = Math.sin(i * 0.5) * 3;
-      const min = Math.round(baseTemp - 5 + dayVariation + Math.random() * 2);
-      const max = Math.round(baseTemp + 2 + dayVariation + Math.random() * 4);
+      const min = Math.round(baseTemp - 5 + dayVariation + cryptoRandom() * 2);
+      const max = Math.round(baseTemp + 2 + dayVariation + cryptoRandom() * 4);
 
       forecast.push({
         date: date.toISOString().split('T')[0],
@@ -289,12 +297,13 @@ export class WeatherService {
         },
         condition:
           conditions[
-            (i + Math.floor(Math.random() * conditions.length)) %
+            (i + Math.floor(cryptoRandom() * conditions.length)) %
               conditions.length
           ],
-        humidity: 40 + Math.floor(Math.random() * 30),
-        windSpeed: 4 + Math.floor(Math.random() * 12),
-        precipitation: Math.random() < 0.3 ? Math.floor(Math.random() * 20) : 0,
+        humidity: 40 + Math.floor(cryptoRandom() * 30),
+        windSpeed: 4 + Math.floor(cryptoRandom() * 12),
+        precipitation:
+          cryptoRandom() < 0.3 ? Math.floor(cryptoRandom() * 20) : 0,
       });
     }
 
