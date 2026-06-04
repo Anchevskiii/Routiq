@@ -91,7 +91,7 @@ export class GroupsController {
     @CurrentUser() user: JwtPayload,
     @Query('limit') limit?: string,
   ) {
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const limitNum = limit ? Number.parseInt(limit, 10) : 50;
     return this.groupsService.getGroupActivityLog(id, user.sub, limitNum);
   }
 

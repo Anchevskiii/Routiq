@@ -116,13 +116,13 @@ export const NotificationsDropdown: React.FC = () => {
             ) : (
               notifications.map(notif => (
                 <button key={notif.id} onClick={() => handleClick(notif)}
-                  className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors border-b border-gray-50 dark:border-white/[0.04] last:border-0 ${!notif.readAt ? 'bg-blue-50/40 dark:bg-blue-500/[0.04]' : ''}`}
+                  className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors border-b border-gray-50 dark:border-white/[0.04] last:border-0 ${notif.readAt ? '' : 'bg-blue-50/40 dark:bg-blue-500/[0.04]'}`}
                 >
                   <div className={`w-8 h-8 rounded-[10px] grid place-items-center flex-shrink-0 mt-0.5 ${TYPE_BG[notif.type]}`}>
                     {TYPE_ICON[notif.type]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={`text-[13px] leading-snug mb-0.5 ${!notif.readAt ? 'font-semibold text-gray-900 dark:text-[#f0eeff]' : 'font-medium text-gray-700 dark:text-[#c8c6e8]'}`}>
+                    <div className={`text-[13px] leading-snug mb-0.5 ${notif.readAt ? 'font-medium text-gray-700 dark:text-[#c8c6e8]' : 'font-semibold text-gray-900 dark:text-[#f0eeff]'}`}>
                       {notif.title}
                     </div>
                     {notif.body && (

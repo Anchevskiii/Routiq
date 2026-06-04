@@ -42,6 +42,22 @@ function updateActivitiesOrder(days: Day[], dayId: string, activityIds: string[]
   })
 }
 
+function updateDaysOrder(days: Day[], dayIds: string[], startDateStr?: string | null): Day[] {
+  const startDate = startDateStr ? new Date(startDateStr) : null
+  return dayIds
+    .map((dayId, i) => {
+      const day = days.find(d => d.id === dayId)
+      if (!day) return null
+      if (startDate) {
+        const date = new Date(startDate)
+        date.setDate(startDate.getDate() + i)
+        return { ...day, dayNumber: i + 1, date: date.toISOString() }
+      }
+      return { ...day, dayNumber: i + 1 }
+    })
+    .filter((d): d is Day => d !== null)
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const ItineraryPage: React.FC = () => {
@@ -103,20 +119,7 @@ export const ItineraryPage: React.FC = () => {
       const previous = queryClient.getQueryData(QUERY_KEYS.itinerary(id!))
       queryClient.setQueryData(QUERY_KEYS.itinerary(id!), (old: typeof itinerary) => {
         if (!old?.days) return old
-        const startDate = old.startDate ? new Date(old.startDate) : null
-        const reordered = dayIds
-          .map((dayId, i) => {
-            const day = old.days!.find(d => d.id === dayId)
-            if (!day) return null
-            if (startDate) {
-              const date = new Date(startDate)
-              date.setDate(startDate.getDate() + i)
-              return { ...day, dayNumber: i + 1, date: date.toISOString() }
-            }
-            return { ...day, dayNumber: i + 1 }
-          })
-          .filter(Boolean) as typeof old.days
-        return { ...old, days: reordered }
+        return { ...old, days: updateDaysOrder(old.days, dayIds, old.startDate) }
       })
       return { previous }
     },

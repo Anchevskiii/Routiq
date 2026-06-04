@@ -6,11 +6,10 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { GroupRole, InvitationStatus } from '@prisma/client';
+import { GroupRole, InvitationStatus, NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationType } from '@prisma/client';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';

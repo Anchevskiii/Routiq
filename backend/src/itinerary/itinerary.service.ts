@@ -18,13 +18,12 @@ import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { ItineraryGenerationService } from './itinerary-generation.service';
-import { InvitationStatus } from '@prisma/client';
+import { InvitationStatus, Prisma } from '@prisma/client';
 import { WeatherService } from '../weather/weather.service';
 import { GeneratedDay, GeneratedItinerary } from './types';
 
-import { Prisma } from '@prisma/client';
 import { FormattedPlace } from '../attractions/types';
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, createHash } from 'node:crypto';
 
 export type ItineraryGenerateStreamEvent =
   | { type: 'status'; message: string }
