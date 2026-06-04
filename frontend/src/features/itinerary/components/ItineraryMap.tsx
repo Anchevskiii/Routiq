@@ -5,6 +5,7 @@ import type { Day } from '@/types/itinerary.types'
 import { usePlacedActivities, type PlacedActivity } from '../hooks/usePlacedActivities'
 import { MapDayTabs }     from './MapDayTabs'
 import { MapActivityBar } from './MapActivityBar'
+import { useItinerarySelection } from '../context/ItinerarySelectionContext'
 
 interface Props {
   days: Day[]
@@ -25,6 +26,7 @@ function infoHtml(a: PlacedActivity) {
 export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = false }) => {
   const { isLoaded, loadError } = useGoogleMaps()
   const { placed, loading } = usePlacedActivities(days, isLoaded, destination)
+  const { selectedActivityId } = useItinerarySelection()
   const mapRef         = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
   const markersRef     = useRef<{ marker: google.maps.marker.AdvancedMarkerElement; activity: PlacedActivity }[]>([])
@@ -79,6 +81,30 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
     setActive(null)
     infoWindowRef.current?.close()
   }, [selectedDay, fitVisible])
+
+  // Centre map and highlight marker when an activity is selected from the list
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isLoaded) return
+
+    markersRef.current.forEach(({ marker, activity }) => {
+      const isSelected = activity.id === selectedActivityId
+      const pin = new google.maps.marker.PinElement({
+        background: isSelected ? '#2563eb' : activity.color,
+        borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.9)',
+        glyphColor: 'white',
+        scale: isSelected ? 1.4 : 1.1,
+      })
+      marker.content = pin.element
+    })
+
+    if (!selectedActivityId) return
+    const found = markersRef.current.find(({ activity }) => activity.id === selectedActivityId)
+    if (!found) return
+    mapInstanceRef.current.panTo({ lat: found.activity.lat, lng: found.activity.lng })
+    setActive(found.activity)
+    infoWindowRef.current?.setContent(infoHtml(found.activity))
+    infoWindowRef.current?.open(mapInstanceRef.current, found.marker)
+  }, [selectedActivityId, isLoaded])
 
   const toggleExpand = () => {
     setExpanded(e => !e)
