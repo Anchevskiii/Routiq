@@ -51,4 +51,5 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.ROUTIQ_SONAR }}
-          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_SCANNER_SKIP_JRE_PROVISIONING: true
