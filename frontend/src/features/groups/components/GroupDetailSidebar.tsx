@@ -30,7 +30,10 @@ export const GroupDetailSidebar: React.FC<Props> = ({
   const [inviteError, setInviteError]   = useState<string | null>(null)
 
   const canManage = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN'
-  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const isValidEmail = (email: string) => {
+    if (email.length > 254) return false
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
+  }
 
   const handleInvite = () => {
     const trimmed = inviteEmail.trim()
