@@ -101,11 +101,16 @@ describe('ItineraryPage', () => {
     mockUseMutation.mockReturnValue(mockMutation)
   })
 
-  // useQuery is called twice: first for itinerary, second for group (disabled when no groupId)
-  const itineraryResult = (data: typeof mockItinerary | undefined, loading = false, error: Error | null = null) =>
-    mockUseQuery
-      .mockReturnValueOnce({ data, isLoading: loading, error }) // itinerary query
-      .mockReturnValue({ data: undefined, isLoading: false, error: null })  // group query
+  // useQuery is called twice per render: itinerary (odd calls) + group (even calls, disabled)
+  const itineraryResult = (data: typeof mockItinerary | undefined, loading = false, error: Error | null = null) => {
+    let calls = 0
+    mockUseQuery.mockImplementation(() => {
+      calls++
+      return calls % 2 !== 0
+        ? { data, isLoading: loading, error }
+        : { data: undefined, isLoading: false, error: null }
+    })
+  }
 
   it('renders loading skeleton while fetching', () => {
     itineraryResult(undefined, true)
