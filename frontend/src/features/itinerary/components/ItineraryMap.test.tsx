@@ -39,6 +39,9 @@ class MockPinElement {}
 class MockAdvancedMarkerElement {
   addListener = vi.fn()
   set map(_val: unknown) {}
+  appendChild = vi.fn()
+  removeChild = vi.fn()
+  firstChild = null
 }
 
 describe('ItineraryMap', () => {

@@ -301,6 +301,7 @@ backend/src/
 ├── attractions/        # GET /search, GET /alternatives (Google Places proxy)
 ├── weather/            # GET /weather — napoved z 1h memory cache
 ├── groups/             # CRUD skupin, invite/accept/decline, glasovanje, komentarji
+├── notifications/      # GET/PATCH obvestila — in-app notifikacije (vote, invite, komentar)
 ├── export/             # GET /export/:id/ics — generiranje .ics datoteke
 ├── mail/               # sendInvitation() — Resend e-pošta
 └── health/             # GET /health — Render health check
@@ -315,7 +316,8 @@ backend/src/
 | `gemini` | — (interno) | `streamGenerate()` — pošlje prompt, vrne Observable SSE chunkov |
 | `attractions` | GET `/search`, GET `/alternatives` | Google Places API proxy, filtriranje po TravelType |
 | `weather` | GET `/weather?destination&startDate&days` | `getForecast()` + 1h memory cache |
-| `groups` | CRUD skupin, invite, accept/decline, remove, roles, itinerarji, vote, comments, activity log | Permission hierarhija (OWNER>ADMIN>MODERATOR>MEMBER), transakcije, ActivityLog |
+| `groups` | CRUD skupin, invite, accept/decline, remove, roles, itinerarji, vote (+ remove vote), comments, activity log | Permission hierarhija (OWNER>ADMIN>MODERATOR>MEMBER), transakcije, ActivityLog |
+| `notifications` | GET `/notifications`, unread-count, read, read-all | In-app obvestila; fire-and-forget iz groups service (vote, invite) |
 | `export` | GET `/export/:id/ics` | Generiranje .ics datoteke iz Prisma podatkov |
 | `mail` | — (interno) | `sendInvitation()` prek Resend SDK |
 

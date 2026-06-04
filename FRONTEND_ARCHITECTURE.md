@@ -138,6 +138,7 @@ Sestavljajo osnovno lupino aplikacije.
 | `AppShell` | Glavni wrapper: Sidebar + Topbar + vsebina |
 | `Sidebar` | Leva navigacija (dashboard, planner, groups) |
 | `Topbar` | Zgornja vrstica: logo, user menu |
+| `NotificationsDropdown` | Bell ikona z unread badge + dropdown seznam obvestil |
 | `UserMenu` | Dropdown: profil, logout |
 | `ProtectedRoute` | Auth guard: preusmeri na `/login` če ni prijavljen |
 | `PageHeader` | Naslov strani z opcijskim action gumbom |
@@ -200,7 +201,8 @@ src/api/
 ├── itinerary.api.ts      # generateItinerary(), getItinerary(), updateItinerary(), deleteItinerary(), listItineraries()
 ├── attractions.api.ts    # getAttractions(), swapAttraction(), addAttraction(), removeAttraction()
 ├── weather.api.ts        # getWeatherForecast() – proxy prek backend
-├── groups.api.ts         # getGroups(), createGroup(), getGroupItineraries(), inviteMember(), vote()
+├── groups.api.ts         # getGroups(), createGroup(), inviteMember(), vote(), removeVote()
+├── notifications.api.ts  # getNotifications(), getUnreadCount(), markRead(), markAllRead()
 ├── profile.api.ts        # getProfile(), updateProfile(), uploadAvatar()
 └── export.api.ts         # exportPdf(), exportIcs()
 ```
