@@ -99,13 +99,13 @@ function useWikiData(destination: string): WikiData {
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
-function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: {
+function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: Readonly<{
   value: string
   minDate?: string
   rangeOther?: string  // the other anchor date for range highlight
   onChange: (val: string) => void
   onClose: () => void
-}) {
+}>) {
   const today      = startOfToday()
   const initDate   = value ? parseISO(value) : today
   const [viewDate, setViewDate] = React.useState(startOfMonth(initDate))
@@ -118,7 +118,7 @@ function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: {
   const firstDow = (getDay(viewDate) + 6) % 7
   const numDays  = getDaysInMonth(viewDate)
   const cells: (number | null)[] = [
-    ...Array(firstDow).fill(null),
+    ...new Array(firstDow).fill(null),
     ...Array.from({ length: numDays }, (_, i) => i + 1),
   ]
   while (cells.length % 7 !== 0) cells.push(null)
@@ -164,7 +164,7 @@ function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: {
         {/* Day grid */}
         <div className="grid grid-cols-7" onMouseLeave={() => setHoverDate(null)}>
           {cells.map((day, i) => {
-            if (!day) return <div key={i} />
+            if (!day) return <div key={`empty-${i}`} />
             const date       = new Date(viewDate.getFullYear(), viewDate.getMonth(), day)
             const iso        = format(date, 'yyyy-MM-dd')
             const isSel      = !!selected && isSameDay(date, selected)
@@ -186,7 +186,7 @@ function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: {
             const isRangeAnchorEdge = !isDisabled && rangeAnchor && hover && isSameDay(date, rangeAnchor) && !isSameDay(date, hover)
 
             return (
-              <button key={i} type="button" disabled={isDisabled}
+              <button key={iso} type="button" disabled={isDisabled}
                 onClick={() => onChange(iso)}
                 onMouseEnter={() => !isDisabled && setHoverDate(date)}
                 className={cn(
@@ -221,7 +221,7 @@ function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: {
   )
 }
 
-function FieldLabel({ n: _n, text, req }: { n: string; text: string; req?: boolean; ok?: boolean }) {
+function FieldLabel({ text, req }: Readonly<{ text: string; req?: boolean }>) {
   return (
     <div className="flex items-center gap-2 mb-2.5 text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-white/50">
       {text}
@@ -262,11 +262,24 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   const SUGGESTIONS = DEST_DB.slice(0, 6)
 
   // estBudget kept for metrics section if re-enabled
-  void useMemo(() => {
+  useMemo(() => {
     if (!dur) return null
-    const perDay = budget === 'Budget' ? 80 : budget === 'Mid-range' ? 180 : 380
+    let perDay = 380
+    if (budget === 'Budget') {
+      perDay = 80
+    } else if (budget === 'Mid-range') {
+      perDay = 180
+    }
     return Math.round(perDay * dur * travelers)
   }, [dur, budget, travelers])
+
+  let ctaText = 'Generate itinerary'
+  if (isLoading) {
+    ctaText = 'Preparing Your Trip…'
+  } else if (!allFilled) {
+    const missing = 4 - reqFilled
+    ctaText = `Complete ${missing} field${missing === 1 ? '' : 's'}`
+  }
 
   return (
     <div className="max-w-[680px] mx-auto flex flex-col gap-5">
@@ -332,9 +345,9 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
               <div className="grid grid-cols-2 gap-3">
                 {/* Start */}
                 <div>
-                  <FieldLabel n="02" text="Start date" ok={fields.startDate} />
+                  <FieldLabel text="Start date" />
                   <div className="relative">
-                    <label className={cn("relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] rounded-[12px] px-3.5 py-3 transition-all cursor-pointer", fields.startDate ? "border border-emerald-400/70 dark:border-emerald-400/40 ring-2 ring-emerald-400/10" : "border border-gray-200 dark:border-white/[0.07] hover:border-sky-300 dark:hover:border-sky-400/40")} onClick={() => setOpenCal(openCal === 'start' ? null : 'start')}>
+                    <button type="button" className={cn("w-full text-left relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] rounded-[12px] px-3.5 py-3 transition-all cursor-pointer", fields.startDate ? "border border-emerald-400/70 dark:border-emerald-400/40 ring-2 ring-emerald-400/10" : "border border-gray-200 dark:border-white/[0.07] hover:border-sky-300 dark:hover:border-sky-400/40")} onClick={() => setOpenCal(openCal === 'start' ? null : 'start')}>
                       <div className="w-8 h-8 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
                         <Calendar className="w-3.5 h-3.5" />
                       </div>
@@ -344,7 +357,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                           {startDate ? format(parseISO(startDate), 'd MMM yyyy') : 'Pick a date'}
                         </div>
                       </div>
-                    </label>
+                    </button>
                     {openCal === 'start' && (
                       <CalendarPopup
                         value={startDate}
@@ -359,9 +372,9 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                 </div>
                 {/* End */}
                 <div>
-                  <FieldLabel n="03" text="End date" ok={fields.endDate} />
+                  <FieldLabel text="End date" />
                   <div className="relative">
-                    <label className={cn("relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] rounded-[12px] px-3.5 py-3 transition-all cursor-pointer", fields.endDate ? "border border-emerald-400/70 dark:border-emerald-400/40 ring-2 ring-emerald-400/10" : "border border-gray-200 dark:border-white/[0.07] hover:border-sky-300 dark:hover:border-sky-400/40")} onClick={() => setOpenCal(openCal === 'end' ? null : 'end')}>
+                    <button type="button" className={cn("w-full text-left relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] rounded-[12px] px-3.5 py-3 transition-all cursor-pointer", fields.endDate ? "border border-emerald-400/70 dark:border-emerald-400/40 ring-2 ring-emerald-400/10" : "border border-gray-200 dark:border-white/[0.07] hover:border-sky-300 dark:hover:border-sky-400/40")} onClick={() => setOpenCal(openCal === 'end' ? null : 'end')}>
                       <div className="w-8 h-8 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
                         <Calendar className="w-3.5 h-3.5" />
                       </div>
@@ -371,7 +384,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                           {endDate ? format(parseISO(endDate), 'd MMM yyyy') : 'Pick a date'}
                         </div>
                       </div>
-                    </label>
+                    </button>
                     {openCal === 'end' && (
                       <CalendarPopup
                         value={endDate}
@@ -518,7 +531,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                 className="flex-1 relative overflow-hidden bg-gradient-to-b from-blue-500 to-blue-600 text-white rounded-[14px] px-6 py-4 font-medium text-[15px] flex items-center justify-center gap-2.5 shadow-[0_12px_30px_-10px_rgba(37,99,235,0.6),inset_0_1px_0_rgba(255,255,255,0.2)] transition-transform hover:-translate-y-px disabled:opacity-55 disabled:cursor-not-allowed disabled:transform-none"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>{isLoading ? 'Preparing Your Trip…' : !allFilled ? `Complete ${4 - reqFilled} field${4 - reqFilled === 1 ? '' : 's'}` : 'Generate itinerary'}</span>
+                <span>{ctaText}</span>
                 <ArrowRight className="w-4 h-4" />
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/[0.18] to-transparent animate-shimmer pointer-events-none" />
               </button>

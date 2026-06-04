@@ -75,14 +75,22 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
 
   // Display values: optimistic while pending, server values otherwise
   const isAnyPending = voteMutation.isPending || removeVoteMutation.isPending
-  const displayVote  = isAnyPending
-    ? (removeVoteMutation.isPending ? null : pendingVote)
-    : serverUserVote
+  
+  let displayVote = serverUserVote
+  if (isAnyPending) {
+    displayVote = removeVoteMutation.isPending ? null : pendingVote
+  }
+
   // Optimistic displayScore: score = upvotes only
+  let optimisticAddition = 0
+  if (isAnyPending && !removeVoteMutation.isPending && pendingVote === 'UPVOTE') {
+    optimisticAddition = 1
+  }
+
   const displayScore = isAnyPending
     ? serverScore
       - (serverUserVote === 'UPVOTE' ? 1 : 0)  // remove old upvote contribution
-      + (removeVoteMutation.isPending ? 0 : pendingVote === 'UPVOTE' ? 1 : 0)  // add new upvote if any
+      + optimisticAddition  // add new upvote if any
     : serverScore
 
   // Show ALL voters (upvote + downvote) so count matches score awareness
@@ -102,10 +110,24 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
     onError: () => toast.error('Failed to remove'),
   })
 
+  const handleCardClick = () => {
+    navigate(`${ROUTES.ITINERARY(itinerary.id)}?groupId=${groupId}`)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleCardClick()
+    }
+  }
+
   return (
     <div
-      className="grp-panel grp-it-card relative grid grid-cols-[96px_1fr_auto] gap-[18px] items-center rounded-[18px] p-[18px] border border-gray-200 dark:border-white/[0.07] group/card"
-      onClick={() => navigate(`${ROUTES.ITINERARY(itinerary.id)}?groupId=${groupId}`)}
+      className="grp-panel grp-it-card relative grid grid-cols-[96px_1fr_auto] gap-[18px] items-center rounded-[18px] p-[18px] border border-gray-200 dark:border-white/[0.07] group/card cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
     >
       {/* Thumb */}
       <div className={`${thumbCls} w-24 h-24 rounded-2xl flex items-center justify-center text-4xl shrink-0 border border-gray-200 dark:border-white/[0.07]`}>
