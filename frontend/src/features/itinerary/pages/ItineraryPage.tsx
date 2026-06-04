@@ -28,14 +28,14 @@ const TABS: { id: Tab; label: string }[] = [
 interface ActivityItem {
   id: string
   sortOrder: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface DayItem {
   id: string
   dayNumber: number
   activities?: ActivityItem[]
-  [key: string]: any
+  [key: string]: unknown
 }
 
 function updateActivitiesOrder(days: DayItem[], dayId: string, activityIds: string[]): DayItem[] {
