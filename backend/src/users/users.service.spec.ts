@@ -362,7 +362,9 @@ describe('UsersService', () => {
         data: { avatarUrl: 'https://cdn.example.com/avatar.png' },
         select: expect.objectContaining({ id: true, email: true }),
       });
-      expect(result).toMatchObject({ avatarUrl: 'https://cdn.example.com/avatar.png' });
+      expect(result).toMatchObject({
+        avatarUrl: 'https://cdn.example.com/avatar.png',
+      });
     });
 
     it('throws NotFoundException when user does not exist', async () => {
@@ -374,4 +376,3 @@ describe('UsersService', () => {
     });
   });
 });
-

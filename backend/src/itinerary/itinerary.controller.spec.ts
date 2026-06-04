@@ -444,7 +444,9 @@ describe('ItineraryController', () => {
   describe('reorderActivities', () => {
     it('delegates to itineraryService.reorderActivities', async () => {
       const dto = { activityOrder: [{ activityId: 'act-1', newPosition: 0 }] };
-      mockItineraryService.reorderActivities.mockResolvedValue({ success: true });
+      mockItineraryService.reorderActivities.mockResolvedValue({
+        success: true,
+      });
 
       const result = await controller.reorderActivities(
         'itin-1',
@@ -470,7 +472,10 @@ describe('ItineraryController', () => {
   describe('updateActivity', () => {
     it('delegates to itineraryService.updateActivity', async () => {
       const dto = { title: 'Updated title' };
-      mockItineraryService.updateActivity.mockResolvedValue({ id: 'act-1', title: 'Updated title' });
+      mockItineraryService.updateActivity.mockResolvedValue({
+        id: 'act-1',
+        title: 'Updated title',
+      });
 
       const result = await controller.updateActivity(
         'itin-1',
@@ -496,7 +501,10 @@ describe('ItineraryController', () => {
   describe('addActivity', () => {
     it('delegates to itineraryService.addActivity', async () => {
       const dto = { title: 'New Activity', activityType: 'ATTRACTION' };
-      mockItineraryService.addActivity.mockResolvedValue({ id: 'act-new', title: 'New Activity' });
+      mockItineraryService.addActivity.mockResolvedValue({
+        id: 'act-new',
+        title: 'New Activity',
+      });
 
       const result = await controller.addActivity(
         'itin-1',
@@ -521,7 +529,9 @@ describe('ItineraryController', () => {
 
   describe('deleteActivity', () => {
     it('delegates to itineraryService.deleteActivity', async () => {
-      mockItineraryService.deleteActivity.mockResolvedValue({ message: 'Activity deleted' });
+      mockItineraryService.deleteActivity.mockResolvedValue({
+        message: 'Activity deleted',
+      });
 
       const result = await controller.deleteActivity(
         'itin-1',
@@ -546,7 +556,9 @@ describe('ItineraryController', () => {
     it('unsubscribes and ends response when connection is closed mid-stream', async () => {
       const { Subject } = jest.requireActual<typeof import('rxjs')>('rxjs');
       const subject = new Subject();
-      mockItineraryService.generateStream.mockReturnValue(subject.asObservable());
+      mockItineraryService.generateStream.mockReturnValue(
+        subject.asObservable(),
+      );
 
       const closeListeners: (() => void)[] = [];
       const mockReq = {
@@ -592,4 +604,3 @@ describe('ItineraryController', () => {
     });
   });
 });
-

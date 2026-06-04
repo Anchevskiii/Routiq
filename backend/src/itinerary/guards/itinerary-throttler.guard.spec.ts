@@ -6,7 +6,10 @@ import { ItineraryThrottlerGuard } from './itinerary-throttler.guard';
 
 jest.mock('@nestjs/throttler', () => ({
   ThrottlerGuard: class ThrottlerGuardMock {
-    constructor(..._args: unknown[]) {}
+    // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+    constructor(...args: unknown[]) {
+      void args;
+    }
   },
 }));
 
@@ -44,7 +47,9 @@ describe('ItineraryThrottlerGuard', () => {
       ip: '127.0.0.1',
     };
 
-    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(req);
+    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(
+      req,
+    );
     expect(tracker).toBe('user:user-abc');
   });
 
@@ -55,7 +60,9 @@ describe('ItineraryThrottlerGuard', () => {
       ip: '127.0.0.1',
     };
 
-    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(req);
+    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(
+      req,
+    );
     expect(tracker).toBe('ip:203.0.113.5');
   });
 
@@ -66,7 +73,9 @@ describe('ItineraryThrottlerGuard', () => {
       ip: '10.0.0.1',
     };
 
-    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(req);
+    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(
+      req,
+    );
     expect(tracker).toBe('ip:10.0.0.1');
   });
 
@@ -77,7 +86,9 @@ describe('ItineraryThrottlerGuard', () => {
       ip: undefined,
     };
 
-    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(req);
+    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(
+      req,
+    );
     expect(tracker).toBe('ip:unknown');
   });
 
@@ -88,7 +99,9 @@ describe('ItineraryThrottlerGuard', () => {
       ip: '192.168.1.1',
     };
 
-    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(req);
+    const tracker = await (guard as unknown as GuardWithGetTracker).getTracker(
+      req,
+    );
     // Empty sub doesn't satisfy userId.length > 0, so falls through to ip
     expect(tracker).toBe('ip:192.168.1.1');
   });

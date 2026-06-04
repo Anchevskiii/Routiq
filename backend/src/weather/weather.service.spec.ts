@@ -351,11 +351,10 @@ describe('WeatherService', () => {
       expect(result.location).toBe('Paris');
       expect(result.forecast).toHaveLength(1);
       // The Google Weather endpoint should NOT have been called
-      const weatherCallCount = mockedAxios.get.mock.calls.filter(
-        (args) => (args[0] as string).includes('weather.googleapis.com/v1/weather'),
+      const weatherCallCount = mockedAxios.get.mock.calls.filter((args) =>
+        (args[0] as string).includes('weather.googleapis.com/v1/weather'),
       ).length;
       expect(weatherCallCount).toBe(0);
     });
   });
 });
-
