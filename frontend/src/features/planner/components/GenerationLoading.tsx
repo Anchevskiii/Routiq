@@ -5,18 +5,20 @@ import type { FormattedPlace } from '@/types/attractions.types'
 import type { StreamingDay } from '@/types/itinerary.types'
 
 interface Props {
-  progress: string
-  attractions: FormattedPlace[]
-  generatedDays: StreamingDay[]
-  elapsedTime: number
-  destination?: string
+  readonly progress: string
+  readonly attractions: readonly FormattedPlace[]
+  readonly generatedDays: readonly StreamingDay[]
+  readonly elapsedTime: number
+  readonly destination?: string
+  readonly totalDays?: number
+  readonly isComplete?: boolean
 }
 
 // ─── Fun facts ────────────────────────────────────────────────────────────────
 
 const FACT_DUR = 3000
 
-const FACTS = [
+const ALL_FACTS = [
   { emoji: '🗺️', cat: 'GEOGRAPHY',   text: 'France is the most visited country with 89 million tourists per year — more than its own population.' },
   { emoji: '✈️', cat: 'TRAVEL',      text: 'The longest commercial flight (New York → Singapore) covers 18,000 km and takes over 18 hours.' },
   { emoji: '🗼', cat: 'FUN FACT',    text: 'The Eiffel Tower can be 15 cm taller in summer — heat causes the iron to expand.' },
@@ -24,22 +26,68 @@ const FACTS = [
   { emoji: '🏔️', cat: 'EXTREMES',   text: 'The world\'s highest airport in Daocheng, China sits at 4,411 m — passengers sometimes need oxygen.' },
   { emoji: '🌊', cat: 'OCEANS',      text: 'More than 80% of Earth\'s ocean floor has never been explored by humans.' },
   { emoji: '🏖️', cat: 'AUSTRALIA',  text: 'Australia has so many beaches you could visit a new one every day for 27 years.' },
+  { emoji: '🌍', cat: 'GEOGRAPHY',   text: 'There are 195 countries in the world, but only about 100 have been visited by the average traveller in their lifetime.' },
+  { emoji: '🚂', cat: 'TRANSPORT',   text: 'Japan\'s bullet trains have an average delay of just 18 seconds — and that includes natural disasters.' },
+  { emoji: '🏙️', cat: 'CITIES',     text: 'Tokyo is the world\'s most populous metropolitan area with over 37 million people.' },
+  { emoji: '🌐', cat: 'LANGUAGES',   text: 'Papua New Guinea has 840+ languages — more than any other country on Earth.' },
+  { emoji: '🛂', cat: 'PASSPORTS',   text: 'Singapore has the world\'s most powerful passport, granting visa-free access to 193 destinations.' },
+  { emoji: '🍜', cat: 'FOOD',        text: 'Italy has over 350 distinct pasta shapes, each designed to pair with specific sauces.' },
+  { emoji: '🏛️', cat: 'HISTORY',    text: 'Rome has more ancient obelisks than Egypt — 13 vs. 9. Romans looted most of them.' },
+  { emoji: '💶', cat: 'MONEY',       text: 'The Euro is used by 20 countries, making it one of the most widely used currencies in the world.' },
+  { emoji: '🦁', cat: 'WILDLIFE',    text: 'Kenya\'s Maasai Mara hosts the Great Migration — 1.5 million wildebeest crossing in one spectacle.' },
+  { emoji: '🌋', cat: 'GEOLOGY',     text: 'Indonesia has more active volcanoes than any other country — over 130.' },
+  { emoji: '🏊', cat: 'FUN FACT',    text: 'The Dead Sea is so salty you literally can\'t sink — the salt concentration is 10x that of the ocean.' },
+  { emoji: '🗽', cat: 'LANDMARKS',   text: 'The Statue of Liberty was originally intended for Egypt before France proposed gifting it to the USA.' },
+  { emoji: '🌅', cat: 'NATURE',      text: 'Norway\'s midnight sun means the sun doesn\'t set for 76 consecutive days in summer above the Arctic Circle.' },
+  { emoji: '🚁', cat: 'TRANSPORT',   text: 'São Paulo has more private helicopters per capita than any other city — traffic is so bad, the rich fly.' },
+  { emoji: '🏯', cat: 'HISTORY',     text: 'Japan has more castles than any other country — over 100 remain intact after centuries.' },
+  { emoji: '🍷', cat: 'FOOD',        text: 'France produces over 8 billion bottles of wine per year — about 100 bottles for every French person.' },
+  { emoji: '🧊', cat: 'EXTREMES',    text: 'Greenland is 80% covered in ice, yet it\'s classified as a country, not a continent.' },
+  { emoji: '🗺️', cat: 'FUN FACT',    text: 'Alaska is both the westernmost and easternmost state in the USA — it crosses the 180th meridian.' },
+  { emoji: '🐧', cat: 'WILDLIFE',    text: 'Antarctica has no permanent human residents but hosts around 5 million penguins.' },
+  { emoji: '🌉', cat: 'ENGINEERING', text: 'The Golden Gate Bridge was painted 11 times in its first 27 years — the fog and salt air constantly corrode it.' },
+  { emoji: '🎭', cat: 'CULTURE',     text: 'Venice has no roads — it has 150 canals and 400 bridges connecting its 118 islands.' },
 ]
+
+// Cryptographically secure shuffle to avoid Math.random security hotspots
+function secureShuffle<T>(array: readonly T[]): T[] {
+  const result = [...array]
+  if (typeof window === 'undefined' && typeof globalThis === 'undefined') {
+    return result
+  }
+  const cryptoObj = (typeof window !== 'undefined' ? window.crypto : globalThis.crypto)
+  if (!cryptoObj || !cryptoObj.getRandomValues) {
+    // Fallback if crypto is not supported
+    return result
+  }
+  const randomValues = new Uint32Array(result.length)
+  cryptoObj.getRandomValues(randomValues)
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = randomValues[i] % (i + 1)
+    const temp = result[i]
+    result[i] = result[j]
+    result[j] = temp
+  }
+  return result
+}
+
+// Shuffle once per session
+const FACTS = secureShuffle(ALL_FACTS)
 
 // ─── Stage labels ─────────────────────────────────────────────────────────────
 
 const STAGES = [
   { at: 0,  label: 'Analyzing your preferences…' },
-  { at: 20, label: 'Finding attractions and landmarks…' },
-  { at: 45, label: 'Building your daily schedule…' },
-  { at: 70, label: 'Adding restaurants and hidden gems…' },
-  { at: 88, label: 'Optimizing routes and distances…' },
-  { at: 97, label: 'Finalizing your plan…' },
+  { at: 10, label: 'Finding attractions and landmarks…' },
+  { at: 30, label: 'Building your daily schedule…' },
+  { at: 60, label: 'Adding restaurants and hidden gems…' },
+  { at: 80, label: 'Optimizing routes and distances…' },
+  { at: 95, label: 'Finalizing your itinerary…' },
 ]
 
 // ─── Route header ─────────────────────────────────────────────────────────────
 
-function RouteHeader({ progress, destination }: { progress: number; destination: string }) {
+function RouteHeader({ progress, destination }: Readonly<{ progress: number; destination: string }>) {
   const pathRef  = useRef<SVGPathElement>(null)
   const planeRef = useRef<SVGGElement>(null)
 
@@ -56,10 +104,10 @@ function RouteHeader({ progress, destination }: { progress: number; destination:
   }, [progress])
 
   const pins = [
-    { x: 70,  y: 96, t: 0  },
-    { x: 200, y: 64, t: 30 },
-    { x: 330, y: 104, t: 60 },
-    { x: 470, y: 70, t: 90 },
+    { id: 'pin-0', x: 70,  y: 96, t: 0  },
+    { id: 'pin-1', x: 200, y: 64, t: 30 },
+    { id: 'pin-2', x: 330, y: 104, t: 60 },
+    { id: 'pin-3', x: 470, y: 70, t: 90 },
   ]
 
   return (
@@ -96,7 +144,7 @@ function RouteHeader({ progress, destination }: { progress: number; destination:
             <circle cx="12" cy="12" r="3"/>
           </svg>
         </span>
-        AI PLANNER · CRAFTING YOUR TRIP
+        <span>AI PLANNER · CRAFTING YOUR TRIP</span>
       </span>
 
       {/* Flight path SVG */}
@@ -113,8 +161,8 @@ function RouteHeader({ progress, destination }: { progress: number; destination:
               pathLength={100} strokeDasharray="100"
               style={{ strokeDashoffset: 100 - progress, transition: 'stroke-dashoffset .5s cubic-bezier(.22,.61,.36,1)' }}/>
         {/* Pins */}
-        {pins.map((p, i) => (
-          <g key={i} style={{ opacity: progress >= p.t ? 1 : 0.25, transition: 'opacity .4s' }}>
+        {pins.map((p) => (
+          <g key={p.id} style={{ opacity: progress >= p.t ? 1 : 0.25, transition: 'opacity .4s' }}>
             <circle cx={p.x} cy={p.y}
                     r={progress >= p.t ? 6 : 4}
                     fill={progress >= p.t ? '#fbbf24' : 'rgba(255,255,255,.4)'}
@@ -149,7 +197,7 @@ function RouteHeader({ progress, destination }: { progress: number; destination:
 
 // ─── Fun facts card ───────────────────────────────────────────────────────────
 
-function FunFacts({ isDark }: { isDark: boolean }) {
+function FunFacts({ isDark }: Readonly<{ isDark: boolean }>) {
   const [idx, setIdx] = useState(0)
 
   useEffect(() => {
@@ -163,7 +211,7 @@ function FunFacts({ isDark }: { isDark: boolean }) {
   const wrapBg     = isDark
     ? 'linear-gradient(135deg, rgba(59,130,246,.07) 0%, rgba(96,165,250,.04) 100%)'
     : 'linear-gradient(135deg, #f0f7ff 0%, #f8faff 100%)'
-  const wrapBorder = isDark ? 'rgba(59,130,246,.18)' : 'rgba(59,130,246,.18)'
+  const wrapBorder = 'rgba(59,130,246,.18)'
   const catColor   = isDark ? '#60a5fa'               : '#2563eb'
   const catBg      = isDark ? 'rgba(59,130,246,.12)'  : 'rgba(59,130,246,.1)'
   const textColor  = isDark ? '#f0eeff'               : '#0f172a'
@@ -190,7 +238,7 @@ function FunFacts({ isDark }: { isDark: boolean }) {
         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
         fontSize: 11, fontWeight: 800, letterSpacing: '1.2px', color: eyebrowC,
       }}>
-        DID YOU KNOW?
+        <span>DID YOU KNOW?</span>
         <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${eyebrowC}55, transparent)` }}/>
       </div>
 
@@ -221,12 +269,12 @@ function FunFacts({ isDark }: { isDark: boolean }) {
 
       {/* Progress dots */}
       <div style={{ display: 'flex', gap: 5, marginTop: 16 }}>
-        {FACTS.map((_, i) => (
-          <div key={i} style={{
+        {FACTS.map((fact) => (
+          <div key={fact.text} style={{
             height: 4, borderRadius: 3, flex: 1, overflow: 'hidden', position: 'relative',
-            background: i < pos ? dotDone : dotEmpty,
+            background: FACTS.indexOf(fact) < pos ? dotDone : dotEmpty,
           }}>
-            {i === pos && (
+            {FACTS.indexOf(fact) === pos && (
               <div style={{
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
@@ -241,29 +289,129 @@ function FunFacts({ isDark }: { isDark: boolean }) {
   )
 }
 
+// ─── Sub-component to reduce Cognitive Complexity ─────────────────────────────
+
+const ProgressSection: React.FC<Readonly<{
+  displayProgress: number
+  numericProgress: number
+  isComplete: boolean
+  stageLabel: string
+  textMain: string
+  textDim: string
+  trackBg: string
+}>> = ({
+  displayProgress,
+  numericProgress,
+  isComplete,
+  stageLabel,
+  textMain,
+  textDim,
+  trackBg,
+}) => {
+  return (
+    <>
+      {/* Progress bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 7 }}>
+        <div style={{ flex: 1, height: 8, background: trackBg, borderRadius: 5, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', borderRadius: 5, width: `${displayProgress}%`,
+            background: isComplete
+              ? 'linear-gradient(90deg, #10b981, #34d399)'
+              : 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
+            backgroundSize: '200% 100%',
+            boxShadow: isComplete ? '0 0 10px rgba(16,185,129,.5)' : '0 0 10px rgba(59,130,246,.4)',
+            transition: 'width .3s ease-out, background .5s ease, box-shadow .5s ease',
+            animation: isComplete ? 'none' : 'shimmerGL 2s linear infinite',
+          }}/>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 800, minWidth: 42, textAlign: 'right', color: isComplete ? '#10b981' : textMain, transition: 'color .4s' }}>
+          {numericProgress}%
+        </span>
+      </div>
+
+      {/* Stage */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: isComplete ? '#10b981' : textDim, marginBottom: 20, transition: 'color .4s' }}>
+        {isComplete ? (
+          <span style={{ fontSize: 14 }}>✓</span>
+        ) : (
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0,
+            boxShadow: '0 0 0 3px rgba(59,130,246,.16)',
+            animation: 'pulseDotGL 1.6s ease-in-out infinite',
+          }}/>
+        )}
+        <span style={{ fontWeight: isComplete ? 700 : 400 }}>{stageLabel}</span>
+      </div>
+    </>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export const GenerationLoading: React.FC<Props> = ({
+export const GenerationLoading: React.FC<Readonly<Props>> = ({
   progress: progressMsg,
   attractions: _attractions,
-  generatedDays: _generatedDays,
+  generatedDays,
   elapsedTime,
   destination,
+  totalDays = 0,
+  isComplete = false,
 }) => {
   const { isDark } = useTheme()
 
-  const numericProgress = useMemo(() => {
-    const t = Math.min(1, elapsedTime / 55)
-    return Math.round((1 - Math.pow(1 - t, 2.2)) * 99)
-  }, [elapsedTime])
+  // Target progress based on actual days received
+  const targetProgress = useMemo(() => {
+    if (isComplete) return 100
+    if (totalDays === 0) return Math.min(10, elapsedTime * 1.5)
+    // 0-10%: initial base (time-based, first ~7s)
+    const base = Math.min(10, elapsedTime * 1.4)
+    // 10-95%: each received day contributes equally
+    const dayPct = (generatedDays.length / totalDays) * 85
+    return Math.min(95, base + dayPct)
+  }, [isComplete, totalDays, generatedDays.length, elapsedTime])
+
+  // Smoothly chase target — creeps toward it so bar never jumps backwards
+  const [displayProgress, setDisplayProgress] = useState(0)
+  const displayRef = useRef(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const current = displayRef.current
+      const target  = targetProgress
+      if (current >= target) return
+      // Fast when there's a big gap (new day arrived), slow when creeping
+      const gap  = target - current
+      let step = 0.08
+      if (gap > 8) {
+        step = gap * 0.12
+      } else if (gap > 2) {
+        step = 0.4
+      }
+      const next = Math.min(target, current + step)
+      displayRef.current = next
+      setDisplayProgress(Math.round(next * 10) / 10)
+    }, 80)
+    return () => clearInterval(id)
+  }, [targetProgress])
+
+  const numericProgress = Math.round(displayProgress)
 
   const stage = useMemo(() => {
     let s = STAGES[0]
-    for (const st of STAGES) if (numericProgress >= st.at) s = st
+    for (const st of STAGES) {
+      if (numericProgress >= st.at) {
+        s = st
+      }
+    }
     return s
   }, [numericProgress])
 
-  const stageLabel = progressMsg || stage.label
+  let stageLabel = progressMsg || stage.label
+  if (isComplete) {
+    stageLabel = 'Your itinerary is complete!'
+  } else if (numericProgress >= 95) {
+    stageLabel = 'Finalizing your itinerary…'
+  }
 
   // Color tokens
   const bg         = isDark ? '#08091a'                     : '#f0f4ff'
@@ -328,32 +476,16 @@ export const GenerationLoading: React.FC<Props> = ({
               Routiq is putting together the perfect route — just a moment.
             </p>
 
-            {/* Progress bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 7 }}>
-              <div style={{ flex: 1, height: 8, background: trackBg, borderRadius: 5, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', borderRadius: 5, width: `${numericProgress}%`,
-                  background: 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
-                  backgroundSize: '200% 100%',
-                  boxShadow: '0 0 10px rgba(59,130,246,.4)',
-                  transition: 'width .5s cubic-bezier(.22,.61,.36,1)',
-                  animation: 'shimmerGL 2s linear infinite',
-                }}/>
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 800, minWidth: 42, textAlign: 'right', color: textMain }}>
-                {numericProgress}%
-              </span>
-            </div>
-
-            {/* Stage */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: textDim, marginBottom: 20 }}>
-              <span style={{
-                width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0,
-                boxShadow: '0 0 0 3px rgba(59,130,246,.16)',
-                animation: 'pulseDotGL 1.6s ease-in-out infinite',
-              }}/>
-              {stageLabel}
-            </div>
+            {/* Progress Bar & Stage Section */}
+            <ProgressSection
+              displayProgress={displayProgress}
+              numericProgress={numericProgress}
+              isComplete={isComplete}
+              stageLabel={stageLabel}
+              textMain={textMain}
+              textDim={textDim}
+              trackBg={trackBg}
+            />
 
             {/* Fun facts */}
             <FunFacts isDark={isDark} />
