@@ -8,8 +8,8 @@ vi.mock('@/components/providers/GoogleMapsProvider', () => ({
 }))
 
 describe('usePlaceAutocomplete', () => {
-  let addListenerMock: any
-  let getPlaceMock: any
+  let addListenerMock: ReturnType<typeof vi.fn>
+  let getPlaceMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     addListenerMock = vi.fn()
