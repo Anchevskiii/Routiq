@@ -133,7 +133,9 @@ export const PIN_SVG = `<svg style="width:100%;height:100%" viewBox="0 0 32 44" 
 export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const array = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(array)
+    const j = Math.floor((array[0] / 0xffffffff) * (i + 1));
     [a[i], a[j]] = [a[j], a[i]]
   }
   return a

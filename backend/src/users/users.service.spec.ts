@@ -156,9 +156,35 @@ describe('UsersService', () => {
         activityStatus: true,
       });
     });
+
+    it('uses defaults when metadata is null', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        metadata: null,
+      });
+
+      const result = await service.getSettings('user-1');
+
+      expect(result).toEqual({
+        groupInvitations: true,
+        comments: true,
+        votes: true,
+        tripReminders: true,
+        publicProfile: true,
+        sharedItineraries: true,
+        activityStatus: true,
+      });
+    });
   });
 
   describe('updateSettings', () => {
+    it('throws NotFoundException when user is missing during update', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateSettings('missing', {} as UpdateSettingsDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
     it('merges defaults and updates metadata', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         metadata: { comments: true, votes: true },
@@ -182,6 +208,21 @@ describe('UsersService', () => {
         activityStatus: true,
       });
     });
+
+    it('uses defaults when metadata is null during update', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        metadata: null,
+      });
+
+      await service.updateSettings('user-1', {
+        comments: false,
+      } as UpdateSettingsDto);
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { metadata: { comments: false } },
+      });
+    });
   });
 
   describe('uploadAvatarFile', () => {
@@ -201,6 +242,21 @@ describe('UsersService', () => {
       await expect(
         service.uploadAvatarFile('user-1', Buffer.from('x'), 'image/png'),
       ).rejects.toThrow('Failed to upload avatar');
+    });
+
+    it('defaults extension to jpg when mimetype is simple or missing subtype', async () => {
+      mockStorageBucket.upload.mockResolvedValue({ error: null });
+      mockStorageBucket.getPublicUrl.mockReturnValue({
+        data: { publicUrl: 'https://cdn.example.com/avatar.jpg' },
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'user-1' });
+
+      await service.uploadAvatarFile('user-1', Buffer.from('x'), 'image');
+      expect(mockStorageBucket.upload).toHaveBeenCalledWith(
+        expect.stringContaining('avatar.jpg'),
+        expect.any(Buffer),
+        expect.any(Object),
+      );
     });
 
     it('uploads and stores the public avatar URL', async () => {

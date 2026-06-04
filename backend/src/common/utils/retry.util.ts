@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
 
 export interface RetryOptions {
   maxRetries?: number;
@@ -36,7 +37,7 @@ export async function withRetry<T>(
         backoffMs * Math.pow(2, attempt - 1),
         maxBackoffMs,
       );
-      const jitter = Math.random() * 200;
+      const jitter = randomInt(0, 200);
       const finalDelay = delay + jitter;
 
       logger.warn(
