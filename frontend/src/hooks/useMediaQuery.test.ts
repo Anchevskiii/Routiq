@@ -16,10 +16,10 @@ describe('useMediaQuery', () => {
       onchange: null,
       addListener: vi.fn(), // Deprecated but often mock-configured
       removeListener: vi.fn(),
-      addEventListener: vi.fn().mockImplementation((event: string, callback: () => void) => {
+      addEventListener: vi.fn().mockImplementation((_event: string, callback: () => void) => {
         listeners.add(callback)
       }),
-      removeEventListener: vi.fn().mockImplementation((event: string, callback: () => void) => {
+      removeEventListener: vi.fn().mockImplementation((_event: string, callback: () => void) => {
         listeners.delete(callback)
       }),
       dispatchEvent: vi.fn(),

@@ -61,7 +61,7 @@ describe('usePlaceAutocomplete', () => {
     })
 
     // Trigger effect
-    const { rerender } = renderHook(() => usePlaceAutocomplete())
+    renderHook(() => usePlaceAutocomplete())
     
     expect(result.current.location).toBe('')
     expect(result.current.placeData).toEqual({})
