@@ -41,6 +41,12 @@ jobs:
       - name: Fix coverage paths for monorepo
         run: sed -i 's|SF:src|SF:backend/src|g' backend/coverage/lcov.info
 
+      - name: Run frontend unit tests with coverage
+        run: cd frontend && npx vitest run --coverage
+
+      - name: Fix frontend coverage paths for monorepo
+        run: sed -i 's|SF:src|SF:frontend/src|g' frontend/coverage/lcov.info
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v4
         env:
