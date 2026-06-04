@@ -43,15 +43,18 @@ export const PlannerPage: React.FC = () => {
   const [generatedDays, setGeneratedDays]   = useState<StreamingDay[]>([])
   const [elapsedTime, setElapsedTime]       = useState(0)
   const [destination, setDestination]       = useState('')
+  const [totalDays, setTotalDays]           = useState(0)
+  const [isComplete, setIsComplete]         = useState(false)
+  const [showLoading, setShowLoading]       = useState(false)
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
-    if (isLoading) {
-      setElapsedTime(0)
+    if (isLoading || showLoading) {
+      if (isLoading) setElapsedTime(0)
       interval = setInterval(() => setElapsedTime(t => t + 1), 1000)
     }
     return () => clearInterval(interval)
-  }, [isLoading])
+  }, [isLoading, showLoading])
 
   const handleGenerate = async (values: PlannerFormValues) => {
     const days = differenceInDays(parseISO(values.endDate), parseISO(values.startDate)) + 1
@@ -59,6 +62,7 @@ export const PlannerPage: React.FC = () => {
     if (days > 14) { toast.error('Trip duration cannot exceed 14 days'); return }
 
     setProgress(''); setAttractions([]); setGeneratedDays([]); setDestination(values.destination)
+    setTotalDays(days); setIsComplete(false); setShowLoading(true)
 
     stream(ITINERARY_ENDPOINTS.GENERATE, { ...values, days }, {
       onProgress: (data) => {
@@ -67,6 +71,9 @@ export const PlannerPage: React.FC = () => {
         if (data.type === 'day')         setGeneratedDays(prev => [...prev, data.data])
       },
       onSuccess: async (data) => {
+        setIsComplete(true)
+        await new Promise(r => setTimeout(r, 2800))
+        setShowLoading(false)
         if (groupId) {
           await groupsApi.addItineraryToGroup(groupId, data.itineraryId).catch(() => {})
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId) })
@@ -79,7 +86,7 @@ export const PlannerPage: React.FC = () => {
       },
       onError: (err) => {
         toast.error(`Generation failed: ${err}`)
-        setProgress('')
+        setProgress(''); setIsComplete(false); setShowLoading(false)
       },
     })
   }
@@ -121,13 +128,15 @@ export const PlannerPage: React.FC = () => {
     </div>
 
     {/* Loading overlay — outside all transforms for correct fixed positioning */}
-    {isLoading && (
+    {(isLoading || showLoading) && (
       <GenerationLoading
         progress={progress}
         attractions={attractions}
         generatedDays={generatedDays}
         elapsedTime={elapsedTime}
         destination={destination}
+        totalDays={totalDays}
+        isComplete={isComplete}
       />
     )}
     </>

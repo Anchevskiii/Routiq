@@ -10,13 +10,15 @@ interface Props {
   generatedDays: StreamingDay[]
   elapsedTime: number
   destination?: string
+  totalDays?: number
+  isComplete?: boolean
 }
 
 // ─── Fun facts ────────────────────────────────────────────────────────────────
 
 const FACT_DUR = 3000
 
-const FACTS = [
+const ALL_FACTS = [
   { emoji: '🗺️', cat: 'GEOGRAPHY',   text: 'France is the most visited country with 89 million tourists per year — more than its own population.' },
   { emoji: '✈️', cat: 'TRAVEL',      text: 'The longest commercial flight (New York → Singapore) covers 18,000 km and takes over 18 hours.' },
   { emoji: '🗼', cat: 'FUN FACT',    text: 'The Eiffel Tower can be 15 cm taller in summer — heat causes the iron to expand.' },
@@ -24,17 +26,41 @@ const FACTS = [
   { emoji: '🏔️', cat: 'EXTREMES',   text: 'The world\'s highest airport in Daocheng, China sits at 4,411 m — passengers sometimes need oxygen.' },
   { emoji: '🌊', cat: 'OCEANS',      text: 'More than 80% of Earth\'s ocean floor has never been explored by humans.' },
   { emoji: '🏖️', cat: 'AUSTRALIA',  text: 'Australia has so many beaches you could visit a new one every day for 27 years.' },
+  { emoji: '🌍', cat: 'GEOGRAPHY',   text: 'There are 195 countries in the world, but only about 100 have been visited by the average traveller in their lifetime.' },
+  { emoji: '🚂', cat: 'TRANSPORT',   text: 'Japan\'s bullet trains have an average delay of just 18 seconds — and that includes natural disasters.' },
+  { emoji: '🏙️', cat: 'CITIES',     text: 'Tokyo is the world\'s most populous metropolitan area with over 37 million people.' },
+  { emoji: '🌐', cat: 'LANGUAGES',   text: 'Papua New Guinea has 840+ languages — more than any other country on Earth.' },
+  { emoji: '🛂', cat: 'PASSPORTS',   text: 'Singapore has the world\'s most powerful passport, granting visa-free access to 193 destinations.' },
+  { emoji: '🍜', cat: 'FOOD',        text: 'Italy has over 350 distinct pasta shapes, each designed to pair with specific sauces.' },
+  { emoji: '🏛️', cat: 'HISTORY',    text: 'Rome has more ancient obelisks than Egypt — 13 vs. 9. Romans looted most of them.' },
+  { emoji: '💶', cat: 'MONEY',       text: 'The Euro is used by 20 countries, making it one of the most widely used currencies in the world.' },
+  { emoji: '🦁', cat: 'WILDLIFE',    text: 'Kenya\'s Maasai Mara hosts the Great Migration — 1.5 million wildebeest crossing in one spectacle.' },
+  { emoji: '🌋', cat: 'GEOLOGY',     text: 'Indonesia has more active volcanoes than any other country — over 130.' },
+  { emoji: '🏊', cat: 'FUN FACT',    text: 'The Dead Sea is so salty you literally can\'t sink — the salt concentration is 10x that of the ocean.' },
+  { emoji: '🗽', cat: 'LANDMARKS',   text: 'The Statue of Liberty was originally intended for Egypt before France proposed gifting it to the USA.' },
+  { emoji: '🌅', cat: 'NATURE',      text: 'Norway\'s midnight sun means the sun doesn\'t set for 76 consecutive days in summer above the Arctic Circle.' },
+  { emoji: '🚁', cat: 'TRANSPORT',   text: 'São Paulo has more private helicopters per capita than any other city — traffic is so bad, the rich fly.' },
+  { emoji: '🏯', cat: 'HISTORY',     text: 'Japan has more castles than any other country — over 100 remain intact after centuries.' },
+  { emoji: '🍷', cat: 'FOOD',        text: 'France produces over 8 billion bottles of wine per year — about 100 bottles for every French person.' },
+  { emoji: '🧊', cat: 'EXTREMES',    text: 'Greenland is 80% covered in ice, yet it\'s classified as a country, not a continent.' },
+  { emoji: '🗺️', cat: 'FUN FACT',    text: 'Alaska is both the westernmost and easternmost state in the USA — it crosses the 180th meridian.' },
+  { emoji: '🐧', cat: 'WILDLIFE',    text: 'Antarctica has no permanent human residents but hosts around 5 million penguins.' },
+  { emoji: '🌉', cat: 'ENGINEERING', text: 'The Golden Gate Bridge was painted 11 times in its first 27 years — the fog and salt air constantly corrode it.' },
+  { emoji: '🎭', cat: 'CULTURE',     text: 'Venice has no roads — it has 150 canals and 400 bridges connecting its 118 islands.' },
 ]
+
+// Shuffle once per session so facts appear in random order
+const FACTS = [...ALL_FACTS].sort(() => Math.random() - 0.5)
 
 // ─── Stage labels ─────────────────────────────────────────────────────────────
 
 const STAGES = [
   { at: 0,  label: 'Analyzing your preferences…' },
-  { at: 20, label: 'Finding attractions and landmarks…' },
-  { at: 45, label: 'Building your daily schedule…' },
-  { at: 70, label: 'Adding restaurants and hidden gems…' },
-  { at: 88, label: 'Optimizing routes and distances…' },
-  { at: 97, label: 'Finalizing your plan…' },
+  { at: 10, label: 'Finding attractions and landmarks…' },
+  { at: 30, label: 'Building your daily schedule…' },
+  { at: 60, label: 'Adding restaurants and hidden gems…' },
+  { at: 80, label: 'Optimizing routes and distances…' },
+  { at: 95, label: 'Finalizing your itinerary…' },
 ]
 
 // ─── Route header ─────────────────────────────────────────────────────────────
@@ -246,16 +272,45 @@ function FunFacts({ isDark }: { isDark: boolean }) {
 export const GenerationLoading: React.FC<Props> = ({
   progress: progressMsg,
   attractions: _attractions,
-  generatedDays: _generatedDays,
+  generatedDays,
   elapsedTime,
   destination,
+  totalDays = 0,
+  isComplete = false,
 }) => {
   const { isDark } = useTheme()
 
-  const numericProgress = useMemo(() => {
-    const t = Math.min(1, elapsedTime / 55)
-    return Math.round((1 - Math.pow(1 - t, 2.2)) * 99)
-  }, [elapsedTime])
+  // Target progress based on actual days received
+  const targetProgress = useMemo(() => {
+    if (isComplete) return 100
+    if (totalDays === 0) return Math.min(10, elapsedTime * 1.5)
+    // 0-10%: initial base (time-based, first ~7s)
+    const base = Math.min(10, elapsedTime * 1.4)
+    // 10-95%: each received day contributes equally
+    const dayPct = (generatedDays.length / totalDays) * 85
+    return Math.min(95, base + dayPct)
+  }, [isComplete, totalDays, generatedDays.length, elapsedTime])
+
+  // Smoothly chase target — creeps toward it so bar never jumps backwards
+  const [displayProgress, setDisplayProgress] = useState(0)
+  const displayRef = useRef(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const current = displayRef.current
+      const target  = targetProgress
+      if (current >= target) return
+      // Fast when there's a big gap (new day arrived), slow when creeping
+      const gap  = target - current
+      const step = gap > 8 ? gap * 0.12 : gap > 2 ? 0.4 : 0.08
+      const next = Math.min(target, current + step)
+      displayRef.current = next
+      setDisplayProgress(Math.round(next * 10) / 10)
+    }, 80)
+    return () => clearInterval(id)
+  }, [targetProgress])
+
+  const numericProgress = Math.round(displayProgress)
 
   const stage = useMemo(() => {
     let s = STAGES[0]
@@ -263,7 +318,11 @@ export const GenerationLoading: React.FC<Props> = ({
     return s
   }, [numericProgress])
 
-  const stageLabel = progressMsg || stage.label
+  const stageLabel = isComplete
+    ? 'Your itinerary is complete!'
+    : numericProgress >= 95
+      ? 'Finalizing your itinerary…'
+      : progressMsg || stage.label
 
   // Color tokens
   const bg         = isDark ? '#08091a'                     : '#f0f4ff'
@@ -332,27 +391,33 @@ export const GenerationLoading: React.FC<Props> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 7 }}>
               <div style={{ flex: 1, height: 8, background: trackBg, borderRadius: 5, overflow: 'hidden' }}>
                 <div style={{
-                  height: '100%', borderRadius: 5, width: `${numericProgress}%`,
-                  background: 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
+                  height: '100%', borderRadius: 5, width: `${displayProgress}%`,
+                  background: isComplete
+                    ? 'linear-gradient(90deg, #10b981, #34d399)'
+                    : 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
                   backgroundSize: '200% 100%',
-                  boxShadow: '0 0 10px rgba(59,130,246,.4)',
-                  transition: 'width .5s cubic-bezier(.22,.61,.36,1)',
-                  animation: 'shimmerGL 2s linear infinite',
+                  boxShadow: isComplete ? '0 0 10px rgba(16,185,129,.5)' : '0 0 10px rgba(59,130,246,.4)',
+                  transition: 'width .3s ease-out, background .5s ease, box-shadow .5s ease',
+                  animation: isComplete ? 'none' : 'shimmerGL 2s linear infinite',
                 }}/>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 800, minWidth: 42, textAlign: 'right', color: textMain }}>
+              <span style={{ fontSize: 13, fontWeight: 800, minWidth: 42, textAlign: 'right', color: isComplete ? '#10b981' : textMain, transition: 'color .4s' }}>
                 {numericProgress}%
               </span>
             </div>
 
             {/* Stage */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: textDim, marginBottom: 20 }}>
-              <span style={{
-                width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0,
-                boxShadow: '0 0 0 3px rgba(59,130,246,.16)',
-                animation: 'pulseDotGL 1.6s ease-in-out infinite',
-              }}/>
-              {stageLabel}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: isComplete ? '#10b981' : textDim, marginBottom: 20, transition: 'color .4s' }}>
+              {isComplete ? (
+                <span style={{ fontSize: 14 }}>✓</span>
+              ) : (
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0,
+                  boxShadow: '0 0 0 3px rgba(59,130,246,.16)',
+                  animation: 'pulseDotGL 1.6s ease-in-out infinite',
+                }}/>
+              )}
+              <span style={{ fontWeight: isComplete ? 700 : 400 }}>{stageLabel}</span>
             </div>
 
             {/* Fun facts */}
