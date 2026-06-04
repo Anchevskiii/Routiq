@@ -25,7 +25,7 @@
 | Hosting | Supabase (managed + pgbouncer) |
 | ORM | Prisma |
 | Shema | `backend/prisma/schema.prisma` |
-| Skupaj tabel | 14 |
+| Skupaj tabel | 15 |
 | Primary key tip | UUID (Supabase kompatibilno) |
 | Soft delete | Vse entitete imajo `deletedAt` polje |
 
@@ -204,6 +204,17 @@ erDiagram
         datetime exportedAt
     }
 
+    notifications {
+        uuid id PK
+        uuid userId FK
+        enum type
+        string title
+        string body
+        json data
+        datetime readAt
+        datetime createdAt
+    }
+
     users ||--o{ itineraries : "ustvari"
     users ||--o{ group_members : "je član"
     users ||--o{ comments : "piše"
@@ -211,6 +222,7 @@ erDiagram
     users ||--o{ votes : "glasuje"
     users ||--o{ activity_logs : "sproži"
     users ||--o{ calendar_exports : "izvozi"
+    users ||--o{ notifications : "prejme"
     users ||--o{ groups : "ustvari (createdById)"
 
     itineraries ||--o{ itinerary_days : "vsebuje dneve"
@@ -370,6 +382,21 @@ Revizijska sled akcij v skupini.
 
 Beleži kdaj je kdo izvozil itinerar v kateri format.
 
+### `notifications`
+
+In-app obvestila za uporabnike — glasovanje, komentarji, skupinska povabila.
+
+| Polje | Tip | Opis |
+|---|---|---|
+| `userId` | UUID FK | Prejemnik obvestila |
+| `type` | NotificationType | Tip: GROUP_INVITATION, COMMENT, VOTE, TRIP_REMINDER |
+| `title` | String | Kratko sporočilo (npr. "Jan je glasoval za tvoj itinerar") |
+| `body` | String? | Dodatni kontekst |
+| `data` | Json? | Metadata: `groupId`, `itineraryId`, `groupItineraryId`... |
+| `readAt` | DateTime? | Null = neprebrano; timestamp = prebrano |
+
+**Indeksi:** `(userId)`, `(userId, readAt)` — za hitro pridobivanje neprebranih obvestil.
+
 ---
 
 ## 4. Enumeracije
@@ -416,6 +443,15 @@ Hierarhija: `OWNER > ADMIN > MODERATOR > MEMBER`
 ### `ExportFormat`
 
 `ICS`, `PDF`
+
+### `NotificationType` — tip obvestila
+
+| Vrednost | Kdaj se sproži |
+|---|---|
+| `GROUP_INVITATION` | Nekdo te povabi v skupino |
+| `COMMENT` | Nekdo odgovori na tvoj komentar |
+| `VOTE` | Nekdo glasuje za tvoj itinerar v skupini |
+| `TRIP_REMINDER` | Opomnik za prihajajoče potovanje (rezervirano) |
 
 ---
 

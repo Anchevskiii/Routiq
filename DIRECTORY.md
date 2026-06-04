@@ -27,7 +27,8 @@ routiq/                                             # Koren monorepa
 │   │   │   ├── itinerary.api.ts                    # generateItinerary(), getItinerary(), listItineraries(), updateItinerary(), deleteItinerary(), shareItinerary()
 │   │   │   ├── attractions.api.ts                  # searchAttractions(), swapAttraction(), addAttraction(), removeAttraction()
 │   │   │   ├── weather.api.ts                      # getWeatherForecast()
-│   │   │   ├── groups.api.ts                       # getGroups(), createGroup(), getGroup(), inviteMember(), removeMember(), vote(), addComment()
+│   │   │   ├── groups.api.ts                       # getGroups(), createGroup(), getGroup(), inviteMember(), removeMember(), vote(), removeVote(), addComment()
+│   │   │   ├── notifications.api.ts                # getNotifications(), getUnreadCount(), markRead(), markAllRead()
 │   │   │   ├── profile.api.ts                      # getProfile(), updateProfile(), uploadAvatar(), changePassword(), deleteAccount()
 │   │   │   └── export.api.ts                       # exportIcs() → download .ics iz backend
 │   │   │
@@ -288,22 +289,27 @@ routiq/                                             # Koren monorepa
 │   │   │
 │   │   ├── groups/                                 # Skupinska potovanja
 │   │   │   ├── groups.module.ts
-│   │   │   ├── groups.controller.ts                # Endpointi: CRUD skupin, invite, members, itinerarji, vote, comments
+│   │   │   ├── groups.controller.ts                # Endpointi: CRUD skupin, invite, members, itinerarji, vote, removeVote, comments
 │   │   │   ├── groups.service.ts                   # Logika: upravljanje skupin, preverjanje vlog (ADMIN vs MEMBER)
 │   │   │   └── dto/
 │   │   │       ├── create-group.dto.ts             # { name, description? }
 │   │   │       ├── invite-member.dto.ts            # { email }
+│   │   │       ├── vote-itinerary.dto.ts           # { voteType: UPVOTE | DOWNVOTE }
 │   │   │       └── add-comment.dto.ts              # { content }
+│   │   │
+│   │   ├── notifications/                          # In-app obvestila
+│   │   │   ├── notifications.module.ts
+│   │   │   ├── notifications.controller.ts         # GET /notifications, unread-count, PATCH read, POST read-all
+│   │   │   └── notifications.service.ts            # createNotification(), getUserNotifications(), markRead()
 │   │   │
 │   │   ├── export/                                 # Izvoz itinerarjev
 │   │   │   ├── export.module.ts
 │   │   │   ├── export.controller.ts                # Endpoint: GET /export/:id/ics
 │   │   │   └── export.service.ts                   # Generiranje .ics datoteke iz Prisma itinerarja (ics npm)
 │   │   │
-│   │   └── spotify/                                # Spotify playlist (Iteracija 4 – opcijsko)
-│   │       ├── spotify.module.ts
-│   │       ├── spotify.controller.ts               # Endpoint: POST /spotify/playlist
-│   │       └── spotify.service.ts                  # Spotify Web API: generatePlaylist() glede na trajanje vožnje
+│   │   └── mail/                                   # Transakcijska e-pošta
+│   │       ├── mail.module.ts
+│   │       └── mail.service.ts                     # sendInvitation() prek Resend SDK
 │   │
 │   ├── test/
 │   │   ├── app.e2e-spec.ts                         # E2E test: auth flow, generiranje itinerarja
@@ -319,6 +325,11 @@ routiq/                                             # Koren monorepa
 │   ├── tsconfig.json
 │   └── tsconfig.build.json
 │
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                                  # CI pipeline: lint, testi, build (main + development)
+│       └── sonarcloud.yml                          # SonarCloud analiza pokritosti kode
+├── sonar-project.properties                        # Konfiguracija SonarCloud projekta
 ├── FRONTEND_ARCHITECTURE.md                        # FE arhitekturni plan, pravila, razdelitev dela
 ├── BACKEND_ARCHITECTURE.md                         # BE arhitekturni plan, pravila, razdelitev dela
 ├── DIRECTORY.md                                    # Ta dokument

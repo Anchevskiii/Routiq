@@ -182,8 +182,9 @@ backend/
 │   ├── attractions/          # Google Places proxy
 │   ├── weather/              # Google Weather API proxy + caching
 │   ├── groups/               # Skupinska potovanja
+│   ├── notifications/        # In-app obvestila (vote, invite, komentar)
 │   ├── export/               # .ics izvoz
-│   └── spotify/              # Spotify playlist (opcijsko, iter. 4)
+│   └── mail/                 # Resend e-pošta (povabila)
 │
 ├── test/                     # E2E testi
 ├── .env                      # Nikoli v git!

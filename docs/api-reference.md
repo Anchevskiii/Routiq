@@ -29,6 +29,7 @@ Vsi endpointi so dosegljivi na `/api/` prefiksu. Vsi odgovori imajo enotni forma
 - [Atrakcije `/attractions`](#atrakcije-attractions)
 - [Vreme `/weather`](#vreme-weather)
 - [Skupinska potovanja `/groups`](#skupinska-potovanja-groups)
+- [Obvestila `/notifications`](#obvestila-notifications)
 - [Izvoz `/export`](#izvoz-export)
 - [Health check `/health`](#health-check-health)
 - [HTTP status kode](#http-status-kode)
@@ -257,7 +258,8 @@ data: {"type":"complete","itineraryId":"uuid"}
 | GET | `/groups/:id/itineraries` | Itinerarji skupin |
 | POST | `/groups/:id/itineraries` | Dodaj itinerar v skupino |
 | GET | `/groups/:gid/itineraries/:giid/votes` | Glasovi za itinerar |
-| POST | `/groups/:gid/itineraries/:giid/vote` | Glasuj za itinerar |
+| POST | `/groups/:gid/itineraries/:giid/vote` | Glasuj za itinerar (UPVOTE/DOWNVOTE) |
+| DELETE | `/groups/:gid/itineraries/:giid/vote` | Odstrani glas |
 | GET | `/groups/:id/comments` | Komentarji skupin |
 | POST | `/groups/:id/comments` | Dodaj komentar / odgovor |
 | GET | `/groups/:id/activity` | Activity log skupin |
@@ -293,16 +295,17 @@ data: {"type":"complete","itineraryId":"uuid"}
 // Request body
 { "voteType": "UPVOTE" }  // ali "DOWNVOTE"
 
-// Response
-{
-  "success": true,
-  "data": {
-    "upvotes": 3,
-    "downvotes": 1,
-    "userVote": "UPVOTE"
-  }
-}
+// Response — vrne glas objekt
+{ "success": true, "data": { "id": "uuid", "voteType": "UPVOTE", "userId": "...", ... } }
 ```
+
+**Score logika:** `score = število UPVOTE glasov` — downvoti se ne odštevajo. Vsak user ima lahko en glas na itinerar (upsert — novi glas zamenja starega).
+
+### DELETE `/groups/:gid/itineraries/:giid/vote`
+
+Odstrani glas kličočega userja (soft delete). Vrne `{ "success": true }`.
+
+**Kdaj se pošlje obvestilo:** Ko nekdo glasuje za itinerar ki mu ne pripada, lastnik itinerarja prejme in-app obvestilo tipa `VOTE`.
 
 ### POST `/groups/:id/comments`
 
@@ -329,6 +332,42 @@ data: {"type":"complete","itineraryId":"uuid"}
     }
   ]
 }
+```
+
+---
+
+## Obvestila `/notifications`
+
+| Metoda | Pot | Opis |
+|---|---|---|
+| GET | `/notifications` | Moja obvestila (paginirano, najnovejša najprej) |
+| GET | `/notifications/unread-count` | Število neprebranih obvestil |
+| PATCH | `/notifications/:id/read` | Označi obvestilo kot prebrano |
+| POST | `/notifications/read-all` | Označi vsa obvestila kot prebrana |
+
+**GET `/notifications?page=1&limit=20`**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "type": "VOTE",
+      "title": "Jan je glasoval za tvoj 'Rim, Italija' itinerar",
+      "body": "👍 Upvote v skupini",
+      "data": { "groupId": "...", "itineraryId": "...", "groupItineraryId": "..." },
+      "readAt": null,
+      "createdAt": "2026-06-04T10:00:00Z"
+    }
+  ]
+}
+```
+
+**GET `/notifications/unread-count`**
+
+```json
+{ "success": true, "data": { "count": 3 } }
 ```
 
 ---
