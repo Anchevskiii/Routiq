@@ -7,7 +7,7 @@ interface ItinerarySelectionContextType {
 
 const ItinerarySelectionContext = createContext<ItinerarySelectionContextType>({
   selectedActivityId: null,
-  setSelectedActivityId: () => {},
+  setSelectedActivityId: (_id: string | null) => undefined,
 })
 
 export const useItinerarySelection = () => useContext(ItinerarySelectionContext)

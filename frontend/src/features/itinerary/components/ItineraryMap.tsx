@@ -95,7 +95,8 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
 
   // Centre map and highlight marker when an activity is selected from the list
   useEffect(() => {
-    if (!mapInstanceRef.current || !isLoaded) return
+    const map = mapInstanceRef.current
+    if (!map || !isLoaded) return
 
     markersRef.current.forEach(({ marker, activity }) => {
       marker.content = rebuildPin(activity, activity.id === selectedActivityId)
@@ -104,10 +105,10 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
     if (!selectedActivityId) return
     const found = markersRef.current.find(({ activity }) => activity.id === selectedActivityId)
     if (!found) return
-    mapInstanceRef.current.panTo({ lat: found.activity.lat, lng: found.activity.lng })
+    map.panTo({ lat: found.activity.lat, lng: found.activity.lng })
     setActive(found.activity)
     infoWindowRef.current?.setContent(infoHtml(found.activity))
-    infoWindowRef.current?.open(mapInstanceRef.current, found.marker)
+    infoWindowRef.current?.open(map, found.marker)
   }, [selectedActivityId, isLoaded, rebuildPin])
 
   const toggleExpand = () => {
