@@ -39,19 +39,34 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
     if (!isLoaded || !mapRef.current || placed.length === 0) return
     const bounds = new google.maps.LatLngBounds()
     placed.forEach(a => bounds.extend({ lat: a.lat, lng: a.lng }))
-    if (!mapInstanceRef.current) {
-      mapInstanceRef.current = new google.maps.Map(mapRef.current, {
-        zoom: 13, center: bounds.getCenter(),
-        mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
-        mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? 'DEMO_MAP_ID',
-      })
-    }
+
+    mapInstanceRef.current ??= new google.maps.Map(mapRef.current, {
+      zoom: 13,
+      center: bounds.getCenter(),
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? 'DEMO_MAP_ID',
+    })
+
     infoWindowRef.current = new google.maps.InfoWindow()
     markersRef.current.forEach(m => { m.marker.map = null })
     markersRef.current = []
     placed.forEach((activity, idx) => {
-      const pin = new google.maps.marker.PinElement({ background: activity.color, borderColor: 'rgba(255,255,255,0.9)', glyphColor: 'white', glyph: String(idx + 1), scale: 1.1 })
-      const marker = new google.maps.marker.AdvancedMarkerElement({ position: { lat: activity.lat, lng: activity.lng }, map: mapInstanceRef.current!, title: activity.title, content: pin, zIndex: idx })
+      const pin = new google.maps.marker.PinElement({
+        background: activity.color,
+        borderColor: 'rgba(255,255,255,0.9)',
+        glyphColor: 'white',
+        glyph: String(idx + 1),
+        scale: 1.1,
+      })
+      const marker = new google.maps.marker.AdvancedMarkerElement({
+        position: { lat: activity.lat, lng: activity.lng },
+        map: mapInstanceRef.current!,
+        title: activity.title,
+        zIndex: idx,
+      })
+      marker.appendChild(pin)
       marker.addListener('click', () => {
         setActive(activity)
         infoWindowRef.current?.setContent(infoHtml(activity))
@@ -83,14 +98,14 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
   }, [selectedDay, fitVisible])
 
   // Rebuild a pin element for a marker — selected = larger blue, normal = activity colour
+  // Returns PinElement directly to avoid deprecated content/element usage
   const rebuildPin = useCallback((activity: PlacedActivity, isSelected: boolean) => {
-    const pin = new google.maps.marker.PinElement({
+    return new google.maps.marker.PinElement({
       background: isSelected ? '#2563eb' : activity.color,
       borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.9)',
       glyphColor: 'white',
       scale: isSelected ? 1.4 : 1.1,
     })
-    return pin.element as HTMLElement
   }, [])
 
   // Centre map and highlight marker when an activity is selected from the list
@@ -99,7 +114,10 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
     if (!map || !isLoaded) return
 
     markersRef.current.forEach(({ marker, activity }) => {
-      marker.content = rebuildPin(activity, activity.id === selectedActivityId)
+      while (marker.firstChild) {
+        marker.removeChild(marker.firstChild)
+      }
+      marker.appendChild(rebuildPin(activity, activity.id === selectedActivityId))
     })
 
     if (!selectedActivityId) return
@@ -125,12 +143,19 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
 
   const daysWithPlaces = [...new Set(placed.map(a => a.dayNumber))].sort((a, b) => a - b)
 
+  let heightClass = 'h-[320px]'
+  if (fullscreen) {
+    heightClass = 'flex-1 min-h-0'
+  } else if (expanded) {
+    heightClass = 'h-[520px]'
+  }
+
   return (
     <div className={`rounded-2xl overflow-hidden shadow-sm border border-blue-600/10 ${fullscreen ? 'h-full flex flex-col' : ''}`}>
       {daysWithPlaces.length > 1 && (
         <MapDayTabs days={daysWithPlaces} selectedDay={selectedDay} expanded={expanded} onSelectDay={setSelectedDay} onToggleExpand={toggleExpand} />
       )}
-      <div className={`relative transition-[height] duration-300 ${fullscreen ? 'flex-1 min-h-0' : expanded ? 'h-[520px]' : 'h-[320px]'}`}>
+      <div className={`relative transition-[height] duration-300 ${heightClass}`}>
         <div ref={mapRef} className="h-full w-full" />
         {daysWithPlaces.length <= 1 && (
           <button onClick={toggleExpand} title={expanded ? 'Collapse' : 'Expand'} className="absolute top-2 right-2 z-10 bg-white dark:bg-[#1e1b38] border border-line rounded-lg p-1.5 shadow-sm text-ink-faint hover:text-ink transition-colors">
