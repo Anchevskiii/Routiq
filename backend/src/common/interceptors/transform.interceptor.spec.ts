@@ -3,7 +3,7 @@ import { of } from 'rxjs';
 import { TransformInterceptor } from './transform.interceptor';
 
 describe('TransformInterceptor', () => {
-  let interceptor: TransformInterceptor<any>;
+  let interceptor: TransformInterceptor<unknown>;
   let mockExecutionContext: Partial<ExecutionContext>;
   let mockCallHandler: Partial<CallHandler>;
 
@@ -20,7 +20,11 @@ describe('TransformInterceptor', () => {
       handle: jest.fn().mockReturnValue(of(payload)),
     };
 
-    interceptor.intercept(mockExecutionContext as ExecutionContext, mockCallHandler as CallHandler)
+    interceptor
+      .intercept(
+        mockExecutionContext as ExecutionContext,
+        mockCallHandler as CallHandler,
+      )
       .subscribe({
         next: (result) => {
           expect(result).toEqual({
@@ -42,7 +46,11 @@ describe('TransformInterceptor', () => {
       handle: jest.fn().mockReturnValue(of(payload)),
     };
 
-    interceptor.intercept(mockExecutionContext as ExecutionContext, mockCallHandler as CallHandler)
+    interceptor
+      .intercept(
+        mockExecutionContext as ExecutionContext,
+        mockCallHandler as CallHandler,
+      )
       .subscribe({
         next: (result) => {
           expect(result).toEqual({

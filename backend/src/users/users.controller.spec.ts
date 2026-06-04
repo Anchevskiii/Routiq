@@ -33,7 +33,9 @@ describe('UsersController', () => {
   describe('getProfile', () => {
     it('should return user profile using user ID', async () => {
       const mockProfile = { id: 'user-123', name: 'Alice' };
-      service.findById.mockResolvedValue(mockProfile as any);
+      service.findById.mockResolvedValue(
+        mockProfile as unknown as Awaited<ReturnType<UsersService['findById']>>,
+      );
 
       const result = await controller.getProfile(mockUser);
       expect(service.findById).toHaveBeenCalledWith('user-123');
@@ -43,8 +45,12 @@ describe('UsersController', () => {
 
   describe('getSettings', () => {
     it('should return user settings using user ID', async () => {
-      const mockSettings = { id: 'settings-123', theme: 'DARK' };
-      service.getSettings.mockResolvedValue(mockSettings as any);
+      const mockSettings = { id: 'settings-123', groupInvitations: true };
+      service.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<UsersService['getSettings']>
+        >,
+      );
 
       const result = await controller.getSettings(mockUser);
       expect(service.getSettings).toHaveBeenCalledWith('user-123');
@@ -54,9 +60,13 @@ describe('UsersController', () => {
 
   describe('updateSettings', () => {
     it('should update and return user settings', async () => {
-      const dto: UpdateSettingsDto = { theme: 'LIGHT', language: 'en' } as any;
-      const mockSettings = { id: 'settings-123', theme: 'LIGHT' };
-      service.updateSettings.mockResolvedValue(mockSettings as any);
+      const dto: UpdateSettingsDto = { groupInvitations: true };
+      const mockSettings = { id: 'settings-123', groupInvitations: true };
+      service.updateSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<UsersService['updateSettings']>
+        >,
+      );
 
       const result = await controller.updateSettings(mockUser, dto);
       expect(service.updateSettings).toHaveBeenCalledWith('user-123', dto);
@@ -68,7 +78,11 @@ describe('UsersController', () => {
     it('should update and return profile', async () => {
       const dto: UpdateProfileDto = { name: 'Alice Smith' };
       const mockProfile = { id: 'user-123', name: 'Alice Smith' };
-      service.updateProfile.mockResolvedValue(mockProfile as any);
+      service.updateProfile.mockResolvedValue(
+        mockProfile as unknown as Awaited<
+          ReturnType<UsersService['updateProfile']>
+        >,
+      );
 
       const result = await controller.updateProfile(mockUser, dto);
       expect(service.updateProfile).toHaveBeenCalledWith('user-123', dto);
@@ -87,10 +101,21 @@ describe('UsersController', () => {
         buffer: Buffer.from('test-image'),
       };
       const mockUploadResponse = { avatarUrl: 'http://avatar.url' };
-      service.uploadAvatarFile.mockResolvedValue(mockUploadResponse as any);
+      service.uploadAvatarFile.mockResolvedValue(
+        mockUploadResponse as unknown as Awaited<
+          ReturnType<UsersService['uploadAvatarFile']>
+        >,
+      );
 
-      const result = await controller.uploadAvatar(mockUser, mockFile as any);
-      expect(service.uploadAvatarFile).toHaveBeenCalledWith('user-123', mockFile.buffer, mockFile.mimetype);
+      const result = await controller.uploadAvatar(
+        mockUser,
+        mockFile as unknown as Parameters<UsersController['uploadAvatar']>[1],
+      );
+      expect(service.uploadAvatarFile).toHaveBeenCalledWith(
+        'user-123',
+        mockFile.buffer,
+        mockFile.mimetype,
+      );
       expect(result).toBe(mockUploadResponse);
     });
   });
@@ -98,7 +123,11 @@ describe('UsersController', () => {
   describe('deleteAccount', () => {
     it('should soft-delete user account and return success', async () => {
       const mockDeleteResponse = { success: true };
-      service.deleteAccount.mockResolvedValue(mockDeleteResponse as any);
+      service.deleteAccount.mockResolvedValue(
+        mockDeleteResponse as unknown as Awaited<
+          ReturnType<UsersService['deleteAccount']>
+        >,
+      );
 
       const result = await controller.deleteAccount(mockUser);
       expect(service.deleteAccount).toHaveBeenCalledWith('user-123');

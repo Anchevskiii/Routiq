@@ -602,8 +602,13 @@ describe('ItineraryService', () => {
   describe('reorderDays', () => {
     it('should reorder days in two transaction phases and return result', async () => {
       mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
-      mockPrisma.itineraryDay.update.mockResolvedValue({ id: 'day-1', dayNumber: 1 });
-      mockPrisma.$transaction.mockResolvedValue([{ id: 'day-1', dayNumber: 1 }]);
+      mockPrisma.itineraryDay.update.mockResolvedValue({
+        id: 'day-1',
+        dayNumber: 1,
+      });
+      mockPrisma.$transaction.mockResolvedValue([
+        { id: 'day-1', dayNumber: 1 },
+      ]);
 
       const result = await service.reorderDays(itineraryId, userId, {
         dayIds: ['day-1', 'day-2'],
@@ -639,9 +644,14 @@ describe('ItineraryService', () => {
         { id: 'act-2', sortOrder: 2 },
       ]);
 
-      const result = await service.reorderActivities(itineraryId, 'day-1', userId, {
-        activityIds: ['act-2', 'act-1'],
-      });
+      const result = await service.reorderActivities(
+        itineraryId,
+        'day-1',
+        userId,
+        {
+          activityIds: ['act-2', 'act-1'],
+        },
+      );
 
       expect(mockPrisma.itineraryActivity.update).toHaveBeenCalled();
       expect(result).toHaveLength(2);
@@ -655,13 +665,24 @@ describe('ItineraryService', () => {
   describe('updateActivity', () => {
     it('should update and return the activity', async () => {
       mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
-      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({ id: 'act-1', dayId: 'day-1' });
-      mockPrisma.itineraryActivity.update.mockResolvedValue({ id: 'act-1', title: 'New Title' });
-      mockPrisma.itineraryActivity.findMany.mockResolvedValue([]);
-
-      const result = await service.updateActivity(itineraryId, 'act-1', userId, {
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({
+        id: 'act-1',
+        dayId: 'day-1',
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-1',
         title: 'New Title',
       });
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([]);
+
+      const result = await service.updateActivity(
+        itineraryId,
+        'act-1',
+        userId,
+        {
+          title: 'New Title',
+        },
+      );
 
       expect(result.title).toBe('New Title');
     });
@@ -671,7 +692,9 @@ describe('ItineraryService', () => {
       mockPrisma.itineraryActivity.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.updateActivity(itineraryId, 'act-1', userId, { title: 'New Title' }),
+        service.updateActivity(itineraryId, 'act-1', userId, {
+          title: 'New Title',
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -686,7 +709,10 @@ describe('ItineraryService', () => {
       mockPrisma.itineraryActivity.findMany.mockResolvedValue([
         { id: 'act-1', sortOrder: 1, startTime: '10:00', durationMinutes: 60 },
       ]);
-      mockPrisma.itineraryActivity.create.mockResolvedValue({ id: 'act-2', title: 'New Act' });
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-2',
+        title: 'New Act',
+      });
 
       const result = await service.addActivity(itineraryId, 'day-1', userId, {
         title: 'New Act',
@@ -706,7 +732,10 @@ describe('ItineraryService', () => {
   describe('deleteActivity', () => {
     it('should soft-delete activity and shift remaining activity orders', async () => {
       mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
-      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({ id: 'act-1', dayId: 'day-1' });
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({
+        id: 'act-1',
+        dayId: 'day-1',
+      });
       mockPrisma.itineraryActivity.update.mockResolvedValue({});
       mockPrisma.itineraryActivity.findMany.mockResolvedValue([
         { id: 'act-2', sortOrder: 2 },
@@ -719,4 +748,3 @@ describe('ItineraryService', () => {
     });
   });
 });
-

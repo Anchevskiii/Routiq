@@ -148,7 +148,11 @@ describe('GeminiService', () => {
 
       mockedAxios.post.mockResolvedValue({ data: mockStream });
 
-      const events: any[] = [];
+      interface StreamEvent {
+        type: string;
+        data?: unknown;
+      }
+      const events: StreamEvent[] = [];
       service.streamGenerateObservable('Get itinerary').subscribe({
         next: (ev) => events.push(ev),
         error: (err) => done(err),
@@ -156,7 +160,7 @@ describe('GeminiService', () => {
           expect(events.length).toBeGreaterThan(0);
           const completeEvent = events.find((ev) => ev.type === 'complete');
           expect(completeEvent).toBeDefined();
-          expect(completeEvent.data).toEqual({ theme: 'Sightseeing' });
+          expect(completeEvent?.data).toEqual({ theme: 'Sightseeing' });
           done();
         },
       });

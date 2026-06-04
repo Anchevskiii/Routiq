@@ -24,9 +24,9 @@ describe('ExportService', () => {
     it('should throw NotFoundException if itinerary is not found', async () => {
       mockPrisma.itinerary.findFirst.mockResolvedValue(null);
 
-      await expect(service.exportToIcs('invalid-id', 'user-123')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.exportToIcs('invalid-id', 'user-123'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should generate ICS file and log the export if user ID is provided', async () => {

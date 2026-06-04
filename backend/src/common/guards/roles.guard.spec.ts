@@ -33,7 +33,8 @@ describe('RolesGuard', () => {
     mockExecutionContext = {
       getHandler: jest.fn().mockReturnValue('handler'),
       getClass: jest.fn().mockReturnValue('class'),
-      switchToHttp: () => mockHttp as any,
+      switchToHttp: () =>
+        mockHttp as unknown as ReturnType<ExecutionContext['switchToHttp']>,
     };
   };
 
@@ -50,7 +51,10 @@ describe('RolesGuard', () => {
   });
 
   it('should return true if user has one of the required roles', () => {
-    mockReflector.getAllAndOverride.mockReturnValue([GroupRole.ADMIN, GroupRole.OWNER]);
+    mockReflector.getAllAndOverride.mockReturnValue([
+      GroupRole.ADMIN,
+      GroupRole.OWNER,
+    ]);
     setupMockContext('ADMIN');
 
     const result = guard.canActivate(mockExecutionContext as ExecutionContext);

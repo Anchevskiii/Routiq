@@ -29,7 +29,8 @@ describe('LoggingInterceptor', () => {
     };
 
     mockExecutionContext = {
-      switchToHttp: () => mockHttp as any,
+      switchToHttp: () =>
+        mockHttp as unknown as ReturnType<ExecutionContext['switchToHttp']>,
     };
 
     mockCallHandler = {
@@ -38,7 +39,11 @@ describe('LoggingInterceptor', () => {
   });
 
   it('should log request, execute handler, and log response', (done) => {
-    interceptor.intercept(mockExecutionContext as ExecutionContext, mockCallHandler as CallHandler)
+    interceptor
+      .intercept(
+        mockExecutionContext as ExecutionContext,
+        mockCallHandler as CallHandler,
+      )
       .subscribe({
         next: (val) => {
           expect(val).toEqual({ data: 'test' });

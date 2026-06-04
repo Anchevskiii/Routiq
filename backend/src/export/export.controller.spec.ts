@@ -38,10 +38,17 @@ describe('ExportController', () => {
       const mockBuffer = Buffer.from('BEGIN:VCALENDAR...');
       service.exportToIcs.mockResolvedValue(mockBuffer);
 
-      await controller.exportIcs('itin-123', mockUser, mockResponse as Response);
+      await controller.exportIcs(
+        'itin-123',
+        mockUser,
+        mockResponse as Response,
+      );
 
       expect(service.exportToIcs).toHaveBeenCalledWith('itin-123', 'user-123');
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'text/calendar');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'text/calendar',
+      );
       expect(mockResponse.setHeader).toHaveBeenCalledWith(
         'Content-Disposition',
         'attachment; filename="routiq-itinerary-itin-123.ics"',
@@ -52,7 +59,11 @@ describe('ExportController', () => {
     it('should send 500 error if ICS generation throws error', async () => {
       service.exportToIcs.mockRejectedValue(new Error('ICS Error'));
 
-      await controller.exportIcs('itin-123', mockUser, mockResponse as Response);
+      await controller.exportIcs(
+        'itin-123',
+        mockUser,
+        mockResponse as Response,
+      );
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -74,7 +85,10 @@ describe('ExportController', () => {
       await controller.exportSharedIcs('itin-123', mockResponse as Response);
 
       expect(service.exportToIcs).toHaveBeenCalledWith('itin-123');
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'text/calendar');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'text/calendar',
+      );
       expect(mockResponse.send).toHaveBeenCalledWith(mockBuffer);
     });
 

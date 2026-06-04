@@ -24,7 +24,9 @@ describe('SupabaseService', () => {
     const mockClient = {};
     (createClient as jest.Mock).mockReturnValue(mockClient);
 
-    const service = new SupabaseService(mockConfigService as unknown as AppConfigService);
+    const service = new SupabaseService(
+      mockConfigService as unknown as AppConfigService,
+    );
     expect(createClient).toHaveBeenCalledWith(
       'https://supabase.co',
       'service-key',
@@ -35,7 +37,9 @@ describe('SupabaseService', () => {
 
   it('should not initialize supabase client if url or key is missing', () => {
     mockConfigService.getSupabaseUrl.mockReturnValue(null);
-    const service = new SupabaseService(mockConfigService as unknown as AppConfigService);
+    const service = new SupabaseService(
+      mockConfigService as unknown as AppConfigService,
+    );
     expect(createClient).not.toHaveBeenCalled();
     expect(service.getClient()).toBeUndefined();
   });

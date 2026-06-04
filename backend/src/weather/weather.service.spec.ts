@@ -36,7 +36,12 @@ describe('WeatherService', () => {
     it('should return cached data if cached and within cache duration', async () => {
       const cachedData = {
         location: 'Paris',
-        current: { temperature: 20, condition: 'Sunny', humidity: 50, windSpeed: 10 },
+        current: {
+          temperature: 20,
+          condition: 'Sunny',
+          humidity: 50,
+          windSpeed: 10,
+        },
         forecast: [],
       } as WeatherData;
 
@@ -52,12 +57,14 @@ describe('WeatherService', () => {
 
     it('should fetch and return weather from Google API when cache is empty', async () => {
       // 1. Mock Geocoding API response
-      mockedAxios.get.mockImplementation((url, config) => {
+      mockedAxios.get.mockImplementation((url) => {
         if (url.includes('geocode')) {
           return Promise.resolve({
             data: {
               status: 'OK',
-              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
             },
           });
         }
@@ -126,7 +133,9 @@ describe('WeatherService', () => {
           return Promise.resolve({
             data: {
               status: 'OK',
-              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+              results: [
+                { geometry: { location: { lat: 48.8566, lng: 2.3522 } } },
+              ],
             },
           });
         }
@@ -153,7 +162,10 @@ describe('WeatherService', () => {
 
   describe('Cache actions', () => {
     it('should clear cache', () => {
-      service['cache'].set('key1', { data: {} as WeatherData, timestamp: Date.now() });
+      service['cache'].set('key1', {
+        data: {} as WeatherData,
+        timestamp: Date.now(),
+      });
       expect(service.getCacheStats().size).toBe(1);
 
       service.clearCache();
@@ -161,7 +173,10 @@ describe('WeatherService', () => {
     });
 
     it('should return cache stats', () => {
-      service['cache'].set('key1', { data: {} as WeatherData, timestamp: Date.now() });
+      service['cache'].set('key1', {
+        data: {} as WeatherData,
+        timestamp: Date.now(),
+      });
       const stats = service.getCacheStats();
       expect(stats.size).toBe(1);
       expect(stats.keys).toEqual(['key1']);

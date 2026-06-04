@@ -28,7 +28,10 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should handle HttpException with string message', () => {
-    const error = new HttpException('Test HTTP Exception', HttpStatus.BAD_REQUEST);
+    const error = new HttpException(
+      'Test HTTP Exception',
+      HttpStatus.BAD_REQUEST,
+    );
     filter.catch(error, mockArgumentsHost as ArgumentsHost);
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
@@ -43,14 +46,19 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should handle HttpException with object message and array of validation errors', () => {
-    const validationErrors = ['email must be an email', 'password must be longer'];
+    const validationErrors = [
+      'email must be an email',
+      'password must be longer',
+    ];
     const error = new HttpException(
       { message: validationErrors },
       HttpStatus.UNPROCESSABLE_ENTITY,
     );
     filter.catch(error, mockArgumentsHost as ArgumentsHost);
 
-    expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
+    expect(mockResponse.status).toHaveBeenCalledWith(
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
     expect(mockResponse.json).toHaveBeenCalledWith({
       success: false,
       error: {
@@ -63,11 +71,14 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should handle Prisma known request error P2002 (Unique constraint violation)', () => {
-    const prismaError = new Prisma.PrismaClientKnownRequestError('Unique error', {
-      code: 'P2002',
-      clientVersion: '1.0.0',
-      meta: { target: ['email'] },
-    });
+    const prismaError = new Prisma.PrismaClientKnownRequestError(
+      'Unique error',
+      {
+        code: 'P2002',
+        clientVersion: '1.0.0',
+        meta: { target: ['email'] },
+      },
+    );
 
     filter.catch(prismaError, mockArgumentsHost as ArgumentsHost);
 
@@ -84,10 +95,13 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should handle Prisma known request error P2025 (Record not found)', () => {
-    const prismaError = new Prisma.PrismaClientKnownRequestError('Not found error', {
-      code: 'P2025',
-      clientVersion: '1.0.0',
-    });
+    const prismaError = new Prisma.PrismaClientKnownRequestError(
+      'Not found error',
+      {
+        code: 'P2025',
+        clientVersion: '1.0.0',
+      },
+    );
 
     filter.catch(prismaError, mockArgumentsHost as ArgumentsHost);
 
@@ -103,10 +117,13 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should fallback to default Prisma known request error handler', () => {
-    const prismaError = new Prisma.PrismaClientKnownRequestError('Some other prisma error', {
-      code: 'P5000',
-      clientVersion: '1.0.0',
-    });
+    const prismaError = new Prisma.PrismaClientKnownRequestError(
+      'Some other prisma error',
+      {
+        code: 'P5000',
+        clientVersion: '1.0.0',
+      },
+    );
 
     filter.catch(prismaError, mockArgumentsHost as ArgumentsHost);
 
@@ -125,7 +142,9 @@ describe('AllExceptionsFilter', () => {
     const error = new Error('General runtime error');
     filter.catch(error, mockArgumentsHost as ArgumentsHost);
 
-    expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(mockResponse.status).toHaveBeenCalledWith(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
     expect(mockResponse.json).toHaveBeenCalledWith({
       success: false,
       error: {
@@ -137,9 +156,14 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should handle unknown exception types', () => {
-    filter.catch('Some unknown error string', mockArgumentsHost as ArgumentsHost);
+    filter.catch(
+      'Some unknown error string',
+      mockArgumentsHost as ArgumentsHost,
+    );
 
-    expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(mockResponse.status).toHaveBeenCalledWith(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
     expect(mockResponse.json).toHaveBeenCalledWith({
       success: false,
       error: {

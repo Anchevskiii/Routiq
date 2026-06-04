@@ -24,7 +24,12 @@ describe('WeatherController', () => {
     };
     const mockWeatherData: WeatherData = {
       location: 'Paris',
-      current: { temperature: 20, condition: 'Sunny', humidity: 50, windSpeed: 10 },
+      current: {
+        temperature: 20,
+        condition: 'Sunny',
+        humidity: 50,
+        windSpeed: 10,
+      },
       forecast: [],
     };
     service.getForecast.mockResolvedValue(mockWeatherData);

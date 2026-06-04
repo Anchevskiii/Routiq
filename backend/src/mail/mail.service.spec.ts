@@ -28,7 +28,12 @@ describe('MailService', () => {
   it('should successfully send a group invitation email', async () => {
     mockMailerService.sendMail.mockResolvedValue({});
 
-    await service.sendGroupInvitation('user@test.com', 'Alice', 'Paris Trip', 'group-123');
+    await service.sendGroupInvitation(
+      'user@test.com',
+      'Alice',
+      'Paris Trip',
+      'group-123',
+    );
 
     expect(mockConfigService.getFrontendUrl).toHaveBeenCalled();
     expect(mockMailerService.sendMail).toHaveBeenCalledWith({
@@ -47,7 +52,12 @@ describe('MailService', () => {
     mockMailerService.sendMail.mockRejectedValue(new Error('SMTP Error'));
 
     await expect(
-      service.sendGroupInvitation('user@test.com', 'Alice', 'Paris Trip', 'group-123')
+      service.sendGroupInvitation(
+        'user@test.com',
+        'Alice',
+        'Paris Trip',
+        'group-123',
+      ),
     ).resolves.not.toThrow();
 
     expect(mockMailerService.sendMail).toHaveBeenCalled();

@@ -79,8 +79,12 @@ describe('PrismaService', () => {
     expect(service.user).toBe(mockExtendedClient.user);
     expect(service.itinerary).toBe(mockExtendedClient.itinerary);
     expect(service.itineraryDay).toBe(mockExtendedClient.itineraryDay);
-    expect(service.itineraryActivity).toBe(mockExtendedClient.itineraryActivity);
-    expect(service.itineraryWeatherSnapshot).toBe(mockExtendedClient.itineraryWeatherSnapshot);
+    expect(service.itineraryActivity).toBe(
+      mockExtendedClient.itineraryActivity,
+    );
+    expect(service.itineraryWeatherSnapshot).toBe(
+      mockExtendedClient.itineraryWeatherSnapshot,
+    );
     expect(service.itineraryTip).toBe(mockExtendedClient.itineraryTip);
     expect(service.group).toBe(mockExtendedClient.group);
     expect(service.groupMember).toBe(mockExtendedClient.groupMember);

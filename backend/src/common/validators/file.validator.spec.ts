@@ -1,5 +1,9 @@
 import { ParseFilePipe } from '@nestjs/common';
-import { createAvatarFileValidationPipe, MAX_AVATAR_SIZE, ALLOWED_AVATAR_TYPES } from './file.validator';
+import {
+  createAvatarFileValidationPipe,
+  MAX_AVATAR_SIZE,
+  ALLOWED_AVATAR_TYPES,
+} from './file.validator';
 
 describe('file.validator', () => {
   it('should define MAX_AVATAR_SIZE and ALLOWED_AVATAR_TYPES', () => {
