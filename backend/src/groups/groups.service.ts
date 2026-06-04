@@ -240,54 +240,65 @@ export class GroupsService {
       itineraries,
     };
   }
-  async createGroup(userId: string, createGroupDto: CreateGroupDto) {
-    const group = await this.prisma.group.create({
-      data: {
-        name: createGroupDto.name,
-        description: createGroupDto.description,
-        imageUrl: createGroupDto.imageUrl,
-        themeColor: createGroupDto.themeColor,
-        createdById: userId,
-        members: {
-          create: {
-            userId,
-            role: GroupRole.OWNER,
-            status: InvitationStatus.ACCEPTED,
-            joinedAt: new Date(),
-            respondedAt: new Date(),
+
+  async createGroup(
+  userId: string,
+  createGroupDto: CreateGroupDto,
+  imageBuffer?: Buffer,
+  imageMimetype?: string,
+) {
+  const group = await this.prisma.group.create({
+    data: {
+      name: createGroupDto.name,
+      description: createGroupDto.description,
+      imageUrl: createGroupDto.imageUrl,
+      themeColor: createGroupDto.themeColor,
+      createdById: userId,
+      members: {
+        create: {
+          userId,
+          role: GroupRole.OWNER,
+          status: InvitationStatus.ACCEPTED,
+          joinedAt: new Date(),
+          respondedAt: new Date(),
+        },
+      },
+    },
+    include: {
+      createdBy: {
+        select: { id: true, name: true, avatarUrl: true },
+      },
+      members: {
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, avatarUrl: true },
           },
         },
       },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
-        },
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatarUrl: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    },
+  });
 
-    // Log activity
-    await this.logActivity(group.id, userId, 'GROUP_CREATED', {
-      groupName: group.name,
-    });
-
-    return group;
+  // Group + membership now exist, safe to upload image
+  if (imageBuffer && imageMimetype) {
+    try {
+      const { imageUrl } = await this.uploadGroupImage(
+        group.id,
+        userId,
+        imageBuffer,
+        imageMimetype,
+      );
+      group.imageUrl = imageUrl;
+    } catch (err) {
+      this.logger.warn(
+        `Image upload during group creation failed: ${err instanceof Error ? err.message : err}`,
+      );
+    }
   }
+
+  await this.logActivity(group.id, userId, 'GROUP_CREATED', { groupName: group.name });
+
+  return group;
+}
 
   async updateGroup(
     groupId: string,

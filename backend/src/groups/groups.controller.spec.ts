@@ -184,20 +184,22 @@ describe('GroupsController', () => {
   // =========================================================================
 
   describe('createGroup', () => {
-    const createDto = { name: 'My Group', description: 'desc' };
+  const createDto = { name: 'My Group', description: 'desc' };
 
-    it('creates a group and returns it', async () => {
-      mockGroupsService.createGroup.mockResolvedValue(mockGroup);
+  it('creates a group and returns it', async () => {
+    mockGroupsService.createGroup.mockResolvedValue(mockGroup);
 
-      const result = await controller.createGroup(mockUser, createDto);
+    const result = await controller.createGroup(mockUser, createDto, undefined);
 
-      expect(mockGroupsService.createGroup).toHaveBeenCalledWith(
-        mockUser.sub,
-        createDto,
-      );
-      expect(result).toEqual(mockGroup);
-    });
+    expect(mockGroupsService.createGroup).toHaveBeenCalledWith(
+      mockUser.sub,
+      createDto,
+      undefined,
+      undefined,
+    );
+    expect(result).toEqual(mockGroup);
   });
+});
 
   // =========================================================================
   // deleteGroup
