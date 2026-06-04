@@ -356,5 +356,74 @@ describe('WeatherService', () => {
       ).length;
       expect(weatherCallCount).toBe(0);
     });
+
+    it('should test shouldRetry logic of withRetry wrapper', async () => {
+      service['cache'].clear();
+      jest.mocked(withRetry).mockClear();
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+            },
+          });
+        }
+        return Promise.reject(new Error('API Error'));
+      });
+
+      try {
+        await service.getForecast('Paris', '2026-06-04', 5);
+      } catch (err) {
+        // ignore
+      }
+
+      service['cache'].clear();
+
+      mockedAxios.get.mockImplementation((url) => {
+        if (url.includes('geocode')) {
+          return Promise.resolve({
+            data: {
+              status: 'OK',
+              results: [{ geometry: { location: { lat: 48.8566, lng: 2.3522 } } }],
+            },
+          });
+        }
+        if (url.includes('currentConditions')) {
+          return Promise.resolve({ data: {} });
+        }
+        return Promise.reject(new Error('API Error'));
+      });
+
+      try {
+        await service.getForecast('Paris', '2026-06-04', 5);
+      } catch (err) {
+        // ignore
+      }
+      
+      const calls = jest.mocked(withRetry).mock.calls;
+      expect(calls.length).toBeGreaterThanOrEqual(2);
+      for (let i = 0; i < calls.length; i++) {
+        const call = calls[i];
+        const options = call[1];
+        if (options && typeof options.shouldRetry === 'function') {
+          expect(options.shouldRetry(new Error('Generic'))).toBe(true);
+
+          const axiosErrNoRes = new Error('AxiosError') as any;
+          axiosErrNoRes.isAxiosError = true;
+          expect(options.shouldRetry(axiosErrNoRes)).toBe(true);
+
+          const axiosErr429 = new Error('AxiosError') as any;
+          axiosErr429.isAxiosError = true;
+          axiosErr429.response = { status: 429 };
+          expect(options.shouldRetry(axiosErr429)).toBe(true);
+
+          const axiosErr400 = new Error('AxiosError') as any;
+          axiosErr400.isAxiosError = true;
+          axiosErr400.response = { status: 400 };
+          expect(options.shouldRetry(axiosErr400)).toBe(false);
+        }
+      }
+    });
   });
 });
