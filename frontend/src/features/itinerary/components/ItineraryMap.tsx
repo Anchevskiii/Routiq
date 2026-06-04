@@ -82,19 +82,23 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
     infoWindowRef.current?.close()
   }, [selectedDay, fitVisible])
 
+  // Rebuild a pin element for a marker — selected = larger blue, normal = activity colour
+  const rebuildPin = useCallback((activity: PlacedActivity, isSelected: boolean) => {
+    const pin = new google.maps.marker.PinElement({
+      background: isSelected ? '#2563eb' : activity.color,
+      borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.9)',
+      glyphColor: 'white',
+      scale: isSelected ? 1.4 : 1.1,
+    })
+    return pin.element as Node
+  }, [])
+
   // Centre map and highlight marker when an activity is selected from the list
   useEffect(() => {
     if (!mapInstanceRef.current || !isLoaded) return
 
     markersRef.current.forEach(({ marker, activity }) => {
-      const isSelected = activity.id === selectedActivityId
-      const pin = new google.maps.marker.PinElement({
-        background: isSelected ? '#2563eb' : activity.color,
-        borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.9)',
-        glyphColor: 'white',
-        scale: isSelected ? 1.4 : 1.1,
-      })
-      marker.content = pin.element
+      marker.content = rebuildPin(activity, activity.id === selectedActivityId)
     })
 
     if (!selectedActivityId) return
@@ -104,7 +108,7 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
     setActive(found.activity)
     infoWindowRef.current?.setContent(infoHtml(found.activity))
     infoWindowRef.current?.open(mapInstanceRef.current, found.marker)
-  }, [selectedActivityId, isLoaded])
+  }, [selectedActivityId, isLoaded, rebuildPin])
 
   const toggleExpand = () => {
     setExpanded(e => !e)
