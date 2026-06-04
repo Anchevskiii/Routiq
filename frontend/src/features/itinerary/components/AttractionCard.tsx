@@ -21,20 +21,20 @@ interface AttractionCardProps {
 type ConfirmState = 'idle' | 'confirming'
 type EditState = 'idle' | 'editing'
 
-const VENUE_WORDS = [
+const VENUE_WORDS = new Set([
   'workshop', 'restaurant', 'cafe', 'temple', 'shrine', 'museum', 'park',
   'garden', 'gallery', 'center', 'centre', 'hall', 'house', 'church',
   'cathedral', 'palace', 'castle', 'market', 'square', 'tower', 'walk',
   'trail', 'tour', 'site', 'nature', 'cutting'
-]
+])
 
 // Strip generic venue-type words to get a more searchable core term
 const stripVenueType = (s: string): string => {
   const words = s.split(/\s+/)
-  for (let i = 0; i < words.length; i++) {
-    const cleanWord = words[i].toLowerCase().replace(/[^a-z]/g, '')
-    if (VENUE_WORDS.includes(cleanWord)) {
-      const idx = s.toLowerCase().indexOf(words[i].toLowerCase())
+  for (const word of words) {
+    const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '')
+    if (VENUE_WORDS.has(cleanWord)) {
+      const idx = s.toLowerCase().indexOf(word.toLowerCase())
       if (idx !== -1) {
         return s.slice(0, idx).trim()
       }
