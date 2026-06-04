@@ -224,7 +224,7 @@ export const ItineraryPage: React.FC = () => {
       </div>
 
       {tab === 'it' && (
-        <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
+        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
           <div>
             <h2 className="flex items-center gap-2.5 text-[16px] font-semibold text-gray-900 dark:text-[#f0eeff] mb-4" style={{ letterSpacing: '-0.01em' }}>
               <span className="w-7 h-7 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
@@ -235,7 +235,7 @@ export const ItineraryPage: React.FC = () => {
             <SortableDaysList {...sharedListProps} />
           </div>
 
-          <aside className="flex flex-col gap-3.5 sticky top-5 self-start">
+          <aside className="hidden lg:flex flex-col gap-3.5 sticky top-5 self-start">
             <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-[0_2px_12px_-4px_rgba(0,0,0,0.10),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)]">
               <div className="flex items-center gap-2.5 px-4 py-3.5">
                 <div className="w-7 h-7 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 grid place-items-center text-sky-500 dark:text-[#22d3ee] flex-shrink-0">
@@ -247,7 +247,6 @@ export const ItineraryPage: React.FC = () => {
                 <ItineraryMap days={days} destination={itinerary.destination} />
               </div>
             </div>
-            {/* TripIntelligenceSidebar commented out */}
           </aside>
         </div>
       )}
