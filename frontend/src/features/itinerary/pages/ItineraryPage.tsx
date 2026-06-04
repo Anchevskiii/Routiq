@@ -42,15 +42,6 @@ function updateActivitiesOrder(days: Day[], dayId: string, activityIds: string[]
   })
 }
 
-function updateDaysOrder(days: Day[], dayIds: string[]): Day[] {
-  return dayIds
-    .map((dayId, i) => {
-      const day = days.find(d => d.id === dayId)
-      return day ? { ...day, dayNumber: i + 1 } : null
-    })
-    .filter((d): d is Day => d !== null)
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const ItineraryPage: React.FC = () => {
