@@ -128,13 +128,33 @@ describe('ExportService', () => {
         ],
       };
       mockPrisma.itinerary.findFirst.mockResolvedValue(mockItinerary);
-      
-      const spy = jest.spyOn(ics as any, 'createEvents').mockImplementation((events: any, callback: any) => {
-        callback(new Error('ICS Error'), '');
-        return { error: new Error('ICS Error'), value: '' };
-      });
 
-      await expect(service.exportToIcs('itin-123')).rejects.toThrow(BadRequestException);
+      const spy = jest
+        .spyOn(
+          ics as unknown as {
+            createEvents: (
+              events: unknown,
+              callback: (error: Error | null, value: string) => void,
+            ) => void;
+          },
+          'createEvents',
+        )
+        .mockImplementation(
+          (
+            events: unknown,
+            callback: (error: Error | null, value: string) => void,
+          ) => {
+            callback(new Error('ICS Error'), '');
+            return {
+              error: new Error('ICS Error'),
+              value: '',
+            } as unknown as ReturnType<typeof ics.createEvents>;
+          },
+        );
+
+      await expect(service.exportToIcs('itin-123')).rejects.toThrow(
+        BadRequestException,
+      );
       spy.mockRestore();
     });
   });

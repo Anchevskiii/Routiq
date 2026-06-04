@@ -214,7 +214,7 @@ describe('UsersService', () => {
         metadata: null,
       });
 
-      const result = await service.updateSettings('user-1', {
+      await service.updateSettings('user-1', {
         comments: false,
       } as UpdateSettingsDto);
 
