@@ -2,7 +2,9 @@ import { supabase } from '@/api/supabase'
 
 export const uploadGroupImage = async (file: File): Promise<string> => {
   const fileExt = file.name.split('.').pop()
-  const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
+  const array = new Uint32Array(1)
+  window.crypto.getRandomValues(array)
+  const fileName = `${array[0].toString(36)}.${fileExt}`
   const filePath = `groups/${fileName}`
 
   const { error: uploadError } = await supabase.storage

@@ -12,7 +12,9 @@ export function useToast() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   const addToast = useCallback((message: string, variant: ToastVariant = 'info') => {
-    const id = Math.random().toString(36).substring(2, 9)
+    const array = new Uint32Array(1)
+    window.crypto.getRandomValues(array)
+    const id = array[0].toString(36)
     setToasts((prev) => [...prev, { id, message, variant }])
 
     // Auto dismiss after 5 seconds
