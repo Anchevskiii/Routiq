@@ -22,7 +22,7 @@ interface Props {
 
 export const GroupDetailSidebar: React.FC<Props> = ({
   groupId, members, currentUserRole,
-  inviteEmail, isInviting, onEmailChange, onInvite, onRemoveMember,
+  inviteEmail, isInviting, isRemoving, onEmailChange, onInvite, onRemoveMember,
 }) => {
   const [membersOpen, setMembersOpen]   = useState(true)
   const [commentsOpen, setCommentsOpen] = useState(true)
@@ -30,7 +30,10 @@ export const GroupDetailSidebar: React.FC<Props> = ({
   const [inviteError, setInviteError]   = useState<string | null>(null)
 
   const canManage = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN'
-  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const isValidEmail = (email: string) => {
+    if (email.length > 254) return false
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
+  }
 
   const handleInvite = () => {
     const trimmed = inviteEmail.trim()
@@ -46,6 +49,49 @@ export const GroupDetailSidebar: React.FC<Props> = ({
     onInvite()
   }
 
+  const renderFooter = () => {
+    if (!canManage) return undefined
+    if (showInvite) {
+      return (
+        <>
+          <div className="flex gap-2 px-3.5 py-2.5 border-t border-gray-200 dark:border-white/[0.07]">
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={e => {
+                onEmailChange(e.target.value)
+                if (inviteError) setInviteError(null)
+              }}
+              onKeyDown={e => e.key === 'Enter' && handleInvite()}
+              placeholder="Email address"
+              className="flex-1 bg-gray-100/60 dark:bg-white/[0.04] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-gray-900 dark:text-[#f0eeff] text-xs outline-none placeholder:text-gray-400 dark:text-[#6e6c93]"
+            />
+            <button
+              onClick={handleInvite}
+              disabled={!inviteEmail || isInviting}
+              className="px-3 py-1.5 rounded-lg border-none grp-aurora text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+            >
+              {isInviting ? '…' : 'Send'}
+            </button>
+          </div>
+          {inviteError && (
+            <p className="px-3.5 pb-2 text-[11px] text-red-400">
+              {inviteError}
+            </p>
+          )}
+        </>
+      )
+    }
+    return (
+      <button
+        onClick={() => setShowInvite(true)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 border-t border-gray-200 dark:border-white/[0.07] bg-transparent border-x-0 border-b-0 text-[#3b82f6] text-xs font-medium cursor-pointer hover:bg-[rgba(59,130,246,0.06)] transition-colors"
+      >
+        <Plus size={14} /> Invite to group
+      </button>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3.5">
       {/* Members */}
@@ -55,44 +101,7 @@ export const GroupDetailSidebar: React.FC<Props> = ({
         count={members.length}
         open={membersOpen}
         onToggle={() => setMembersOpen(v => !v)}
-        foot={canManage ? (
-          showInvite ? (
-            <>
-              <div className="flex gap-2 px-3.5 py-2.5 border-t border-gray-200 dark:border-white/[0.07]">
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={e => {
-                    onEmailChange(e.target.value)
-                    if (inviteError) setInviteError(null)
-                  }}
-                  onKeyDown={e => e.key === 'Enter' && handleInvite()}
-                  placeholder="Email address"
-                  className="flex-1 bg-gray-100/60 dark:bg-white/[0.04] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-gray-900 dark:text-[#f0eeff] text-xs outline-none placeholder:text-gray-400 dark:text-[#6e6c93]"
-                />
-                <button
-                  onClick={handleInvite}
-                  disabled={!inviteEmail || isInviting}
-                  className="px-3 py-1.5 rounded-lg border-none grp-aurora text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
-                >
-                  {isInviting ? '…' : 'Send'}
-                </button>
-              </div>
-              {inviteError && (
-                <p className="px-3.5 pb-2 text-[11px] text-red-400">
-                  {inviteError}
-                </p>
-              )}
-            </>
-          ) : (
-            <button
-              onClick={() => setShowInvite(true)}
-              className="w-full flex items-center gap-2 px-4 py-2.5 border-t border-gray-200 dark:border-white/[0.07] bg-transparent border-x-0 border-b-0 text-[#3b82f6] text-xs font-medium cursor-pointer hover:bg-[rgba(59,130,246,0.06)] transition-colors"
-            >
-              <Plus size={14} /> Invite to group
-            </button>
-          )
-        ) : undefined}
+        foot={renderFooter()}
       >
         <div className="p-2 pb-2.5">
           {members.map(m => (
@@ -128,7 +137,8 @@ export const GroupDetailSidebar: React.FC<Props> = ({
               {canManage && m.role !== 'OWNER' && (
                 <button
                   onClick={() => onRemoveMember(m.userId)}
-                  className="w-6 h-6 grid place-items-center rounded-md border-none bg-transparent text-gray-400 dark:text-[#6e6c93] cursor-pointer hover:text-red-400 hover:bg-red-500/[0.1] transition-colors shrink-0"
+                  disabled={isRemoving}
+                  className="w-6 h-6 grid place-items-center rounded-md border-none bg-transparent text-gray-400 dark:text-[#6e6c93] cursor-pointer hover:text-red-400 hover:bg-red-500/[0.1] transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Remove member"
                 >
                   <Trash2 size={12} />
