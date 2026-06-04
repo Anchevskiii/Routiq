@@ -90,7 +90,7 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
       glyphColor: 'white',
       scale: isSelected ? 1.4 : 1.1,
     })
-    return pin.element as Node
+    return pin.element as HTMLElement
   }, [])
 
   // Centre map and highlight marker when an activity is selected from the list

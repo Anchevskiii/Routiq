@@ -159,11 +159,12 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
       <div className="flex flex-col gap-2">
         <div
           onClick={() => setSelectedActivityId(isSelected ? null : activity.id)}
-          className={`bg-white dark:bg-white/[0.025] rounded-[12px] p-3 flex items-center gap-3 cursor-pointer transition-all shadow-[0_1px_4px_-1px_rgba(0,0,0,0.08)] dark:shadow-none ${
+          className={[
+            'bg-white dark:bg-white/[0.025] rounded-[12px] p-3 flex items-center gap-3 cursor-pointer transition-all shadow-[0_1px_4px_-1px_rgba(0,0,0,0.08)] dark:shadow-none',
             isSelected
               ? 'border-2 border-blue-500 dark:border-blue-400 bg-blue-50/40 dark:bg-blue-500/[0.08] shadow-[0_0_0_3px_rgba(59,130,246,0.15)]'
-              : 'border border-gray-100 dark:border-white/[0.07] hover:bg-sky-50/50 dark:hover:bg-white/[0.04] hover:border-sky-200 dark:hover:border-white/[0.14] hover:translate-x-0.5'
-          }`}
+              : 'border border-gray-100 dark:border-white/[0.07] hover:bg-sky-50/50 dark:hover:bg-white/[0.04] hover:border-sky-200 dark:hover:border-white/[0.14] hover:translate-x-0.5',
+          ].join(' ')}
         >
           <div className={photoContainerClass}>
             {photoUrl
