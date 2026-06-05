@@ -99,19 +99,19 @@ export const PlannerPage: React.FC = () => {
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <motion.div
           style={{ ...ORB_STYLE, right: 60, top: -80,
-            background: 'radial-gradient(circle, rgba(37,99,235,0.65) 0%, rgba(59,130,246,0.35) 50%, transparent 100%)' }}
+            background: 'radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 70%)' }}
           animate={{ x: [0, -80, 0], y: [0, 120, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           style={{ ...ORB_STYLE, left: -60, top: '30%',
-            background: 'radial-gradient(circle, rgba(59,130,246,0.55) 0%, rgba(96,165,250,0.30) 50%, transparent 100%)' }}
+            background: 'radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 70%)' }}
           animate={{ x: [0, 100, 0], y: [0, -80, 0] }}
           transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           style={{ ...ORB_STYLE, right: -40, top: '65%',
-            background: 'radial-gradient(circle, rgba(37,99,235,0.55) 0%, rgba(129,140,248,0.30) 50%, transparent 100%)' }}
+            background: 'radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 70%)' }}
           animate={{ x: [0, -60, 0], y: [0, -100, 0] }}
           transition={{ duration: 34, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
         />
