@@ -382,7 +382,9 @@ export const GenerationLoading: React.FC<Readonly<Props>> = ({
       // Fast when there's a big gap (new day arrived), slow when creeping
       const gap  = target - current
       let step = 0.08
-      if (gap > 8) {
+      if (isComplete) {
+        step = 10.0
+      } else if (gap > 8) {
         step = gap * 0.12
       } else if (gap > 2) {
         step = 0.4
@@ -392,7 +394,7 @@ export const GenerationLoading: React.FC<Readonly<Props>> = ({
       setDisplayProgress(Math.round(next * 10) / 10)
     }, 80)
     return () => clearInterval(id)
-  }, [targetProgress])
+  }, [targetProgress, isComplete])
 
   const numericProgress = Math.round(displayProgress)
 

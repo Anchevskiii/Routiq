@@ -110,7 +110,7 @@ export const PlannerPage: React.FC = () => {
           console.log(`%c[Routiq Telemetry] Success Event: Generation & DB Save Completed in ${Date.now() - genStartTime}ms`, 'color: #10b981; font-weight: bold; font-size: 12px;')
         }
         setIsComplete(true)
-        await new Promise(r => setTimeout(r, 2800))
+        await new Promise(r => setTimeout(r, 1100))
         setShowLoading(false)
         if (groupId) {
           await groupsApi.addItineraryToGroup(groupId, data.itineraryId).catch(() => {})
