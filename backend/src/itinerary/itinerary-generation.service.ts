@@ -114,45 +114,45 @@ export class ItineraryGenerationService {
             ? mappedDay.activities.create
             : [mappedDay.activities.create];
 
-            const enrichedActivities = await Promise.all(
-              activitiesData.map(async (act) => {
-                if (!act.placeId || act.latitude === null || act.longitude === null || !act.address) {
-                  const query = act.location || act.title;
-                  if (query) {
-                    const searchResults = await this.attractionsService.searchAttractions(
+          const enrichedActivities = await Promise.all(
+            activitiesData.map(async (act) => {
+              if (act.latitude === null || act.longitude === null) {
+                const query = act.location || act.title;
+                if (query) {
+                  const searchResults =
+                    await this.attractionsService.searchAttractions(
                       query,
                       createItineraryDto.destination,
                     );
-                    const bestMatch = searchResults?.[0];
-                    if (bestMatch) {
+                  const bestMatch = searchResults?.[0];
+                  if (bestMatch) {
+                    return {
+                      ...act,
+                      title: bestMatch.name || act.title,
+                      location: bestMatch.name || act.location || null,
+                      address: bestMatch.address || act.address || null,
+                      latitude: bestMatch.location.lat,
+                      longitude: bestMatch.location.lng,
+                      placeId: bestMatch.id,
+                    };
+                  } else {
+                    const fullQuery = `${query}, ${createItineraryDto.destination}`;
+                    const coords =
+                      await this.attractionsService.geocodeAddress(fullQuery);
+                    if (coords) {
                       return {
                         ...act,
-                        title: bestMatch.name || act.title,
-                        location: bestMatch.name || act.location || null,
-                        address: bestMatch.address || act.address || null,
-                        latitude: bestMatch.location.lat,
-                        longitude: bestMatch.location.lng,
-                        placeId: bestMatch.id,
+                        latitude: coords.lat,
+                        longitude: coords.lng,
                       };
-                    } else {
-                      const fullQuery = `${query}, ${createItineraryDto.destination}`;
-                      const coords =
-                        await this.attractionsService.geocodeAddress(fullQuery);
-                      if (coords) {
-                        return {
-                          ...act,
-                          latitude: coords.lat,
-                          longitude: coords.lng,
-                        };
-                      }
                     }
                   }
                 }
-                return act;
-              }),
-            );
-            mappedDay.activities.create = enrichedActivities;
-          }
+              }
+              return act;
+            }),
+          );
+          mappedDay.activities.create = enrichedActivities;
         }
         return mappedDay;
       }),
@@ -200,38 +200,42 @@ export class ItineraryGenerationService {
                   dayNumber: mappedDay.dayNumber,
                   date: mappedDay.date,
                   theme: mappedDay.theme,
-                  weather: weatherCreate ? {
-                    create: {
-                      condition: weatherCreate.condition,
-                      tempMin: weatherCreate.tempMin,
-                      tempMax: weatherCreate.tempMax,
-                      humidity: weatherCreate.humidity,
-                      windSpeed: weatherCreate.windSpeed,
-                      precipitation: weatherCreate.precipitation,
-                      recommendation: weatherCreate.recommendation,
-                    },
-                  } : undefined,
-                  activities: activitiesCreate ? {
-                    create: (Array.isArray(activitiesCreate)
-                      ? activitiesCreate
-                      : [activitiesCreate]
-                    ).map((act) => ({
-                      activityType: act.activityType,
-                      sortOrder: act.sortOrder,
-                      title: act.title,
-                      description: act.description,
-                      location: act.location,
-                      address: act.address,
-                      startTime: act.startTime,
-                      durationMinutes: act.durationMinutes,
-                      cost: act.cost,
-                      tips: act.tips,
-                      latitude: act.latitude,
-                      longitude: act.longitude,
-                      placeId: act.placeId,
-                      mealType: act.mealType,
-                    })),
-                  } : undefined,
+                  weather: weatherCreate
+                    ? {
+                        create: {
+                          condition: weatherCreate.condition,
+                          tempMin: weatherCreate.tempMin,
+                          tempMax: weatherCreate.tempMax,
+                          humidity: weatherCreate.humidity,
+                          windSpeed: weatherCreate.windSpeed,
+                          precipitation: weatherCreate.precipitation,
+                          recommendation: weatherCreate.recommendation,
+                        },
+                      }
+                    : undefined,
+                  activities: activitiesCreate
+                    ? {
+                        create: (Array.isArray(activitiesCreate)
+                          ? activitiesCreate
+                          : [activitiesCreate]
+                        ).map((act) => ({
+                          activityType: act.activityType,
+                          sortOrder: act.sortOrder,
+                          title: act.title,
+                          description: act.description,
+                          location: act.location,
+                          address: act.address,
+                          startTime: act.startTime,
+                          durationMinutes: act.durationMinutes,
+                          cost: act.cost,
+                          tips: act.tips,
+                          latitude: act.latitude,
+                          longitude: act.longitude,
+                          placeId: act.placeId,
+                          mealType: act.mealType,
+                        })),
+                      }
+                    : undefined,
                 };
               }),
             },

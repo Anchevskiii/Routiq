@@ -326,11 +326,7 @@ export class AttractionsService {
       .filter((p) => p.sourceType === 'dining')
       .slice(0, requiredMeals * 2);
 
-    const result = [
-      ...curatedMainstream,
-      ...curatedNiche,
-      ...curatedDining,
-    ];
+    const result = [...curatedMainstream, ...curatedNiche, ...curatedDining];
 
     // Final uniqueness check
     const finalSeen = new Set<string>();

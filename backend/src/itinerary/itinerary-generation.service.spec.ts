@@ -21,6 +21,7 @@ const mockPrisma = {
 const mockAttractionsService = {
   getCuratedPlaces: jest.fn(),
   geocodeAddress: jest.fn().mockResolvedValue({ lat: 48.8566, lng: 2.3522 }),
+  searchAttractions: jest.fn().mockResolvedValue([]),
 };
 
 const mockWeatherService = {
@@ -167,18 +168,16 @@ describe('ItineraryGenerationService', () => {
             aiPromptHash: 'hash',
             generatedAt: expect.any(Date),
             generationTimeMs: expect.any(Number),
+            generalTips: {
+              create: expect.arrayContaining([
+                expect.objectContaining({ content: 'Check local transportation options before arrival.' }),
+                expect.objectContaining({ content: 'Keep digital copies of your travel documents.' }),
+                expect.objectContaining({ content: 'Respect local customs and traditions.' }),
+              ]),
+            },
           }),
         }),
       );
-
-      expect(tx.itineraryTip.createMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.any(Array),
-        }),
-      );
-
-      const createManyArg = tx.itineraryTip.createMany.mock.calls[0][0];
-      expect(createManyArg.data).toHaveLength(3);
     });
   });
 
@@ -309,9 +308,6 @@ describe('ItineraryGenerationService', () => {
       });
 
       expect(tx.itinerary.create).toHaveBeenCalled();
-      expect(tx.itineraryDay.create).toHaveBeenCalled();
-      expect(tx.itineraryWeatherSnapshot.create).toHaveBeenCalled();
-      expect(tx.itineraryActivity.createMany).toHaveBeenCalled();
       // geocodeAddress called because mapped activity has null lat/lng
       expect(mockAttractionsService.geocodeAddress).toHaveBeenCalled();
     });
@@ -365,7 +361,7 @@ describe('ItineraryGenerationService', () => {
         promptHash: 'hash',
       });
 
-      expect(tx.itineraryActivity.createMany).toHaveBeenCalled();
+      expect(tx.itinerary.create).toHaveBeenCalled();
       expect(mockAttractionsService.geocodeAddress).not.toHaveBeenCalled();
     });
 
@@ -454,8 +450,20 @@ describe('ItineraryGenerationService', () => {
         promptHash: 'h',
       });
 
-      expect(tx.itineraryWeatherSnapshot.create).not.toHaveBeenCalled();
-      expect(tx.itineraryActivity.createMany).toHaveBeenCalled();
+      expect(tx.itinerary.create).toHaveBeenCalled();
+      expect(tx.itinerary.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            days: {
+              create: expect.arrayContaining([
+                expect.objectContaining({
+                  weather: undefined,
+                }),
+              ]),
+            },
+          }),
+        }),
+      );
     });
   });
 
