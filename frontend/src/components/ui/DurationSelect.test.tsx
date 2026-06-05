@@ -30,7 +30,7 @@ describe('DurationSelect', () => {
 
   it('triggers onChange when custom input is changed', async () => {
     const onChange = vi.fn()
-    const { container } = render(<DurationSelect value="60" onChange={onChange} />)
+    render(<DurationSelect value="60" onChange={onChange} />)
 
     const input = screen.getByRole('spinbutton')
     fireEvent.change(input, { target: { value: '120' } })

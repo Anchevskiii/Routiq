@@ -27,14 +27,12 @@ const mockDays: Day[] = [
     id: 'day-1',
     dayNumber: 1,
     date: '2026-06-05T00:00:00.000Z',
-    itineraryId: 'itinerary-1',
     activities: [],
   },
   {
     id: 'day-2',
     dayNumber: 2,
     date: '2026-06-06T00:00:00.000Z',
-    itineraryId: 'itinerary-1',
     activities: [],
   }
 ]
