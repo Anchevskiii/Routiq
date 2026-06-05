@@ -32,8 +32,10 @@ const VENUE_WORDS = new Set([
 
 const cleanWikipediaTitle = (title: string): string => {
   let s = title.trim();
-  s = s.replace(/^(explore|visit|discover|see|walk\s+around|walk\s+through|sightseeing\s+at|tour\s+of|trip\s+to|journey\s+to|relax\s+at|enjoy)\s+(the\s+)?/i, '');
-  s = s.replace(/^(breakfast|lunch|dinner|brunch|coffee|drinks)\s+(at|in)\s+(the\s+)?/i, '');
+  s = s.replace(/^(explore|visit|discover|see|walk\s+around|walk\s+through|sightseeing\s+at|tour\s+of|trip\s+to|journey\s+to|relax\s+at|enjoy)\s+/i, '');
+  s = s.replace(/^the\s+/i, '');
+  s = s.replace(/^(breakfast|lunch|dinner|brunch|coffee|drinks)\s+(at|in)\s+/i, '');
+  s = s.replace(/^the\s+/i, '');
   return s.trim();
 }
 
@@ -65,9 +67,12 @@ const trySearch = async (query: string): Promise<string | null> => {
 }
 
 const getGoogleMapsUrl = (title: string, location?: string | null, destination?: string, placeId?: string | null): string => {
-  const querySuffix = location
-    ? ' ' + location
-    : (destination ? ' ' + destination : '')
+  let querySuffix = ''
+  if (location) {
+    querySuffix = ' ' + location
+  } else if (destination) {
+    querySuffix = ' ' + destination
+  }
   const base = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + querySuffix)}`
   return placeId ? `${base}&query_place_id=${placeId}` : base
 }

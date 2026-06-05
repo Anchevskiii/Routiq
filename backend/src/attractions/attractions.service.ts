@@ -190,6 +190,44 @@ export class AttractionsService {
     return false;
   }
 
+  private checkConflict(
+    candidate: FormattedPlace,
+    acceptedPlaces: FormattedPlace[],
+  ): boolean {
+    for (const accepted of acceptedPlaces) {
+      const distance = this.calculateDistanceMeters(
+        candidate.location.lat,
+        candidate.location.lng,
+        accepted.location.lat,
+        accepted.location.lng,
+      );
+
+      // 1. Proximity and category check
+      if (distance < 30) {
+        const catCandidate = this.getPlaceCategory(candidate);
+        const catAccepted = this.getPlaceCategory(accepted);
+        if (catCandidate === catAccepted) {
+          this.logger.debug(
+            `Pruning '${candidate.name}' due to proximity (<30m: ${distance.toFixed(1)}m) and same category ('${catCandidate}') with '${accepted.name}'`,
+          );
+          return true;
+        }
+      }
+
+      // 2. Name similarity check within 150m
+      if (
+        distance < 150 &&
+        this.areNamesSimilar(candidate.name, accepted.name)
+      ) {
+        this.logger.debug(
+          `Pruning '${candidate.name}' due to distance (<150m: ${distance.toFixed(1)}m) and name similarity with '${accepted.name}'`,
+        );
+        return true;
+      }
+    }
+    return false;
+  }
+
   async getCuratedPlaces(
     destination: string,
     travelType: TravelType,
@@ -250,41 +288,7 @@ export class AttractionsService {
     // Greedily select places, pruning duplicates based on proximity (30m similar categories) and name similarity (150m)
     const acceptedPlaces: FormattedPlace[] = [];
     for (const candidate of filteredCandidates) {
-      let hasConflict = false;
-      for (const accepted of acceptedPlaces) {
-        const distance = this.calculateDistanceMeters(
-          candidate.location.lat,
-          candidate.location.lng,
-          accepted.location.lat,
-          accepted.location.lng,
-        );
-
-        // 1. Proximity and category check
-        if (distance < 30) {
-          const catCandidate = this.getPlaceCategory(candidate);
-          const catAccepted = this.getPlaceCategory(accepted);
-          if (catCandidate === catAccepted) {
-            hasConflict = true;
-            this.logger.debug(
-              `Pruning '${candidate.name}' due to proximity (<30m: ${distance.toFixed(1)}m) and same category ('${catCandidate}') with '${accepted.name}'`,
-            );
-            break;
-          }
-        }
-
-        // 2. Name similarity check within 150m
-        if (distance < 150) {
-          if (this.areNamesSimilar(candidate.name, accepted.name)) {
-            hasConflict = true;
-            this.logger.debug(
-              `Pruning '${candidate.name}' due to distance (<150m: ${distance.toFixed(1)}m) and name similarity with '${accepted.name}'`,
-            );
-            break;
-          }
-        }
-      }
-
-      if (!hasConflict) {
+      if (!this.checkConflict(candidate, acceptedPlaces)) {
         acceptedPlaces.push(candidate);
       }
     }

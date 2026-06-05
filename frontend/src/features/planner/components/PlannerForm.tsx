@@ -248,10 +248,17 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   useEffect(() => {
     if (!isLoaded || !autocompleteInputRef.current || autocompleteInstanceRef.current) return
 
-    const AutocompleteConstructor = google.maps.places['Autocomplete'] as new (
-      input: HTMLInputElement,
-      options?: google.maps.places.AutocompleteOptions
-    ) => AutocompleteInstance;
+    const placesLib = google.maps.places as unknown as Record<
+      string,
+      new (
+        input: HTMLInputElement,
+        options?: {
+          types?: string[];
+          fields?: string[];
+        }
+      ) => AutocompleteInstance
+    >;
+    const AutocompleteConstructor = placesLib['Autocomplete'];
 
     const instance = new AutocompleteConstructor(
       autocompleteInputRef.current,

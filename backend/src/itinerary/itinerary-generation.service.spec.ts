@@ -924,9 +924,9 @@ describe('ItineraryGenerationService extra branches', () => {
       userId: 'user-1',
       createItineraryDto: baseDto as unknown as CreateItineraryDto,
       generated: {
-        days: undefined as any,
-        generalTips: undefined as any,
-      } as any,
+        days: undefined as unknown as GeneratedDay[],
+        generalTips: undefined as unknown as string[],
+      } as unknown as GeneratedItinerary,
       generationStart: Date.now(),
       weatherData: weatherData as unknown as WeatherData,
       attractions: [] as unknown as FormattedPlace[],
@@ -939,7 +939,9 @@ describe('ItineraryGenerationService extra branches', () => {
 
   it('handles non-array activities.create in persistGeneratedItinerary', async () => {
     const tx = {
-      itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-non-array' }) },
+      itinerary: {
+        create: jest.fn().mockResolvedValue({ id: 'itin-non-array' }),
+      },
       itineraryTip: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
       itineraryDay: { create: jest.fn() },
       itineraryWeatherSnapshot: { create: jest.fn() },
@@ -962,9 +964,9 @@ describe('ItineraryGenerationService extra branches', () => {
           latitude: null,
           longitude: null,
           location: '',
-        } as any,
+        } as unknown as Prisma.ItineraryActivityCreateWithoutDayInput[],
       },
-    } as any);
+    } as unknown as Prisma.ItineraryDayCreateWithoutItineraryInput);
 
     // Mock searchAttractions to return bestMatch with empty name/address
     mockAttractionsService.searchAttractions.mockResolvedValueOnce([
@@ -981,7 +983,7 @@ describe('ItineraryGenerationService extra branches', () => {
       createItineraryDto: baseDto as unknown as CreateItineraryDto,
       generated: {
         days: [{ day: 1, theme: 'Test', activities: [], meals: [] }],
-      } as any,
+      } as unknown as GeneratedItinerary,
       generationStart: Date.now(),
       weatherData: weatherData as unknown as WeatherData,
       attractions: [] as unknown as FormattedPlace[],
@@ -1020,13 +1022,17 @@ describe('ItineraryGenerationService extra branches', () => {
     };
 
     const result = service.mapSingleDay(
-      day as any,
+      day as unknown as GeneratedDay,
       baseDto.startDate,
-      weatherData as any,
-      attractions as any,
+      weatherData as unknown as WeatherData,
+      attractions as unknown as FormattedPlace[],
     );
 
-    const activities = (result.activities as any).create;
+    const activities = (
+      result.activities as unknown as {
+        create: { title: string; mealType?: string }[];
+      }
+    ).create;
     expect(result.theme).toBe('Day 1: Exploration');
     expect(activities[0].title).toBe('Eiffel Short');
     expect(activities[1].title).toBe('Eiffel Tower');
@@ -1035,4 +1041,3 @@ describe('ItineraryGenerationService extra branches', () => {
     expect(activities[3].mealType).toBe('restaurant');
   });
 });
-

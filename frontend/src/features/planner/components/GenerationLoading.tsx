@@ -383,7 +383,7 @@ export const GenerationLoading: React.FC<Readonly<Props>> = ({
       const gap  = target - current
       let step = 0.08
       if (isComplete) {
-        step = 10.0
+        step = 10
       } else if (gap > 8) {
         step = gap * 0.12
       } else if (gap > 2) {

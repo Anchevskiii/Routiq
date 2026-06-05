@@ -473,25 +473,15 @@ describe('AttractionsService', () => {
 
   describe('getPlaceTypesByTravelType', () => {
     it('should return correct place types for each travel type', () => {
-      expect(service['getPlaceTypesByTravelType'](TravelType.CULTURAL)).toEqual([
-        'museum',
-        'art_gallery',
-        'place_of_worship',
-        'church',
-        'castle',
-      ]);
-      expect(service['getPlaceTypesByTravelType'](TravelType.GASTRONOMIC)).toEqual([
-        'restaurant',
-        'cafe',
-        'food',
-        'bakery',
-      ]);
-      expect(service['getPlaceTypesByTravelType'](TravelType.ADVENTURE)).toEqual([
-        'amusement_park',
-        'aquarium',
-        'zoo',
-        'park',
-      ]);
+      expect(service['getPlaceTypesByTravelType'](TravelType.CULTURAL)).toEqual(
+        ['museum', 'art_gallery', 'place_of_worship', 'church', 'castle'],
+      );
+      expect(
+        service['getPlaceTypesByTravelType'](TravelType.GASTRONOMIC),
+      ).toEqual(['restaurant', 'cafe', 'food', 'bakery']);
+      expect(
+        service['getPlaceTypesByTravelType'](TravelType.ADVENTURE),
+      ).toEqual(['amusement_park', 'aquarium', 'zoo', 'park']);
       expect(service['getPlaceTypesByTravelType'](TravelType.NATURE)).toEqual([
         'park',
         'aquarium',
@@ -504,9 +494,9 @@ describe('AttractionsService', () => {
         'hair_care',
         'park',
       ]);
-      expect(service['getPlaceTypesByTravelType']('INVALID' as TravelType)).toEqual([
-        'tourist_attraction',
-      ]);
+      expect(
+        service['getPlaceTypesByTravelType']('INVALID' as TravelType),
+      ).toEqual(['tourist_attraction']);
     });
   });
 });

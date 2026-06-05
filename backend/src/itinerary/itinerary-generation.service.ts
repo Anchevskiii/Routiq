@@ -215,7 +215,9 @@ export class ItineraryGenerationService {
                     : undefined,
                   activities: activitiesCreate
                     ? {
-                        create: (activitiesCreate as Prisma.ItineraryActivityCreateWithoutDayInput[]).map((act) => ({
+                        create: (
+                          activitiesCreate as Prisma.ItineraryActivityCreateWithoutDayInput[]
+                        ).map((act) => ({
                           activityType: act.activityType,
                           sortOrder: act.sortOrder,
                           title: act.title,

@@ -50,8 +50,10 @@ const stripVenueType = (s: string): string => {
 
 const cleanWikipediaTitle = (title: string): string => {
   let s = title.trim();
-  s = s.replace(/^(explore|visit|discover|see|walk\s+around|walk\s+through|sightseeing\s+at|tour\s+of|trip\s+to|journey\s+to|relax\s+at|enjoy)\s+(the\s+)?/i, '');
-  s = s.replace(/^(breakfast|lunch|dinner|brunch|coffee|drinks)\s+(at|in)\s+(the\s+)?/i, '');
+  s = s.replace(/^(explore|visit|discover|see|walk\s+around|walk\s+through|sightseeing\s+at|tour\s+of|trip\s+to|journey\s+to|relax\s+at|enjoy)\s+/i, '');
+  s = s.replace(/^the\s+/i, '');
+  s = s.replace(/^(breakfast|lunch|dinner|brunch|coffee|drinks)\s+(at|in)\s+/i, '');
+  s = s.replace(/^the\s+/i, '');
   return s.trim();
 }
 

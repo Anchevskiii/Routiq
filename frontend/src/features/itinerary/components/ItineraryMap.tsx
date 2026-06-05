@@ -18,9 +18,12 @@ interface PlacedActivityExtended extends PlacedActivity {
 }
 
 const getGoogleMapsUrl = (title: string, location?: string | null, destination?: string, placeId?: string | null): string => {
-  const querySuffix = location
-    ? ' ' + location
-    : (destination ? ' ' + destination : '')
+  let querySuffix = ''
+  if (location) {
+    querySuffix = ' ' + location
+  } else if (destination) {
+    querySuffix = ' ' + destination
+  }
   const base = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + querySuffix)}`
   return placeId ? `${base}&query_place_id=${placeId}` : base
 }
@@ -121,7 +124,7 @@ export const ItineraryMap: React.FC<Readonly<Props>> = ({ days, destination, ful
       background: isSelected ? '#2563eb' : activity.color,
       borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.9)',
       glyphColor: 'white',
-      glyphText: idx !== -1 ? String(idx + 1) : undefined,
+      glyphText: idx === -1 ? undefined : String(idx + 1),
       scale: isSelected ? 1.4 : 1.1,
     })
   }, [placed])
