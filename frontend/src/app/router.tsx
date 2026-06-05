@@ -5,6 +5,9 @@ import { ROUTES } from '@/constants/routes'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 
 // Public pages (lazy loaded)
+const LandingPage = lazy(() =>
+  import('@/features/landing/pages/LandingPage').then(m => ({ default: m.LandingPage }))
+)
 const LoginPage = lazy(() =>
   import('@/features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage }))
 )
@@ -95,16 +98,20 @@ export const AppRouter: React.FC = () => {
           }
         />
 
-        {/* Protected routes */}
+        {/* Landing page — unauthenticated root */}
         <Route
-          path="/"
+          path={ROUTES.HOME}
+          element={isAuthenticated ? <Navigate to={ROUTES.DASHBOARD} replace /> : <LandingPage />}
+        />
+
+        {/* Protected routes — pathless layout so '/' is free for landing */}
+        <Route
           element={
             <ProtectedRoute>
               <AppShell />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
           <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
           <Route path={ROUTES.PLANNER} element={<PlannerPage />} />
           <Route path={ROUTES.TRIPS} element={<TripsPage />} />
