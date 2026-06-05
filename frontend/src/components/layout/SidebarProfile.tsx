@@ -97,7 +97,7 @@ export const SidebarProfile: React.FC<Props> = ({ collapsed, name, avatarUrl, em
         )}
       </button>
 
-      {createPortal(popup, document.body)}
+      {open && createPortal(popup, document.body)}
     </div>
   )
 }
