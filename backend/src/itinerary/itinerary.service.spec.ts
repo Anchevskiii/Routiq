@@ -131,15 +131,16 @@ const savedItineraryRecord = {
 // Helper — build service
 // ---------------------------------------------------------------------------
 
+const mockWeatherGetForecast = jest.fn();
+
 function buildService(): ItineraryService {
-  const mockWeatherService = {
-    getForecast: jest.fn().mockResolvedValue({ forecast: [] }),
-  };
   return new ItineraryService(
     mockPrisma as unknown as PrismaService,
     mockGeminiService as unknown as GeminiService,
     mockItineraryGenerationService as unknown as ItineraryGenerationService,
-    mockWeatherService as unknown as import('../weather/weather.service').WeatherService,
+    {
+      getForecast: mockWeatherGetForecast,
+    } as unknown as import('../weather/weather.service').WeatherService,
   );
 }
 
@@ -152,6 +153,27 @@ describe('ItineraryService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockWeatherGetForecast.mockReset();
+    mockWeatherGetForecast.mockResolvedValue({
+      forecast: [
+        {
+          date: '2026-06-05',
+          condition: 'Sunny',
+          temperature: { min: 15, max: 25 },
+          humidity: 60,
+          windSpeed: 10,
+          precipitation: 0,
+        },
+        {
+          date: '2026-06-06',
+          condition: 'Rainy',
+          temperature: { min: 12, max: 18 },
+          humidity: 80,
+          windSpeed: 15,
+          precipitation: 5,
+        },
+      ],
+    });
     service = buildService();
   });
 
@@ -633,6 +655,26 @@ describe('ItineraryService', () => {
         service.reorderDays(itineraryId, userId, { dayIds: ['day-1'] }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('should catch and log a warning if weather refresh throws an error during reorderDays', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryDay.update.mockResolvedValue({
+        id: 'day-1',
+        dayNumber: 1,
+      });
+      mockPrisma.$transaction.mockResolvedValue([
+        { id: 'day-1', dayNumber: 1 },
+      ]);
+      mockWeatherGetForecast.mockRejectedValue(
+        new Error('Weather service failure'),
+      );
+
+      const result = await service.reorderDays(itineraryId, userId, {
+        dayIds: ['day-1', 'day-2'],
+      });
+
+      expect(result).toBeDefined();
+    });
   });
 
   // =========================================================================
@@ -1045,6 +1087,13 @@ describe('ItineraryService', () => {
       mockPrisma.itineraryActivity.findFirst.mockResolvedValue(null);
       await expect(
         service.deleteActivity(itineraryId, 'act-missing', userId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException if itinerary not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(null);
+      await expect(
+        service.deleteActivity('itin-missing', 'act-1', userId),
       ).rejects.toThrow(NotFoundException);
     });
   });

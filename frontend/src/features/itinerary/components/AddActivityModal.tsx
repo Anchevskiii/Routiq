@@ -178,6 +178,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
 
   return (
     <div
+      data-testid="add-activity-modal-backdrop"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
       onKeyDown={e => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onClose(); } }}
