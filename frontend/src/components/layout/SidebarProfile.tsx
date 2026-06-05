@@ -50,7 +50,7 @@ export const SidebarProfile: React.FC<Props> = ({ collapsed, name, avatarUrl, em
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-[#1a1830] border border-gray-100 dark:border-white/[0.08] rounded-xl shadow-lg dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden z-50">
+        <div className={`absolute bottom-full left-0 mb-1 bg-white dark:bg-[#1a1830] border border-gray-100 dark:border-white/[0.08] rounded-xl shadow-lg dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden z-50 ${collapsed ? 'w-48' : 'right-0'}`}>
           <Link to={ROUTES.DASHBOARD} onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
             <Home className="w-4 h-4 text-gray-400 dark:text-[#6e6c93]" /> Home
