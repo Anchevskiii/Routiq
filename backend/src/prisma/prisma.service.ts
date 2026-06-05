@@ -178,7 +178,12 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private readonly extendedClient: ExtendedPrismaClient;
 
   constructor(private readonly configService: ConfigService) {
-    const connectionString = this.configService.get<string>('DATABASE_URL');
+    // Use DIRECT_URL (session pooler / direct) for runtime queries.
+    // DATABASE_URL often points at PgBouncer transaction mode (port 6543),
+    // which breaks Prisma interactive $transaction nested writes intermittently.
+    const connectionString =
+      this.configService.get<string>('DIRECT_URL') ??
+      this.configService.get<string>('DATABASE_URL');
     this.pool = new Pool({ connectionString });
     this.extendedClient = createExtendedClient(this.pool);
   }

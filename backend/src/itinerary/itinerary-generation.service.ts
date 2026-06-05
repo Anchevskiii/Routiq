@@ -244,7 +244,7 @@ export class ItineraryGenerationService {
         return itineraryRecord;
       },
       {
-        timeout: 5000, // Reverted to 5 seconds now that slow geocoding API calls are moved out
+        timeout: 15000,
       },
     );
 
