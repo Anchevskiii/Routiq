@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import type { SensorDescriptor, SensorOptions } from '@dnd-kit/core'
 
 import { Day } from '@/types/itinerary.types'
@@ -10,8 +10,10 @@ import { AddActivityModal } from './AddActivityModal'
 interface Props {
   days: Day[]
   itineraryId: string
+  startDate?: string | null
   sensors: SensorDescriptor<SensorOptions>[]
   addActivityDayId: string | null
+  destination?: string
   onDragEnd: (e: DragEndEvent) => void
   onAddActivity: (dayId: string) => void
   onReorderActivities: (dayId: string, activityIds: string[]) => void
@@ -21,44 +23,83 @@ interface Props {
 }
 
 export const SortableDaysList: React.FC<Props> = ({
-  days,
+  days: serverDays,
   itineraryId,
+  startDate,
   sensors,
   addActivityDayId,
-  onDragEnd,
+  destination,
+  onDragEnd: onDragEndExternal,
   onAddActivity,
   onReorderActivities,
   onActivityUpdated,
   onActivityDeleted,
   onCloseAddActivity,
-}) => (
-  <>
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-      <SortableContext items={days.map(d => d.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2">
-          {days.map((day, i) => (
-            <SortableDayCard
-              key={day.id}
-              day={day}
-              isFirst={i === 0}
-              itineraryId={itineraryId}
-              onAddActivity={onAddActivity}
-              onReorderActivities={onReorderActivities}
-              onActivityUpdated={onActivityUpdated}
-              onActivityDeleted={onActivityDeleted}
-            />
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+}) => {
+  // Local state for instant visual reorder — syncs from server when not dragging
+  const [localDays, setLocalDays] = useState(serverDays)
 
-    {addActivityDayId && (
-      <AddActivityModal
-        itineraryId={itineraryId}
-        dayId={addActivityDayId}
-        onAdded={onActivityUpdated}
-        onClose={onCloseAddActivity}
-      />
-    )}
-  </>
-)
+  // Keep in sync with server (after refetch)
+  useEffect(() => {
+    setLocalDays(serverDays)
+  }, [serverDays])
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIdx = localDays.findIndex(d => d.id === active.id)
+    const newIdx = localDays.findIndex(d => d.id === over.id)
+    if (oldIdx === -1 || newIdx === -1) return
+
+    // Instantly reorder with correct dayNumber + date — no waiting for backend
+    const reordered = arrayMove(localDays, oldIdx, newIdx)
+    const base = startDate ? new Date(startDate) : null
+    setLocalDays(reordered.map((day, i) => {
+      const updated = { ...day, dayNumber: i + 1 }
+      if (base) {
+        const d = new Date(base)
+        d.setDate(base.getDate() + i)
+        return { ...updated, date: d.toISOString() }
+      }
+      return updated
+    }))
+
+    // Fire backend mutation via parent
+    onDragEndExternal(event)
+  }
+
+  return (
+    <>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={localDays.map(d => d.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {localDays.map((day, i) => (
+              <SortableDayCard
+                key={day.id}
+                day={day}
+                isFirst={i === 0}
+                itineraryId={itineraryId}
+                destination={destination}
+                onAddActivity={onAddActivity}
+                onReorderActivities={onReorderActivities}
+                onActivityUpdated={onActivityUpdated}
+                onActivityDeleted={onActivityDeleted}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      {addActivityDayId && (
+        <AddActivityModal
+          itineraryId={itineraryId}
+          dayId={addActivityDayId}
+          existingActivities={localDays.find(d => d.id === addActivityDayId)?.activities ?? []}
+          onAdded={onActivityUpdated}
+          onClose={onCloseAddActivity}
+        />
+      )}
+    </>
+  )
+}

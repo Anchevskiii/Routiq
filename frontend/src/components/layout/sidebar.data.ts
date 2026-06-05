@@ -1,4 +1,4 @@
-import { Home, Map, Users, Sparkles, Bookmark, Settings, HelpCircle } from 'lucide-react'
+import { Home, Map, Users, Sparkles, HelpCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 
@@ -9,15 +9,13 @@ export interface NavItem {
   href: string
 }
 
-export const NAV_BOTTOM: NavItem[] = [
-  { id: 'settings', label: 'Settings', icon: Settings,   href: ROUTES.PROFILE   },
-  { id: 'help',     label: 'Help',     icon: HelpCircle, href: ROUTES.DASHBOARD },
-]
+// Settings and Help moved to profile popup
+export const NAV_BOTTOM: NavItem[] = []
 
 export const NAV_MAIN_STATIC = [
   { id: 'home',   label: 'Home',        icon: Home,     href: ROUTES.DASHBOARD },
   { id: 'trips',  label: 'Trips',       icon: Map,      href: ROUTES.TRIPS     },
   { id: 'groups', label: 'Groups',      icon: Users,    href: ROUTES.GROUPS    },
-  { id: 'ai',     label: 'AI Planner',  icon: Sparkles, href: ROUTES.PLANNER   },
-  { id: 'saved',  label: 'Saved',       icon: Bookmark, href: ROUTES.TRIPS     },
+  { id: 'ai',     label: 'AI Planner',  icon: Sparkles,    href: ROUTES.PLANNER },
+  { id: 'help',   label: 'Help',        icon: HelpCircle,  href: ROUTES.HELP    },
 ] as const

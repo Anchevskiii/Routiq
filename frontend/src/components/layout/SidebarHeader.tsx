@@ -15,6 +15,7 @@ export const SidebarHeader: React.FC<Props> = ({ collapsed, onExpand, onCollapse
           className="w-[34px] h-[34px] flex items-center justify-center rounded-xl hover:bg-blue-600 dark:hover:bg-blue-900/30 transition-colors text-blue-600 dark:text-blue-300"
           onClick={onExpand}
           title="Expand sidebar"
+          aria-label="Expand sidebar"
         >
           <ChevronRight strokeWidth={2} className="w-4 h-4" />
         </button>
@@ -43,6 +44,7 @@ export const SidebarHeader: React.FC<Props> = ({ collapsed, onExpand, onCollapse
         className="ml-auto w-[26px] h-[26px] flex items-center justify-center rounded-lg hover:bg-blue-600 dark:hover:bg-blue-900/30 transition-colors text-blue-600 dark:text-blue-300 shrink-0"
         onClick={onCollapse}
         title="Collapse sidebar"
+        aria-label="Collapse sidebar"
       >
         <ChevronLeft strokeWidth={2} className="w-3.5 h-3.5" />
       </button>

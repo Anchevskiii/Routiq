@@ -37,6 +37,11 @@ const mockItineraryService = {
   deleteItinerary: jest.fn(),
   generateShareToken: jest.fn(),
   getItineraryByShareToken: jest.fn(),
+  reorderDays: jest.fn(),
+  reorderActivities: jest.fn(),
+  updateActivity: jest.fn(),
+  addActivity: jest.fn(),
+  deleteActivity: jest.fn(),
 };
 
 // ---------------------------------------------------------------------------
@@ -405,6 +410,197 @@ describe('ItineraryController', () => {
       await expect(controller.getSharedItinerary('bad-token')).rejects.toThrow(
         'Itinerary not found',
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // reorderDays
+  // -------------------------------------------------------------------------
+
+  describe('reorderDays', () => {
+    it('delegates to itineraryService.reorderDays', async () => {
+      const dto = { dayOrder: [{ dayId: 'day-1', newPosition: 0 }] };
+      mockItineraryService.reorderDays.mockResolvedValue({ success: true });
+
+      const result = await controller.reorderDays(
+        'itin-1',
+        mockUser as unknown as JwtPayload,
+        dto as unknown as import('./dto/reorder-days.dto').ReorderDaysDto,
+      );
+
+      expect(mockItineraryService.reorderDays).toHaveBeenCalledWith(
+        'itin-1',
+        'user-123',
+        dto,
+      );
+      expect(result).toEqual({ success: true });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // reorderActivities
+  // -------------------------------------------------------------------------
+
+  describe('reorderActivities', () => {
+    it('delegates to itineraryService.reorderActivities', async () => {
+      const dto = { activityOrder: [{ activityId: 'act-1', newPosition: 0 }] };
+      mockItineraryService.reorderActivities.mockResolvedValue({
+        success: true,
+      });
+
+      const result = await controller.reorderActivities(
+        'itin-1',
+        'day-1',
+        mockUser as unknown as JwtPayload,
+        dto as unknown as import('./dto/reorder-activities.dto').ReorderActivitiesDto,
+      );
+
+      expect(mockItineraryService.reorderActivities).toHaveBeenCalledWith(
+        'itin-1',
+        'day-1',
+        'user-123',
+        dto,
+      );
+      expect(result).toEqual({ success: true });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // updateActivity
+  // -------------------------------------------------------------------------
+
+  describe('updateActivity', () => {
+    it('delegates to itineraryService.updateActivity', async () => {
+      const dto = { title: 'Updated title' };
+      mockItineraryService.updateActivity.mockResolvedValue({
+        id: 'act-1',
+        title: 'Updated title',
+      });
+
+      const result = await controller.updateActivity(
+        'itin-1',
+        'act-1',
+        mockUser as unknown as JwtPayload,
+        dto as unknown as import('./dto/update-activity.dto').UpdateActivityDto,
+      );
+
+      expect(mockItineraryService.updateActivity).toHaveBeenCalledWith(
+        'itin-1',
+        'act-1',
+        'user-123',
+        dto,
+      );
+      expect(result).toMatchObject({ title: 'Updated title' });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // addActivity
+  // -------------------------------------------------------------------------
+
+  describe('addActivity', () => {
+    it('delegates to itineraryService.addActivity', async () => {
+      const dto = { title: 'New Activity', activityType: 'ATTRACTION' };
+      mockItineraryService.addActivity.mockResolvedValue({
+        id: 'act-new',
+        title: 'New Activity',
+      });
+
+      const result = await controller.addActivity(
+        'itin-1',
+        'day-1',
+        mockUser as unknown as JwtPayload,
+        dto as unknown as import('./dto/create-activity.dto').CreateActivityDto,
+      );
+
+      expect(mockItineraryService.addActivity).toHaveBeenCalledWith(
+        'itin-1',
+        'day-1',
+        'user-123',
+        dto,
+      );
+      expect(result).toMatchObject({ title: 'New Activity' });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // deleteActivity
+  // -------------------------------------------------------------------------
+
+  describe('deleteActivity', () => {
+    it('delegates to itineraryService.deleteActivity', async () => {
+      mockItineraryService.deleteActivity.mockResolvedValue({
+        message: 'Activity deleted',
+      });
+
+      const result = await controller.deleteActivity(
+        'itin-1',
+        'act-1',
+        mockUser as unknown as JwtPayload,
+      );
+
+      expect(mockItineraryService.deleteActivity).toHaveBeenCalledWith(
+        'itin-1',
+        'act-1',
+        'user-123',
+      );
+      expect(result).toEqual({ message: 'Activity deleted' });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // generateItinerary — req.on('close') callback
+  // -------------------------------------------------------------------------
+
+  describe('generateItinerary req.on(close) callback', () => {
+    it('unsubscribes and ends response when connection is closed mid-stream', async () => {
+      const { Subject } = jest.requireActual<typeof import('rxjs')>('rxjs');
+      const subject = new Subject();
+      mockItineraryService.generateStream.mockReturnValue(
+        subject.asObservable(),
+      );
+
+      const closeListeners: (() => void)[] = [];
+      const mockReq = {
+        on: jest.fn((event: string, cb: () => void) => {
+          if (event === 'close') closeListeners.push(cb);
+        }),
+      } as unknown as Request;
+
+      const mockRes = {
+        status: jest.fn().mockReturnThis(),
+        setHeader: jest.fn(),
+        flushHeaders: jest.fn(),
+        write: jest.fn(),
+        end: jest.fn(),
+        writableEnded: false,
+      } as unknown as Response;
+
+      const dto: CreateItineraryDto = {
+        destination: 'Paris',
+        startDate: new Date(),
+        endDate: new Date(),
+        days: 3,
+        travelType: TravelType.CULTURAL,
+      };
+
+      // Start SSE (do not await — it blocks on subject.subscribe)
+      const promise = controller.generateItinerary(
+        mockUser as unknown as JwtPayload,
+        dto,
+        mockReq,
+        mockRes,
+      );
+
+      // Simulate close before observable completes
+      closeListeners.forEach((cb) => cb());
+
+      // Let the promise resolve (unsubscribe exits the observable)
+      subject.complete();
+      await promise;
+
+      // res.end() should have been called from the close handler
+      expect(mockRes.end).toHaveBeenCalled();
     });
   });
 });

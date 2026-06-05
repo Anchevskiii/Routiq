@@ -9,6 +9,7 @@ interface Props {
   activity: Activity
   index: number
   itineraryId?: string
+  destination?: string
   onUpdated?: () => void
   onDeleted?: () => void
 }
@@ -17,6 +18,7 @@ export const SortableAttractionCard: React.FC<Props> = ({
   activity,
   index,
   itineraryId,
+  destination,
   onUpdated,
   onDeleted,
 }) => {
@@ -38,6 +40,7 @@ export const SortableAttractionCard: React.FC<Props> = ({
         itineraryId={itineraryId}
         dragHandleProps={listeners}
         dragHandleAttributes={attributes}
+        destination={destination}
         onUpdated={onUpdated}
         onDeleted={onDeleted}
       />

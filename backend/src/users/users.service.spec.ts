@@ -156,9 +156,35 @@ describe('UsersService', () => {
         activityStatus: true,
       });
     });
+
+    it('uses defaults when metadata is null', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        metadata: null,
+      });
+
+      const result = await service.getSettings('user-1');
+
+      expect(result).toEqual({
+        groupInvitations: true,
+        comments: true,
+        votes: true,
+        tripReminders: true,
+        publicProfile: true,
+        sharedItineraries: true,
+        activityStatus: true,
+      });
+    });
   });
 
   describe('updateSettings', () => {
+    it('throws NotFoundException when user is missing during update', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateSettings('missing', {} as UpdateSettingsDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
     it('merges defaults and updates metadata', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         metadata: { comments: true, votes: true },
@@ -182,6 +208,21 @@ describe('UsersService', () => {
         activityStatus: true,
       });
     });
+
+    it('uses defaults when metadata is null during update', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        metadata: null,
+      });
+
+      await service.updateSettings('user-1', {
+        comments: false,
+      } as UpdateSettingsDto);
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { metadata: { comments: false } },
+      });
+    });
   });
 
   describe('uploadAvatarFile', () => {
@@ -201,6 +242,21 @@ describe('UsersService', () => {
       await expect(
         service.uploadAvatarFile('user-1', Buffer.from('x'), 'image/png'),
       ).rejects.toThrow('Failed to upload avatar');
+    });
+
+    it('defaults extension to jpg when mimetype is simple or missing subtype', async () => {
+      mockStorageBucket.upload.mockResolvedValue({ error: null });
+      mockStorageBucket.getPublicUrl.mockReturnValue({
+        data: { publicUrl: 'https://cdn.example.com/avatar.jpg' },
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'user-1' });
+
+      await service.uploadAvatarFile('user-1', Buffer.from('x'), 'image');
+      expect(mockStorageBucket.upload).toHaveBeenCalledWith(
+        expect.stringContaining('avatar.jpg'),
+        expect.any(Buffer),
+        expect.any(Object),
+      );
     });
 
     it('uploads and stores the public avatar URL', async () => {
@@ -258,6 +314,121 @@ describe('UsersService', () => {
         'user-1',
       );
       expect(result).toEqual({ message: 'Account deleted successfully' });
+    });
+  });
+
+  // =========================================================================
+  // findById
+  // =========================================================================
+
+  describe('findById', () => {
+    it('calls prisma.user.findUnique with the given id and correct select', async () => {
+      const user = {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        avatarUrl: null,
+        metadata: null,
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockPrisma.user.findUnique.mockResolvedValue(user);
+
+      const result = await service.findById('user-1');
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatarUrl: true,
+          metadata: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      expect(result).toEqual(user);
+    });
+
+    it('returns null when user is not found', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const result = await service.findById('nonexistent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  // =========================================================================
+  // findByEmail
+  // =========================================================================
+
+  describe('findByEmail', () => {
+    it('calls prisma.user.findUnique with the given email', async () => {
+      const user = { id: 'user-1', email: 'test@example.com' };
+      mockPrisma.user.findUnique.mockResolvedValue(user);
+
+      const result = await service.findByEmail('test@example.com');
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+      });
+      expect(result).toEqual(user);
+    });
+
+    it('returns null when user is not found by email', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const result = await service.findByEmail('unknown@example.com');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  // =========================================================================
+  // uploadAvatar
+  // =========================================================================
+
+  describe('uploadAvatar', () => {
+    it('updates and returns avatarUrl when user exists', async () => {
+      const user = { id: 'user-1', email: 'test@example.com' };
+      mockPrisma.user.findUnique.mockResolvedValue(user);
+      mockPrisma.user.update.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        avatarUrl: 'https://cdn.example.com/avatar.png',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.uploadAvatar(
+        'user-1',
+        'https://cdn.example.com/avatar.png',
+      );
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+      });
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { avatarUrl: 'https://cdn.example.com/avatar.png' },
+        select: expect.objectContaining({ id: true, email: true }),
+      });
+      expect(result).toMatchObject({
+        avatarUrl: 'https://cdn.example.com/avatar.png',
+      });
+    });
+
+    it('throws NotFoundException when user does not exist', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.uploadAvatar('nonexistent', 'https://cdn.example.com/x.png'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

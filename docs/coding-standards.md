@@ -162,7 +162,7 @@ import { motion } from 'framer-motion'
 
 // 3. Interni (@/)
 import { Button } from '@/components/ui/Button'
-import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useAuth } from '@/app/Providers'
 
 // 4. Relativni (samo znotraj iste mape)
 import { plannerSchema } from './schemas/plannerSchema'

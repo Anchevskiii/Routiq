@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { GroupRole, InvitationStatus } from '@prisma/client';
 import { GroupsService } from './groups.service';
@@ -118,6 +119,12 @@ function buildService(): GroupsService {
   return new GroupsService(
     mockPrisma as unknown as PrismaService,
     mockMailService as unknown as MailService,
+    {
+      getClient: () => null,
+    } as unknown as import('../supabase/supabase.service').SupabaseService,
+    {
+      createNotification: jest.fn().mockResolvedValue(null),
+    } as unknown as import('../notifications/notifications.service').NotificationsService,
   );
 }
 
@@ -818,7 +825,7 @@ describe('GroupsService', () => {
             userId: memberId,
             voteType: 'UPVOTE',
           }),
-          update: { voteType: 'UPVOTE' },
+          update: expect.objectContaining({ voteType: 'UPVOTE' }),
         }),
       );
       expect(result.voteType).toBe('UPVOTE');
@@ -865,7 +872,9 @@ describe('GroupsService', () => {
       );
 
       expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ update: { voteType: 'DOWNVOTE' } }),
+        expect.objectContaining({
+          update: expect.objectContaining({ voteType: 'DOWNVOTE' }),
+        }),
       );
       expect(result.voteType).toBe('DOWNVOTE');
     });
@@ -1101,6 +1110,105 @@ describe('GroupsService', () => {
       await expect(
         service.createGroup(ownerId, { name: 'New Group' }),
       ).resolves.toBeDefined();
+    });
+  });
+
+  // =========================================================================
+  // uploadGroupImage
+  // =========================================================================
+
+  describe('uploadGroupImage', () => {
+    it('uploads group image when caller is admin/owner and client is set up', async () => {
+      mockPrisma.groupMember.findFirst.mockResolvedValue(adminMembership);
+      const mockUpload = jest.fn().mockResolvedValue({ error: null });
+      const mockGetPublicUrl = jest
+        .fn()
+        .mockReturnValue({ data: { publicUrl: 'http://pub.url/image.jpg' } });
+      const mockFrom = jest.fn().mockReturnValue({
+        upload: mockUpload,
+        getPublicUrl: mockGetPublicUrl,
+      });
+      const mockClient = { storage: { from: mockFrom } };
+
+      const customService = new GroupsService(
+        mockPrisma as unknown as PrismaService,
+        mockMailService as unknown as MailService,
+        {
+          getClient: () => mockClient,
+        } as unknown as import('../supabase/supabase.service').SupabaseService,
+        {
+          createNotification: jest.fn().mockResolvedValue(null),
+        } as unknown as import('../notifications/notifications.service').NotificationsService,
+      );
+
+      const res = await customService.uploadGroupImage(
+        groupId,
+        ownerId,
+        Buffer.from('test'),
+        'image/png',
+      );
+      expect(res).toEqual({ imageUrl: 'http://pub.url/image.jpg' });
+      expect(mockUpload).toHaveBeenCalled();
+      expect(mockPrisma.group.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: groupId },
+          data: { imageUrl: 'http://pub.url/image.jpg' },
+        }),
+      );
+    });
+
+    it('throws InternalServerErrorException when upload fails', async () => {
+      mockPrisma.groupMember.findFirst.mockResolvedValue(adminMembership);
+      const mockUpload = jest
+        .fn()
+        .mockResolvedValue({ error: { message: 'upload error' } });
+      const mockFrom = jest.fn().mockReturnValue({
+        upload: mockUpload,
+      });
+      const mockClient = { storage: { from: mockFrom } };
+
+      const customService = new GroupsService(
+        mockPrisma as unknown as PrismaService,
+        mockMailService as unknown as MailService,
+        {
+          getClient: () => mockClient,
+        } as unknown as import('../supabase/supabase.service').SupabaseService,
+        {
+          createNotification: jest.fn().mockResolvedValue(null),
+        } as unknown as import('../notifications/notifications.service').NotificationsService,
+      );
+
+      await expect(
+        customService.uploadGroupImage(
+          groupId,
+          ownerId,
+          Buffer.from('test'),
+          'image/png',
+        ),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('throws InternalServerErrorException when supabase client is missing', async () => {
+      mockPrisma.groupMember.findFirst.mockResolvedValue(adminMembership);
+      const customService = new GroupsService(
+        mockPrisma as unknown as PrismaService,
+        mockMailService as unknown as MailService,
+        {
+          getClient: () => null,
+        } as unknown as import('../supabase/supabase.service').SupabaseService,
+        {
+          createNotification: jest.fn().mockResolvedValue(null),
+        } as unknown as import('../notifications/notifications.service').NotificationsService,
+      );
+
+      await expect(
+        customService.uploadGroupImage(
+          groupId,
+          ownerId,
+          Buffer.from('test'),
+          'image/png',
+        ),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 });

@@ -36,7 +36,7 @@
 | Server data | TanStack Query (React Query) | Cache, loading, refetch |
 | Datum/čas | date-fns | Tree-shakeable, immutable |
 | Karte | Google Maps JavaScript SDK | Interaktivni zemljevid, Places |
-| AI prikaz | Streaming text (SSE) | Stream odgovor iz backend AI endpointa |
+| AI prikaz | Status & progress (SSE) | Stream napredka iz backend AI endpointa za loading animacijo |
 | Icons | Lucide React | Konsistentna ikona knjižnica |
 | PDF izvoz | @react-pdf/renderer | PDF generiranje na klientu |
 | Animacije | Framer Motion | Itinerar prehodi, loading stanja |
@@ -75,6 +75,10 @@ Celoten pregled strukture je v `DIRECTORY.md` v korenu repota.
 | `/groups` | Seznam potovalnih skupin | Da |
 | `/groups/:id` | Detajl skupin + itinerarji + člani | Da |
 | `/profile` | Profil & nastavitve | Da |
+| `/trips` | Seznam vseh potovanj (alternativa dashboardu) | Da |
+| `/notifications` | In-app obvestila | Da |
+| `/help` | Pomoč in FAQ | Da |
+| `/shared/:shareToken` | Javni ogled deljenega itinerarja | Ne |
 | `*` | 404 stran | Ne |
 
 ### Kako deluje routing
@@ -94,6 +98,10 @@ export const ROUTES = {
   GROUPS: '/groups',
   GROUP_DETAIL: (id: string) => `/groups/${id}`,
   PROFILE: '/profile',
+  TRIPS: '/trips',
+  NOTIFICATIONS: '/notifications',
+  HELP: '/help',
+  SHARED_ITINERARY: (shareToken: string) => `/shared/${shareToken}`,
 } as const
 ```
 
@@ -138,6 +146,7 @@ Sestavljajo osnovno lupino aplikacije.
 | `AppShell` | Glavni wrapper: Sidebar + Topbar + vsebina |
 | `Sidebar` | Leva navigacija (dashboard, planner, groups) |
 | `Topbar` | Zgornja vrstica: logo, user menu |
+| `NotificationsDropdown` | Bell ikona z unread badge + dropdown seznam obvestil |
 | `UserMenu` | Dropdown: profil, logout |
 | `ProtectedRoute` | Auth guard: preusmeri na `/login` če ni prijavljen |
 | `PageHeader` | Naslov strani z opcijskim action gumbom |
@@ -161,7 +170,7 @@ Vse klice na backend pišemo v `src/api/`. **Komponente nikoli ne kličejo Axios
 `src/api/axios.ts` vsebuje:
 - Base URL iz `.env` (`VITE_API_URL`)
 - Request interceptor: avtomatično doda Bearer token iz memory/context
-- Response interceptor: ujame 401 → poskusi token refresh → ob neuspehu logout
+- Response interceptor: Preprosto zavrne napako (token refresh je avtomatsko voden prek Supabase SDK)
 
 ```typescript
 // src/api/axios.ts – primer strukture
@@ -179,15 +188,10 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor – 401 handling
+// Response interceptor – napake se propagirajo; token refresh skrbi Supabase SDK (autoRefreshToken)
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      // Poskusi refresh, ob neuspehu → logout
-    }
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 ```
 
@@ -198,11 +202,13 @@ src/api/
 ├── axios.ts              # Axios instanca + interceptorji
 ├── auth.api.ts           # login(), register(), logout(), refreshToken(), getMe()
 ├── itinerary.api.ts      # generateItinerary(), getItinerary(), updateItinerary(), deleteItinerary(), listItineraries()
-├── attractions.api.ts    # getAttractions(), swapAttraction(), addAttraction(), removeAttraction()
+├── attractions.api.ts    # searchAttractions(), getAttraction(), getAlternatives()
+├── notifications.api.ts  # getNotifications(), getUnreadCount(), markRead(), markAllRead()
 ├── weather.api.ts        # getWeatherForecast() – proxy prek backend
-├── groups.api.ts         # getGroups(), createGroup(), getGroupItineraries(), inviteMember(), vote()
+├── groups.api.ts         # getGroups(), createGroup(), inviteMember(), vote(), removeVote()
+├── notifications.api.ts  # getNotifications(), getUnreadCount(), markRead(), markAllRead()
 ├── profile.api.ts        # getProfile(), updateProfile(), uploadAvatar()
-└── export.api.ts         # exportPdf(), exportIcs()
+└── export.api.ts         # exportIcs() — PDF generira itinerary/pdf/ na klientu
 ```
 
 ### Environment spremenljivke
@@ -211,9 +217,13 @@ src/api/
 # frontend/.env.example
 VITE_API_URL=http://localhost:3000/api
 VITE_GOOGLE_MAPS_API_KEY=your_key_here
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_APP_NAME=Routiq
+VITE_APP_DESCRIPTION=Travel planning made simple
 ```
 
-> ⚠️ `VITE_GOOGLE_MAPS_API_KEY` je edini API ključ ki gre na frontend (Maps JS SDK zahteva client-side ključ). Vse ostale ključe (Gemini, Google Weather, Places, Spotify) **nikoli** ne izpostavljamo na klientu – gredo izključno na backend.
+> ⚠️ `VITE_GOOGLE_MAPS_API_KEY` je edini API ključ ki gre na frontend (Maps JS SDK zahteva client-side ključ). Vse ostale ključe (Gemini, Google Weather, Places) **nikoli** ne izpostavljamo na klientu – gredo izključno na backend.
 
 ---
 
@@ -221,16 +231,17 @@ VITE_GOOGLE_MAPS_API_KEY=your_key_here
 
 ### Tok avtentikacije
 
-1. User se prijavi → backend vrne `accessToken` + nastavi `httpOnly` cookie z `refreshToken`
-2. `accessToken` se shrani **izključno v memory** (React context/ref) – **nikoli v localStorage**
-3. Vsak API request dobi token prek Axios interceptorja
-4. Ko `accessToken` poteče (401), interceptor pokliče `/auth/refresh` → dobi nov token
-5. Ob logout se token počisti, kliče se `/auth/logout`, user preusmeri na `/login`
+1. User se prijavi prek **Supabase Auth** (`signInWithPassword`, `signUp`, ali `signInWithOAuth` za Google)
+2. Seja se shrani v **sessionStorage** (Supabase client config) — ne v `localStorage`
+3. `AuthProvider` v `src/app/Providers.tsx` izpostavi `useAuth()` in po prijavi kliče `GET /users/profile`
+4. Axios interceptor doda `Authorization: Bearer <token>` iz Supabase seje; za GET prenose se sinhronizira `sb-access-token` piškotek
+5. Osveževanje tokena skrbi Supabase SDK (`autoRefreshToken: true`), ne backend
+6. Ob logout: `supabase.auth.signOut()`, počisti piškotek, preusmeri na `/login`
 
 ### Auth state
 
 ```typescript
-// Dostopen prek useAuth() v celotni aplikaciji
+// Dostopen prek useAuth() iz src/app/Providers.tsx
 interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
@@ -243,15 +254,15 @@ interface AuthContextValue {
 
 ### Google Sign-In (OAuth)
 
-Backend skrbi za OAuth flow. Frontend samo odpre redirect URL, backend vrne tokene:
+Google OAuth poteka prek Supabase:
 
 ```typescript
 // auth.api.ts
-export const authApi = {
-  loginWithGoogle: () => {
-    window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`
-  }
-}
+export const loginWithGoogle = () =>
+  supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  })
 ```
 
 ---
@@ -264,7 +275,7 @@ export const authApi = {
 | Globalni UI state | React Context | Auth user, tema |
 | Lokalni state | `useState` | Modal open/close, wizard korak |
 | Forme | React Hook Form + Zod | Vsi formularji |
-| AI streaming | `useState` + SSE/fetch stream | Besedilo ki se generira |
+| AI streaming | `useState` + SSE/fetch stream | Statusi in napredek za loading animacijo |
 
 ### React Query – ključi
 
@@ -283,23 +294,21 @@ export const QUERY_KEYS = {
 
 ### AI streaming state
 
-Ker generiranje itinerarja poteka prek SSE streama, upravljamo stanje lokalno:
+Ker generiranje itinerarja poteka prek SSE streama, se na frontend prenašajo statusi, zanimivosti (attractions) in prejeti dnevi, kar posodablja stanje nalaganja:
 
 ```typescript
-// Primer v useGenerateItinerary.ts
-const [streamedText, setStreamedText] = useState('')
-const [isStreaming, setIsStreaming] = useState(false)
-
-const startGeneration = async (params: PlannerParams) => {
-  setIsStreaming(true)
-  const response = await fetch(`${VITE_API_URL}/itinerary/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(params),
-  })
-  const reader = response.body!.getReader()
-  // Procesiranje chunkov...
-}
+// Primer v PlannerPage.tsx pri poslušanju SSE streama
+stream(ITINERARY_ENDPOINTS.GENERATE, { ...values, days }, {
+  onProgress: (data) => {
+    if (data.type === 'status')      setProgress(data.message)
+    if (data.type === 'attractions') setAttractions(data.data)
+    if (data.type === 'day')         setGeneratedDays(prev => [...prev, data.data])
+  },
+  onSuccess: async (data) => {
+    setIsComplete(true)
+    navigate(ROUTES.ITINERARY(data.itineraryId))
+  }
+})
 ```
 
 ---
@@ -327,13 +336,13 @@ Komponente ki uporabljajo karte (`ItineraryMap`, `AttractionMarker`) importajo h
 
 ### AI generiranje – prikaz na FE
 
-Frontend ne kliče Gemini direktno. Backend endpoint `/api/itinerary/generate` streama odgovor. FE bere stream in postopno prikazuje itinerar:
+Frontend ne generira in ne prikazuje posameznih dnevov sproti v končnem pogledu. Namesto tega backend endpoint `/api/itinerary/generate` streama napredek (statusne dogodke, prejete dni), ki jih frontend uporabi za izračun odstotka nalaganja in prikaz v premium loading zaslonu (`GenerationLoading`). Ko se stream uspešno zaključi, se celoten itinerar shrani v bazo, frontend pa prejme `itineraryId` in preusmeri uporabnika na polno stran potovanja:
 
 ```
 FE → POST /api/itinerary/generate (params)
-   ← SSE stream chunkov JSON
+   ← SSE stream statusov, atrakcij in prejetih dni (za progress bar)
    ← Ko stream konča → itinerar je shranjen v DB, FE dobi `itineraryId`
-   ← FE redirect na /itinerary/:id
+   ← FE redirect na /itinerary/:id (kjer se prikaže celotna pot)
 ```
 
 ### PDF izvoz
@@ -341,9 +350,9 @@ FE → POST /api/itinerary/generate (params)
 PDF generiramo na klientu z `@react-pdf/renderer`. Backend ne generira PDF-ov:
 
 ```typescript
-// features/export/components/PdfExportButton.tsx
+// features/itinerary/pdf/pdf-generator.tsx
 import { pdf } from '@react-pdf/renderer'
-import { ItineraryDocument } from './ItineraryDocument'
+import { ItineraryPdfDocument } from './ItineraryPdfDocument'
 
 const handleExport = async () => {
   const blob = await pdf(<ItineraryDocument itinerary={itinerary} />).toBlob()
@@ -438,13 +447,13 @@ Rules:
 - Tailwind CSS only for styling – no inline styles, no CSS modules.
 - Keep components under ~150 lines. Split if longer.
 - Do not install new packages without team approval.
-- Never expose API keys (Gemini, Google Weather, Spotify, Places) on the client.
+- Never expose API keys (Gemini, Google Weather, Places) on the client.
   Only VITE_GOOGLE_MAPS_API_KEY is allowed on frontend.
 - AI generation uses SSE streaming from backend – never call Gemini directly from FE.
 
 Project structure (inside frontend/):
 - src/api/               → API functions per feature + axios instance
-- src/app/               → Router, global providers
+- src/app/               → Router, AuthProvider (useAuth), global providers
 - src/components/ui/     → Primitive UI components (Button, Input, Modal...)
 - src/components/layout/ → AppShell, Sidebar, Topbar, ProtectedRoute
 - src/features/          → One folder per feature (auth, planner, itinerary, groups...)
@@ -463,7 +472,7 @@ Project structure (inside frontend/):
 
 ```
 main          ← Produkcija. Merga se samo testirano, delujoče.
-develop       ← Aktivni razvoj. Sem gre vse.
+development   ← Aktivni razvoj. Sem gre vse.
   └── feature/planner-wizard
   └── feature/itinerary-map
   └── feature/auth-google-oauth
@@ -471,7 +480,7 @@ develop       ← Aktivni razvoj. Sem gre vse.
   └── chore/setup-react-query
 ```
 
-- Vsi delamo na feature branchih, ki izhajajo iz `develop`.
+- Vsi delamo na feature branchih, ki izhajajo iz `development`.
 - `main` se merga samo ko je iteracija stabilna in testirana.
 - Branch se briše po mergeu.
 
@@ -508,7 +517,7 @@ chore: pin axios to 1.14.0
 3. PR opis vsebuje: **kaj** je narejeno, **kako preveriti** da deluje, **screenshots** za UI spremembe.
 4. Drugi član ekipe pregleda in **aprovira** pred mergem.
 5. Avtor sam merga po approvu.
-6. Merga se **samo v `develop`** (nikoli direktno v `main`).
+6. Merga se **samo v `development`** (nikoli direktno v `main`).
 
 ### PR predloga
 
@@ -559,11 +568,11 @@ Kratki opis feature-a ali fixa.
 | **Klemen** | Urejanje itinerarja: swap/dodaj/odstrani atrakcijo, drag & drop vrstni red. |
 | **Mojca** | Groups feature: GroupsPage, GroupDetailPage, GroupCard, InviteMemberForm, glasovanje za atrakcije. |
 
-### Iteracija 4 – Spotify, i18n, optimizacije
+### Iteracija 4 – i18n, optimizacije
 
 | Dev | Naloge |
 |---|---|
-| **Jan** | Spotify playlist prikaz (opcijsko), i18n osnova z react-i18next. |
+| **Jan** | i18n osnova z react-i18next. |
 | **Klemen** | Performančne optimizacije: lazy loading strani, Skeleton loaderji, error boundaryji. |
 | **Mojca** | Dashboard (seznam shranjenih potovanj), Profile stran, UX polish. |
 

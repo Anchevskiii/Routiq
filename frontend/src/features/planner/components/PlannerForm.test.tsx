@@ -1,16 +1,46 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { PlannerForm } from './PlannerForm'
 
+vi.mock('@/components/providers/GoogleMapsProvider', () => ({
+  useGoogleMaps: () => ({ isLoaded: true }),
+}))
+
+class MockAutocomplete {
+  addListener = vi.fn()
+  getPlace = vi.fn(() => ({
+    formatted_address: 'Rome, Italy',
+    name: 'Rome',
+    place_id: 'rome_id',
+    geometry: {
+      location: {
+        lat: () => 41.9,
+        lng: () => 12.5,
+      },
+    },
+  }))
+}
+
 beforeEach(() => {
+  vi.stubGlobal('google', {
+    maps: {
+      places: {
+        Autocomplete: MockAutocomplete,
+      },
+    },
+  })
   global.fetch = vi.fn().mockImplementation(() =>
     Promise.resolve({
       ok: true,
       json: () => Promise.resolve({ originalimage: null, description: null }),
     })
   )
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('PlannerForm', () => {
@@ -51,6 +81,25 @@ describe('PlannerForm', () => {
     await user.click(culturalBtn)
 
     expect(destInput).toHaveValue('Rome')
+  })
+
+  it('displays the correct missing fields count on the submit button', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<PlannerForm onSubmit={onSubmit} isLoading={false} />)
+
+    // Initially 4 required fields are missing
+    expect(screen.getByRole('button', { name: /Complete 4 fields/i })).toBeInTheDocument()
+
+    // Fill destination
+    const destInput = screen.getByPlaceholderText('e.g. Tokyo, Lisbon, Reykjavík…')
+    await user.type(destInput, 'Rome')
+    expect(screen.getByRole('button', { name: /Complete 3 fields/i })).toBeInTheDocument()
+
+    // Click experience type
+    const culturalBtn = screen.getAllByRole('button', { name: /Cultural/i })[0]
+    await user.click(culturalBtn)
+    expect(screen.getByRole('button', { name: /Complete 2 fields/i })).toBeInTheDocument()
   })
 })
 

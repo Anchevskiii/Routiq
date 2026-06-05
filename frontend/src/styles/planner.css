@@ -14,14 +14,14 @@
   --accent-glow: rgba(37,99,235,0.35);
 }
 
-/* bg-aurora uses background-image (not shorthand) so it doesn't reset background-clip */
+/* bg-aurora: single-tone background to keep visuals monochrome */
 .bg-aurora {
-  background-image: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  background-image: linear-gradient(180deg, var(--indigo-2) 0%, var(--indigo) 100%);
 }
 
 /* Gradient text utility */
 .text-aurora {
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(180deg, var(--indigo-2) 0%, var(--indigo) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -46,10 +46,8 @@
 .aurora-bg-base {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 800px 500px at 75% -10%, rgba(59,130,246,0.14), transparent 60%),
-    radial-gradient(ellipse 700px 500px at 10% 110%, rgba(37,99,235,0.12), transparent 65%),
-    linear-gradient(180deg, #f8faff 0%, #f0f4ff 50%, #f2f6ff 100%);
+  /* simplified single-tone base (removed multiple hue layers) */
+  background: linear-gradient(180deg, #f8faff 0%, #f2f6ff 100%);
 }
 
 /* animated orbs — blue tones */
@@ -59,21 +57,15 @@
   border-radius: 50%;
   filter: blur(110px);
 }
-.aurora-orb-a {
-  left: 45%; top: -80px;
-  background: radial-gradient(circle, rgba(59,130,246,0.50), transparent 65%);
-  animation: orb-a 28s ease-in-out infinite alternate;
-}
-.aurora-orb-b {
-  right: -100px; top: 25%;
-  background: radial-gradient(circle, rgba(37,99,235,0.40), transparent 65%);
-  animation: orb-b 34s ease-in-out infinite alternate;
-}
+.aurora-orb-a,
+.aurora-orb-b,
 .aurora-orb-c {
-  left: -150px; top: 50%;
-  background: radial-gradient(circle, rgba(59,130,246,0.28), transparent 65%);
-  animation: orb-a 40s ease-in-out infinite alternate-reverse;
+  /* single, subtle monochrome orb color */
+  background: radial-gradient(circle, rgba(59,130,246,0.08), transparent 65%);
 }
+.aurora-orb-a { left: 45%; top: -80px; animation: orb-a 28s ease-in-out infinite alternate; }
+.aurora-orb-b { right: -100px; top: 25%; animation: orb-b 34s ease-in-out infinite alternate; }
+.aurora-orb-c { left: -150px; top: 50%; animation: orb-a 40s ease-in-out infinite alternate-reverse; }
 
 @keyframes orb-a { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(140px,90px) scale(1.08); } }
 @keyframes orb-b { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(-120px,-60px) scale(1.12); } }
@@ -114,7 +106,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .btn-shimmer {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
   border: none;
   border-radius: 16px;

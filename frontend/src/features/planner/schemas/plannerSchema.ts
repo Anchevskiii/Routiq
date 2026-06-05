@@ -11,6 +11,18 @@ export const plannerSchema = z.object({
       required_error: 'Travel type is required',
     })
   ),
+  latitude: z.preprocess(
+    (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
+    z.number().optional()
+  ),
+  longitude: z.preprocess(
+    (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
+    z.number().optional()
+  ),
+  placeId: z.preprocess(
+    (val) => (val === '' || val === undefined || val === null ? undefined : val),
+    z.string().optional()
+  ),
 }).superRefine((values, ctx) => {
   if (!values.startDate || !values.endDate) return
   const start = parseISO(values.startDate)

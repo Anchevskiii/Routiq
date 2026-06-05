@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Calendar, Clock, Share2, Printer, Wallet, Pencil, Check, X, Compass } from 'lucide-react'
+import { Calendar, Clock, Wallet, Pencil, Check, X, Compass, Printer } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 
 import { itineraryApi } from '@/api/itinerary.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
@@ -19,6 +20,18 @@ interface ItineraryHeaderProps {
 export const ItineraryHeader: React.FC<ItineraryHeaderProps> = ({
   itinerary, showActions = true, compact = false, itineraryId, onNameChange,
 }) => {
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const handleDownloadPdf = async () => {
+    setPdfLoading(true)
+    try {
+      const { downloadItineraryPdf } = await import('../pdf/pdf-generator')
+      await downloadItineraryPdf(itinerary)
+    } catch {
+      toast.error('Failed to generate PDF')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
   const travelType = getTravelTypeByValue(itinerary.travelType)
   const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
@@ -105,14 +118,14 @@ export const ItineraryHeader: React.FC<ItineraryHeaderProps> = ({
           </div>
 
           {showActions && (
-            <div className="flex gap-2 flex-shrink-0">
-              <button className="flex items-center gap-1.5 px-3 py-2 rounded-[11px] text-[13px] font-medium text-[#f0eeff] bg-[rgba(8,9,26,0.55)] border border-white/[0.12] backdrop-blur-sm hover:bg-[rgba(25,30,55,0.75)] transition-colors">
-                <Share2 className="w-3.5 h-3.5" /> Share
-              </button>
-              <button className="flex items-center gap-1.5 px-3 py-2 rounded-[11px] text-[13px] font-medium text-[#f0eeff] bg-[rgba(8,9,26,0.55)] border border-white/[0.12] backdrop-blur-sm hover:bg-[rgba(25,30,55,0.75)] transition-colors">
-                <Printer className="w-3.5 h-3.5" /> PDF
-              </button>
-            </div>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={pdfLoading}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-[11px] text-[13px] font-medium text-[#f0eeff] bg-[rgba(8,9,26,0.55)] border border-white/[0.12] backdrop-blur-sm hover:bg-[rgba(25,30,55,0.75)] transition-colors disabled:opacity-60"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              {pdfLoading ? 'Generating…' : 'PDF'}
+            </button>
           )}
         </div>
 

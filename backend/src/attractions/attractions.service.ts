@@ -38,6 +38,15 @@ export class AttractionsService {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://maps.googleapis.com/maps/api/place';
 
+  // Cache Places API search queries for 24 hours
+  private searchCache = new Map<
+    string,
+    { data: FormattedPlace[]; timestamp: number }
+  >();
+  private readonly searchCacheDuration = 24 * 60 * 60 * 1000; // 24 hours in ms
+  private readonly utilityRegex =
+    /\b(atm|locker|wc|toilet|bus stop|subway station|transit station|train station|parking|car rental|supermarket|pharmacy|police|hospital|baggage storage|luggage storage|airport|taxi stand|public restroom|public toilet)\b/i;
+
   constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGooglePlacesApiKey();
   }
@@ -50,6 +59,173 @@ export class AttractionsService {
     }
     // Strip quotes if they exist (common issue in .env files)
     return this.apiKey.replace(/^["']|["']$/g, '');
+  }
+
+  private calculateDistanceMeters(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
+  ): number {
+    const R = 6371e3; // meters
+    const phi1 = (lat1 * Math.PI) / 180;
+    const phi2 = (lat2 * Math.PI) / 180;
+    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+    const deltaLng = ((lng2 - lng1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+      Math.cos(phi1) *
+        Math.cos(phi2) *
+        Math.sin(deltaLng / 2) *
+        Math.sin(deltaLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  }
+
+  private getPlaceCategory(place: FormattedPlace): string {
+    const type = (place.type || '').toLowerCase();
+    const nameLower = place.name.toLowerCase();
+
+    if (place.sourceType === 'dining') {
+      return 'dining';
+    }
+
+    const diningTypes = [
+      'restaurant',
+      'cafe',
+      'food',
+      'bakery',
+      'bar',
+      'meal_takeaway',
+      'meal_delivery',
+    ];
+    if (
+      diningTypes.includes(type) ||
+      diningTypes.some((t) => nameLower.includes(t))
+    ) {
+      return 'dining';
+    }
+
+    const sightseeingTypes = [
+      'museum',
+      'art_gallery',
+      'tourist_attraction',
+      'church',
+      'castle',
+      'place_of_worship',
+      'monument',
+      'city_hall',
+      'synagogue',
+      'mosque',
+      'hindu_temple',
+    ];
+    if (
+      sightseeingTypes.includes(type) ||
+      sightseeingTypes.some((t) => nameLower.includes(t))
+    ) {
+      return 'sightseeing';
+    }
+
+    const outdoorTypes = [
+      'park',
+      'campground',
+      'amusement_park',
+      'zoo',
+      'aquarium',
+      'national_park',
+      'natural_feature',
+      'beach',
+      'garden',
+    ];
+    if (
+      outdoorTypes.includes(type) ||
+      outdoorTypes.some((t) => nameLower.includes(t))
+    ) {
+      return 'outdoors';
+    }
+
+    return 'other';
+  }
+
+  private areNamesSimilar(name1: string, name2: string): boolean {
+    const normalize = (name: string) =>
+      name
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .split(/\s+/)
+        .filter((w) => w.length > 2);
+
+    const words1 = normalize(name1);
+    const words2 = normalize(name2);
+
+    if (words1.length === 0 || words2.length === 0) return false;
+
+    const set1 = new Set(words1);
+    const set2 = new Set(words2);
+
+    const intersection = new Set([...set1].filter((x) => set2.has(x)));
+    const union = new Set([...set1, ...set2]);
+
+    const jaccard = intersection.size / union.size;
+    return jaccard > 0.55;
+  }
+
+  private isUtilityPlace(place: FormattedPlace): boolean {
+    return this.utilityRegex.test(place.name);
+  }
+
+  private isLowQuality(place: FormattedPlace): boolean {
+    if (place.rating !== undefined && place.rating > 0 && place.rating < 3.2) {
+      return true;
+    }
+    if (
+      place.userRatingsTotal !== undefined &&
+      place.userRatingsTotal > 0 &&
+      place.userRatingsTotal < 3
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private checkConflict(
+    candidate: FormattedPlace,
+    acceptedPlaces: FormattedPlace[],
+  ): boolean {
+    for (const accepted of acceptedPlaces) {
+      const distance = this.calculateDistanceMeters(
+        candidate.location.lat,
+        candidate.location.lng,
+        accepted.location.lat,
+        accepted.location.lng,
+      );
+
+      // 1. Proximity and category check
+      if (distance < 30) {
+        const catCandidate = this.getPlaceCategory(candidate);
+        const catAccepted = this.getPlaceCategory(accepted);
+        if (catCandidate === catAccepted) {
+          this.logger.debug(
+            `Pruning '${candidate.name}' due to proximity (<30m: ${distance.toFixed(1)}m) and same category ('${catCandidate}') with '${accepted.name}'`,
+          );
+          return true;
+        }
+      }
+
+      // 2. Name similarity check within 150m
+      if (
+        distance < 150 &&
+        this.areNamesSimilar(candidate.name, accepted.name)
+      ) {
+        this.logger.debug(
+          `Pruning '${candidate.name}' due to distance (<150m: ${distance.toFixed(1)}m) and name similarity with '${accepted.name}'`,
+        );
+        return true;
+      }
+    }
+    return false;
   }
 
   async getCuratedPlaces(
@@ -92,39 +268,72 @@ export class AttractionsService {
     const scorePlace = (p: FormattedPlace) =>
       (p.rating || 0) * Math.log10((p.userRatingsTotal || 0) + 1);
 
-    const curatedMainstream = mainstream
-      .sort((a, b) => scorePlace(b) - scorePlace(a))
-      .slice(0, requiredMainstream * 2);
-
-    const curatedNiche = niche
-      .sort((a, b) => scorePlace(b) - scorePlace(a))
-      .slice(0, requiredNiche * 2);
-
-    const curatedDining = dining
-      .sort((a, b) => scorePlace(b) - scorePlace(a))
-      .slice(0, requiredMeals * 2);
-
-    const merged = [...curatedMainstream, ...curatedNiche, ...curatedDining];
-
-    // Deduplicate by place ID
+    // Merge and deduplicate exact IDs first
+    const rawMerged = [...mainstream, ...niche, ...dining];
     const seen = new Set<string>();
-    const result = merged.filter((place) => {
+    const uniqueCandidates = rawMerged.filter((place) => {
       if (seen.has(place.id)) return false;
       seen.add(place.id);
       return true;
     });
 
-    this.logger.log(
-      `Curated ${result.length} unique places (Mainstream: ${curatedMainstream.length}, Niche: ${curatedNiche.length}, Dining: ${curatedDining.length})`,
+    // Filter out low quality and utility locations
+    const filteredCandidates = uniqueCandidates.filter(
+      (place) => !this.isUtilityPlace(place) && !this.isLowQuality(place),
     );
 
-    return result;
+    // Sort by popularity/rating score
+    filteredCandidates.sort((a, b) => scorePlace(b) - scorePlace(a));
+
+    // Greedily select places, pruning duplicates based on proximity (30m similar categories) and name similarity (150m)
+    const acceptedPlaces: FormattedPlace[] = [];
+    for (const candidate of filteredCandidates) {
+      if (!this.checkConflict(candidate, acceptedPlaces)) {
+        acceptedPlaces.push(candidate);
+      }
+    }
+
+    // Slice back into category budgets to maintain balanced proportions
+    const curatedMainstream = acceptedPlaces
+      .filter((p) => p.sourceType === 'mainstream')
+      .slice(0, requiredMainstream * 2);
+
+    const curatedNiche = acceptedPlaces
+      .filter((p) => p.sourceType === 'niche')
+      .slice(0, requiredNiche * 2);
+
+    const curatedDining = acceptedPlaces
+      .filter((p) => p.sourceType === 'dining')
+      .slice(0, requiredMeals * 2);
+
+    const result = [...curatedMainstream, ...curatedNiche, ...curatedDining];
+
+    // Final uniqueness check
+    const finalSeen = new Set<string>();
+    const finalResult = result.filter((place) => {
+      if (finalSeen.has(place.id)) return false;
+      finalSeen.add(place.id);
+      return true;
+    });
+
+    this.logger.log(
+      `Curated ${finalResult.length} unique places (Mainstream: ${curatedMainstream.length}, Niche: ${curatedNiche.length}, Dining: ${curatedDining.length})`,
+    );
+
+    return finalResult;
   }
 
   private async searchLegacy(
     query: string,
     radius?: number,
   ): Promise<FormattedPlace[]> {
+    const cacheKey = `${query}-${radius || ''}`;
+    const cached = this.searchCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.searchCacheDuration) {
+      this.logger.log(`Cache hit for legacy Places search: ${query}`);
+      return cached.data;
+    }
+
     try {
       const response = await withRetry(
         () =>
@@ -161,7 +370,15 @@ export class AttractionsService {
       }
 
       const results: GooglePlaceLegacy[] = response.data.results || [];
-      return results.map((place) => this.formatLegacyPlace(place));
+      const formatted = results.map((place) => this.formatLegacyPlace(place));
+
+      // Store in cache
+      this.searchCache.set(cacheKey, {
+        data: formatted,
+        timestamp: Date.now(),
+      });
+
+      return formatted;
     } catch (error) {
       this.logger.error(
         `Legacy search failed for '${query}': ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -191,7 +408,7 @@ export class AttractionsService {
               place_id: placeId,
               key: this.getApiKeyOrThrow(),
               fields:
-                'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,photos,editorial_summary',
+                'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,editorial_summary',
             },
             timeout: 10000,
           }),
@@ -276,7 +493,7 @@ export class AttractionsService {
       type: place.types?.[0] || 'attraction',
       rating: place.rating || 0,
       userRatingsTotal: place.user_ratings_total || 0,
-      photos: place.photos?.map((p) => p.photo_reference) || [],
+      photos: [],
     };
   }
 
@@ -287,5 +504,48 @@ export class AttractionsService {
 
   private extractKeywordsFromName(name: string): string {
     return name.replace(/\b(the|and|or|of|in|at|to)\b/gi, '').trim();
+  }
+
+  async geocodeAddress(
+    address: string,
+  ): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const response = await withRetry(
+        () =>
+          axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+            params: {
+              address,
+              key: this.getApiKeyOrThrow(),
+            },
+            timeout: 5000,
+          }),
+        {
+          shouldRetry: (error) => {
+            if (axios.isAxiosError(error)) {
+              return (
+                !error.response ||
+                error.response.status === 429 ||
+                error.response.status >= 500
+              );
+            }
+            return true;
+          },
+        },
+      );
+
+      if (
+        response.data.status === 'OK' &&
+        response.data.results?.[0]?.geometry?.location
+      ) {
+        const loc = response.data.results[0].geometry.location;
+        return { lat: loc.lat, lng: loc.lng };
+      }
+      return null;
+    } catch (error) {
+      this.logger.error(
+        `Geocoding failed for '${address}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      return null;
+    }
   }
 }

@@ -42,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
     if (id === 'groups')   return location.pathname.startsWith(ROUTES.GROUPS)
     if (id === 'ai')       return location.pathname === ROUTES.PLANNER
     if (id === 'settings') return location.pathname === ROUTES.PROFILE
+    if (id === 'help')     return location.pathname === ROUTES.HELP
     return false
   }
 
@@ -114,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       <div className="mt-5">
         {!collapsed && (
           <div className="px-4 mb-1">
-            <span className="text-[10px] font-bold tracking-widest text-slate-400 dark:text-slate-500">OTHER</span>
+            {/* <span className="text-[10px] font-bold tracking-widest text-slate-400 dark:text-slate-500">OTHER</span> */}
           </div>
         )}
         <nav className="flex flex-col gap-px px-2">

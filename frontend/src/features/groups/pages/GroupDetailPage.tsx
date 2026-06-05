@@ -10,6 +10,7 @@ import { GroupDetailSidebar } from '@/features/groups/components/GroupDetailSide
 import { GroupHeader } from '@/features/groups/components/GroupHeader'
 import { GroupItinerariesTab } from '@/features/groups/components/GroupItinerariesTab'
 import { AddItineraryModal } from '@/features/groups/components/AddItineraryModal'
+import { GroupSettingsModal } from '@/features/groups/components/GroupSettingsModal'
 import type { GroupRole } from '@/types/group.types'
 
 export const GroupDetailPage: React.FC = () => {
@@ -18,13 +19,17 @@ export const GroupDetailPage: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [inviteEmail, setInviteEmail]           = useState('')
-  const [isAddItineraryOpen, setAddItinerary]   = useState(false)
+  const [isAddItineraryOpen, setIsAddItineraryOpen]   = useState(false)
+  const [isSettingsOpen, setSettingsOpen]       = useState(false)
   const [toastDismissed, setToastDismissed]     = useState(false)
 
   const { data: group, isLoading, error } = useQuery({
     queryKey: QUERY_KEYS.group(id!),
     queryFn: () => groupsApi.getGroup(id!),
     enabled: !!id,
+    staleTime: 0,           // always treat as stale → refetch on focus/mount
+    refetchOnMount: true,   // fetch fresh data every time page opens
+    refetchOnWindowFocus: true,  // refetch when tab regains focus
   })
 
   const inviteMutation = useMutation({
@@ -41,7 +46,7 @@ export const GroupDetailPage: React.FC = () => {
     mutationFn: (itineraryId: string) => groupsApi.addItineraryToGroup(id!, itineraryId),
     onSuccess: () => {
       toast.success('Itinerary added')
-      setAddItinerary(false)
+      setIsAddItineraryOpen(false)
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(id!) })
     },
     onError: () => toast.error('Failed to add itinerary'),
@@ -73,7 +78,7 @@ export const GroupDetailPage: React.FC = () => {
   )
 
   return (
-    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] text-gray-900 dark:text-[#f0eeff] px-8 py-6 pb-16">
+    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] text-gray-900 dark:text-[#f0eeff] px-4 py-6 pb-16 sm:px-8">
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 mb-[18px] text-[13px] text-gray-400 dark:text-[#6e6c93] font-medium">
@@ -84,12 +89,13 @@ export const GroupDetailPage: React.FC = () => {
 
       <GroupHeader
         group={group}
-        onImport={() => setAddItinerary(true)}
+        onImport={() => setIsAddItineraryOpen(true)}
         onGenerate={() => navigate(`${ROUTES.PLANNER}?groupId=${id}`)}
+        onSettings={() => setSettingsOpen(true)}
       />
 
       {/* Main layout */}
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
 
         {/* Left — content */}
         <div className="flex-1 min-w-0">
@@ -99,12 +105,12 @@ export const GroupDetailPage: React.FC = () => {
             currentUserId={user?.id}
             toastDismissed={toastDismissed}
             onDismissToast={() => setToastDismissed(true)}
-            onAddItinerary={() => setAddItinerary(true)}
+            onAddItinerary={() => setIsAddItineraryOpen(true)}
           />
         </div>
 
         {/* Right rail */}
-        <div className="w-80 shrink-0 sticky top-6 self-start">
+        <div className="w-full max-w-[480px] xl:w-80 shrink-0 xl:sticky xl:top-6 xl:self-start">
           <GroupDetailSidebar
             groupId={group.id}
             members={group.members}
@@ -121,9 +127,17 @@ export const GroupDetailPage: React.FC = () => {
 
       {isAddItineraryOpen && (
         <AddItineraryModal
-          onClose={() => setAddItinerary(false)}
+          onClose={() => setIsAddItineraryOpen(false)}
           onAdd={itineraryId => addItineraryMutation.mutate(itineraryId)}
           isSubmitting={addItineraryMutation.isPending}
+        />
+      )}
+
+      {isSettingsOpen && (
+        <GroupSettingsModal
+          group={group}
+          currentUserRole={currentUserRole}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>
@@ -132,9 +146,9 @@ export const GroupDetailPage: React.FC = () => {
 
 function GroupDetailSkeleton() {
   return (
-    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] px-8 py-6 pb-16">
+    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] px-4 py-6 pb-16 sm:px-8">
       <div className="h-[220px] rounded-[22px] bg-[rgba(22,24,48,0.4)] mb-[22px] animate-pulse" />
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-6 lg:flex-row">
         <div className="flex-1 h-96 rounded-[18px] bg-[rgba(22,24,48,0.4)] animate-pulse" />
         <div className="w-80 h-96 rounded-[18px] bg-[rgba(22,24,48,0.4)] animate-pulse" />
       </div>

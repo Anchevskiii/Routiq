@@ -21,13 +21,13 @@
 
 | Kategorija | Vrednost |
 |---|---|
-| Sistem | PostgreSQL 15 |
+| Sistem | PostgreSQL 15+ (CI/test: PostgreSQL 16) |
 | Hosting | Supabase (managed + pgbouncer) |
 | ORM | Prisma |
 | Shema | `backend/prisma/schema.prisma` |
 | Skupaj tabel | 14 |
 | Primary key tip | UUID (Supabase kompatibilno) |
-| Soft delete | Vse entitete imajo `deletedAt` polje |
+| Soft delete | Večina entitet ima `deletedAt`; izjeme: `itinerary_tips`, `itinerary_weather_snapshots`, `notifications`, `comment_reactions`, `calendar_exports`, `activity_logs` |
 
 **Zakaj UUID namesto auto-increment int?**  
 Supabase generira UUID za users (`id` je tipa `uuid` direktno iz Supabase Auth). Za konsistentnost so vsi PKji UUID. UUIDs so varnejši (ne moremo ugibati ID-jev) in delujejo brez centraliziranega zaporedja.
@@ -100,6 +100,8 @@ erDiagram
         string mealType
         string priceRange
         string transportMethod
+        string transportCost
+        string transportNotes
         datetime deletedAt
     }
 
@@ -109,7 +111,7 @@ erDiagram
         string condition
         float tempMin
         float tempMax
-        float humidity
+        int humidity
         float windSpeed
         float precipitation
         string iconCode
@@ -204,6 +206,17 @@ erDiagram
         datetime exportedAt
     }
 
+    notifications {
+        uuid id PK
+        uuid userId FK
+        enum type
+        string title
+        string body
+        json data
+        datetime readAt
+        datetime createdAt
+    }
+
     users ||--o{ itineraries : "ustvari"
     users ||--o{ group_members : "je član"
     users ||--o{ comments : "piše"
@@ -211,6 +224,7 @@ erDiagram
     users ||--o{ votes : "glasuje"
     users ||--o{ activity_logs : "sproži"
     users ||--o{ calendar_exports : "izvozi"
+    users ||--o{ notifications : "prejme"
     users ||--o{ groups : "ustvari (createdById)"
 
     itineraries ||--o{ itinerary_days : "vsebuje dneve"
@@ -297,6 +311,8 @@ Posamezna aktivnost v dnevu (atrakcija, obrok, prevoz...).
 | `placeId` | String? | Google Places ID za additional data |
 | `mealType` | String? | Za MEAL: "zajtrk", "kosilo", "večerja" |
 | `transportMethod` | String? | Za TRANSPORT: "avto", "pešačenje"... |
+| `transportCost` | String? | Strošek prevoza |
+| `transportNotes` | String? | Opombe glede prevoza |
 
 ### `itinerary_weather_snapshots`
 
@@ -370,6 +386,21 @@ Revizijska sled akcij v skupini.
 
 Beleži kdaj je kdo izvozil itinerar v kateri format.
 
+### `notifications`
+
+In-app obvestila za uporabnike — glasovanje, komentarji, skupinska povabila.
+
+| Polje | Tip | Opis |
+|---|---|---|
+| `userId` | UUID FK | Prejemnik obvestila |
+| `type` | NotificationType | Tip: GROUP_INVITATION, COMMENT, VOTE, TRIP_REMINDER |
+| `title` | String | Kratko sporočilo (npr. "Jan je glasoval za tvoj itinerar") |
+| `body` | String? | Dodatni kontekst |
+| `data` | Json? | Metadata: `groupId`, `itineraryId`, `groupItineraryId`... |
+| `readAt` | DateTime? | Null = neprebrano; timestamp = prebrano |
+
+**Indeksi:** `(userId)`, `(userId, readAt)` — za hitro pridobivanje neprebranih obvestil.
+
 ---
 
 ## 4. Enumeracije
@@ -417,6 +448,15 @@ Hierarhija: `OWNER > ADMIN > MODERATOR > MEMBER`
 
 `ICS`, `PDF`
 
+### `NotificationType` — tip obvestila
+
+| Vrednost | Kdaj se sproži |
+|---|---|
+| `GROUP_INVITATION` | Nekdo te povabi v skupino |
+| `COMMENT` | Nekdo odgovori na tvoj komentar |
+| `VOTE` | Nekdo glasuje za tvoj itinerar v skupini |
+| `TRIP_REMINDER` | Opomnik za prihajajoče potovanje (rezervirano) |
+
 ---
 
 ## 5. Relacije
@@ -456,7 +496,7 @@ Vse entitete (razen `itinerary_weather_snapshots`, `itinerary_tips`, `calendar_e
 - Preprečuje osirotele relacije (cascade hard delete bi odstranil povezane podatke)
 - Omogoča "undo" operacije
 
-**Implementacija:** Prisma middleware v `prisma.service.ts` samodejno dodaja `WHERE deletedAt IS NULL` filter na vse `find*` operacije. Izjema: specifični klici kjer je potreben dostop do "izbrisanih" zapisov (npr. re-invite DECLINED člana).
+**Implementacija:** Prisma Client Extensions v `prisma.service.ts` (Prisma 7) samodejno dodajajo `WHERE deletedAt IS NULL` filter na `find*` operacije za podprte modele. Izjema: specifični klici kjer je potreben dostop do "izbrisanih" zapisov (npr. re-invite DECLINED člana).
 
 ```typescript
 // Primer: upsert za re-invite (dostop do DECLINED zapisa)

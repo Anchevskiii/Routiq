@@ -18,19 +18,20 @@ import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { ItineraryGenerationService } from './itinerary-generation.service';
-import { InvitationStatus } from '@prisma/client';
+import { InvitationStatus, Prisma, ItineraryActivity } from '@prisma/client';
 import { WeatherService } from '../weather/weather.service';
 import { GeneratedDay, GeneratedItinerary } from './types';
 
-import { Prisma } from '@prisma/client';
 import { FormattedPlace } from '../attractions/types';
+import { randomBytes, createHash } from 'node:crypto';
 
 export type ItineraryGenerateStreamEvent =
   | { type: 'status'; message: string }
   | { type: 'attractions'; data: FormattedPlace[] }
   | { type: 'day'; data: Prisma.ItineraryDayCreateWithoutItineraryInput }
   | { type: 'complete'; itineraryId: string }
-  | { type: 'error'; error: string };
+  | { type: 'error'; error: string }
+  | { type: 'telemetry'; data: Record<string, unknown> };
 
 @Injectable()
 export class ItineraryService {
@@ -43,6 +44,8 @@ export class ItineraryService {
     private readonly weatherService: WeatherService,
   ) {}
 
+  private readonly enableDetailedTelemetry = true;
+
   async generateItinerary(
     userId: string,
     createItineraryDto: CreateItineraryDto,
@@ -52,7 +55,7 @@ export class ItineraryService {
         createItineraryDto,
       );
     const generated = await this.geminiService.streamGenerate(prepared.prompt);
-    const itinerary =
+    const result =
       await this.itineraryGenerationService.persistGeneratedItinerary({
         userId,
         createItineraryDto,
@@ -64,15 +67,17 @@ export class ItineraryService {
         promptHash: this.hashString(prepared.prompt),
       });
 
-    return this.getItineraryById(itinerary.id, userId);
+    return this.getItineraryById(result.itinerary.id, userId);
   }
 
   async getUserItineraries(userId: string, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
-    const [itineraries, total] = await Promise.all([
+    const baseWhere = { userId, deletedAt: null };
+
+    const [itineraries, total, sharedCount] = await Promise.all([
       this.prisma.itinerary.findMany({
-        where: { userId, deletedAt: null },
+        where: baseWhere,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -106,8 +111,12 @@ export class ItineraryService {
           },
         },
       }),
+      this.prisma.itinerary.count({ where: baseWhere }),
       this.prisma.itinerary.count({
-        where: { userId },
+        where: {
+          ...baseWhere,
+          groupItineraries: { some: { deletedAt: null } },
+        },
       }),
     ]);
 
@@ -118,6 +127,7 @@ export class ItineraryService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        sharedCount,
       },
     };
   }
@@ -383,17 +393,14 @@ export class ItineraryService {
     const itinerary = await this.prisma.itinerary.findFirst({
       where: { id: itineraryId, userId },
     });
-    if (!itinerary) {
-      throw new NotFoundException('Itinerary not found');
-    }
+    if (!itinerary) throw new NotFoundException('Itinerary not found');
 
     const activity = await this.prisma.itineraryActivity.findFirst({
       where: { id: activityId, deletedAt: null },
     });
-    if (!activity) {
-      throw new NotFoundException('Activity not found');
-    }
+    if (!activity) throw new NotFoundException('Activity not found');
 
+    // Apply the update first
     const updated = await this.prisma.itineraryActivity.update({
       where: { id: activityId },
       data: {
@@ -406,7 +413,8 @@ export class ItineraryService {
     });
 
     if (dto.startTime !== undefined || dto.durationMinutes !== undefined) {
-      await this.cascadeActivityTimes(activity.dayId);
+      // Re-sort activities by startTime, then cascade
+      await this.resortAndCascade(activity.dayId, activityId);
     }
 
     return updated;
@@ -430,30 +438,15 @@ export class ItineraryService {
       orderBy: { sortOrder: 'asc' },
     });
 
-    let insertAt = existing.length; // 0-based index to insert at (append)
+    const insertAt = this.calculateInsertionIndex(existing, dto.startTime);
 
-    if (dto.startTime) {
-      const newTime = this.parseTime(dto.startTime);
-      insertAt = existing.findIndex(
-        (a) =>
-          a.startTime !== null &&
-          a.startTime !== undefined &&
-          this.parseTime(a.startTime) > newTime,
-      );
-      if (insertAt === -1) insertAt = existing.length;
-    }
+    const trimmedActivity = await this.handlePrecedingActivityTrimming(
+      existing,
+      insertAt,
+      dto.startTime,
+    );
 
-    // Shift sortOrders for activities after insert position
-    if (insertAt < existing.length) {
-      await this.prisma.$transaction(
-        existing.slice(insertAt).map((a) =>
-          this.prisma.itineraryActivity.update({
-            where: { id: a.id },
-            data: { sortOrder: a.sortOrder + 1 },
-          }),
-        ),
-      );
-    }
+    await this.shiftSortOrdersAfter(existing, insertAt);
 
     const created = await this.prisma.itineraryActivity.create({
       data: {
@@ -471,8 +464,105 @@ export class ItineraryService {
       },
     });
 
-    await this.cascadeActivityTimes(dayId);
-    return created;
+    let pushedActivities: {
+      id: string;
+      title: string;
+      newStartTime: string;
+    }[] = [];
+    if (dto.startTime) {
+      let anchorEndMinutes: number | null = null;
+      if (insertAt > 0) {
+        const preceding = existing[insertAt - 1];
+        if (preceding.startTime) {
+          const precedingDuration = trimmedActivity
+            ? trimmedActivity.newDurationMinutes
+            : preceding.durationMinutes;
+          if (precedingDuration != null) {
+            anchorEndMinutes =
+              this.parseTime(preceding.startTime) + precedingDuration;
+          }
+        }
+      }
+      pushedActivities = await this.cascadeActivityTimesFrom(
+        dayId,
+        insertAt + 1,
+        anchorEndMinutes,
+      );
+    }
+
+    return { activity: created, trimmedActivity, pushedActivities };
+  }
+
+  private calculateInsertionIndex(
+    existing: ItineraryActivity[],
+    startTime?: string,
+  ): number {
+    if (!startTime) {
+      return existing.length;
+    }
+    const newTime = this.parseTime(startTime);
+    const idx = existing.findIndex(
+      (a) =>
+        a.startTime !== null &&
+        a.startTime !== undefined &&
+        this.parseTime(a.startTime) > newTime,
+    );
+    return idx === -1 ? existing.length : idx;
+  }
+
+  private async handlePrecedingActivityTrimming(
+    existing: ItineraryActivity[],
+    insertAt: number,
+    startTime?: string,
+  ): Promise<
+    { id: string; title: string; newDurationMinutes: number } | undefined
+  > {
+    if (!startTime || insertAt <= 0) {
+      return undefined;
+    }
+    const preceding = existing[insertAt - 1];
+    if (
+      preceding.startTime !== null &&
+      preceding.startTime !== undefined &&
+      preceding.durationMinutes !== null &&
+      preceding.durationMinutes !== undefined
+    ) {
+      const prevStartMin = this.parseTime(preceding.startTime);
+      const prevEndMin = prevStartMin + preceding.durationMinutes;
+      const newStartMin = this.parseTime(startTime);
+
+      if (prevEndMin > newStartMin) {
+        const newDuration = newStartMin - prevStartMin;
+        if (newDuration > 0) {
+          await this.prisma.itineraryActivity.update({
+            where: { id: preceding.id },
+            data: { durationMinutes: newDuration },
+          });
+          return {
+            id: preceding.id,
+            title: preceding.title,
+            newDurationMinutes: newDuration,
+          };
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private async shiftSortOrdersAfter(
+    existing: ItineraryActivity[],
+    insertAt: number,
+  ): Promise<void> {
+    if (insertAt < existing.length) {
+      await this.prisma.$transaction(
+        existing.slice(insertAt).map((a) =>
+          this.prisma.itineraryActivity.update({
+            where: { id: a.id },
+            data: { sortOrder: a.sortOrder + 1 },
+          }),
+        ),
+      );
+    }
   }
 
   async deleteActivity(
@@ -556,6 +646,49 @@ export class ItineraryService {
     );
   }
 
+  /**
+   * Re-sorts all activities in a day by their startTime, reassigns sortOrder,
+   * then cascades times forward to resolve any overlaps.
+   */
+  private async resortAndCascade(
+    dayId: string,
+    priorityId?: string,
+  ): Promise<void> {
+    const activities = await this.prisma.itineraryActivity.findMany({
+      where: { dayId, deletedAt: null },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const withTime = activities
+      .filter((a) => a.startTime !== null && a.startTime !== undefined)
+      .sort((a, b) => {
+        const timeDiff =
+          this.parseTime(a.startTime!) - this.parseTime(b.startTime!);
+        if (timeDiff !== 0) return timeDiff;
+        // Tie-break: priority activity comes first
+        if (a.id === priorityId) return -1;
+        if (b.id === priorityId) return 1;
+        return 0;
+      });
+
+    const withoutTime = activities.filter(
+      (a) => a.startTime === null || a.startTime === undefined,
+    );
+
+    const sorted = [...withTime, ...withoutTime];
+
+    await this.prisma.$transaction(
+      sorted.map((a, index) =>
+        this.prisma.itineraryActivity.update({
+          where: { id: a.id },
+          data: { sortOrder: index + 1 },
+        }),
+      ),
+    );
+
+    await this.cascadeActivityTimes(dayId);
+  }
+
   private async cascadeActivityTimes(dayId: string): Promise<void> {
     const activities = await this.prisma.itineraryActivity.findMany({
       where: { dayId, deletedAt: null },
@@ -563,28 +696,31 @@ export class ItineraryService {
     });
 
     const updates: { id: string; startTime: string }[] = [];
-    let prevStartTime: string | null = null;
-    let prevDuration: number | null = null;
+    let prevEndMinutes: number | null = null;
 
     for (const activity of activities) {
-      if (prevStartTime !== null && prevDuration !== null) {
-        const prevEndMinutes = this.parseTime(prevStartTime) + prevDuration;
-        const currentMinutes =
-          activity.startTime !== null && activity.startTime !== undefined
-            ? this.parseTime(activity.startTime)
-            : null;
-
-        if (currentMinutes !== null && currentMinutes < prevEndMinutes) {
-          const newStartTime = this.formatTime(prevEndMinutes);
-          updates.push({ id: activity.id, startTime: newStartTime });
-          prevStartTime = newStartTime;
-        } else {
-          prevStartTime = activity.startTime ?? null;
-        }
-      } else {
-        prevStartTime = activity.startTime ?? null;
+      if (activity.startTime === null || activity.startTime === undefined) {
+        // No time set — don't touch it, stop cascading
+        prevEndMinutes = null;
+        continue;
       }
-      prevDuration = activity.durationMinutes ?? null;
+
+      let resolvedStart = this.parseTime(activity.startTime);
+
+      if (prevEndMinutes !== null && resolvedStart < prevEndMinutes) {
+        // Overlap — push this activity to start when the previous one ends
+        resolvedStart = prevEndMinutes;
+        updates.push({
+          id: activity.id,
+          startTime: this.formatTime(resolvedStart),
+        });
+      }
+
+      prevEndMinutes =
+        activity.durationMinutes !== null &&
+        activity.durationMinutes !== undefined
+          ? resolvedStart + activity.durationMinutes
+          : null;
     }
 
     if (updates.length > 0) {
@@ -599,6 +735,55 @@ export class ItineraryService {
     }
   }
 
+  private async cascadeActivityTimesFrom(
+    dayId: string,
+    fromSortOrder: number,
+    prevEndMinutes: number | null,
+  ): Promise<{ id: string; title: string; newStartTime: string }[]> {
+    const activities = await this.prisma.itineraryActivity.findMany({
+      where: { dayId, deletedAt: null, sortOrder: { gte: fromSortOrder } },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const updates: { id: string; startTime: string }[] = [];
+    const pushed: { id: string; title: string; newStartTime: string }[] = [];
+
+    for (const activity of activities) {
+      if (activity.startTime === null || activity.startTime === undefined) {
+        prevEndMinutes = null;
+        continue;
+      }
+
+      let resolvedStart = this.parseTime(activity.startTime);
+
+      if (prevEndMinutes !== null && resolvedStart < prevEndMinutes) {
+        resolvedStart = prevEndMinutes;
+        const newStartTime = this.formatTime(resolvedStart);
+        updates.push({ id: activity.id, startTime: newStartTime });
+        pushed.push({ id: activity.id, title: activity.title, newStartTime });
+      }
+
+      prevEndMinutes =
+        activity.durationMinutes !== null &&
+        activity.durationMinutes !== undefined
+          ? resolvedStart + activity.durationMinutes
+          : null;
+    }
+
+    if (updates.length > 0) {
+      await this.prisma.$transaction(
+        updates.map((u) =>
+          this.prisma.itineraryActivity.update({
+            where: { id: u.id },
+            data: { startTime: u.startTime },
+          }),
+        ),
+      );
+    }
+
+    return pushed;
+  }
+
   private parseTime(time: string): number {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
@@ -611,20 +796,11 @@ export class ItineraryService {
   }
 
   private generateRandomToken(): string {
-    return (
-      Math.random().toString(36).substring(2, 15) +
-      Math.random().toString(36).substring(2, 15)
-    );
+    return randomBytes(32).toString('hex');
   }
 
   private hashString(input: string): string {
-    let hash = 0;
-    for (let i = 0; i < input.length; i++) {
-      const char = input.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash |= 0; // Convert to 32bit integer
-    }
-    return hash.toString(36);
+    return createHash('sha256').update(input).digest('hex').slice(0, 16);
   }
 
   /**
@@ -659,6 +835,17 @@ export class ItineraryService {
             data: prepared.attractions,
           });
 
+          if (this.enableDetailedTelemetry) {
+            subscriber.next({
+              type: 'telemetry',
+              data: {
+                event: 'DATA_PREPARATION_COMPLETE',
+                durationMs: Date.now() - requestStart,
+                timestamp: new Date().toISOString(),
+              },
+            });
+          }
+
           subscriber.next({
             type: 'status',
             message: 'Our AI is now crafting your perfect route...',
@@ -690,6 +877,19 @@ export class ItineraryService {
                       this.logger.log(
                         `[PERF] Day ${dayJson.day} processed and emitted after ${Date.now() - requestStart}ms (enrichment took ${Date.now() - dayStart}ms)`,
                       );
+
+                      if (this.enableDetailedTelemetry) {
+                        subscriber.next({
+                          type: 'telemetry',
+                          data: {
+                            event: 'DAY_EMITTED',
+                            dayNumber: dayJson.day,
+                            durationMs: Date.now() - requestStart,
+                            dayProcessingTimeMs: Date.now() - dayStart,
+                            timestamp: new Date().toISOString(),
+                          },
+                        });
+                      }
 
                       subscriber.next({
                         type: 'day',
@@ -730,12 +930,27 @@ export class ItineraryService {
                     }),
                   ).subscribe({
                     next: (saved) => {
+                      const totalTimeMs = Date.now() - requestStart;
                       this.logger.log(
-                        `[PERF] Itinerary persisted in ${Date.now() - persistStart}ms. Total generation time: ${Date.now() - requestStart}ms`,
+                        `[PERF] Itinerary persisted in ${Date.now() - persistStart}ms (Geocoding: ${saved.geocodeTimeMs}ms, DB Tx: ${saved.txTimeMs}ms). Total: ${totalTimeMs}ms`,
                       );
+
+                      if (this.enableDetailedTelemetry) {
+                        subscriber.next({
+                          type: 'telemetry',
+                          data: {
+                            event: 'PERSISTENCE_COMPLETE',
+                            geocodeTimeMs: saved.geocodeTimeMs,
+                            txTimeMs: saved.txTimeMs,
+                            totalTimeMs,
+                            timestamp: new Date().toISOString(),
+                          },
+                        });
+                      }
+
                       subscriber.next({
                         type: 'complete',
-                        itineraryId: saved.id,
+                        itineraryId: saved.itinerary.id,
                       });
                       subscriber.complete();
                     },

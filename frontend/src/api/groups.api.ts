@@ -9,15 +9,18 @@ export const groupsApi = {
     return response.data
   },
 
-  async createGroup(payload: { 
-    name: string; 
-    description?: string; 
-    imageUrl?: string; 
-    themeColor?: string; 
-  }): Promise<Group> {
-    const response = await apiClient.post<ApiResponse<Group>>('/groups', payload)
-    return response.data.data
-  },
+  async createGroup(payload: FormData | { 
+  name: string; 
+  description?: string; 
+  imageUrl?: string; 
+  themeColor?: string; 
+}): Promise<Group> {
+  const isFormData = payload instanceof FormData
+  const response = await apiClient.post<ApiResponse<Group>>('/groups', payload, {
+    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+  })
+  return response.data.data
+},
 
   async updateGroup(id: string, payload: {
     name?: string;
@@ -27,6 +30,15 @@ export const groupsApi = {
   }): Promise<Group> {
     const response = await apiClient.patch<ApiResponse<Group>>(`/groups/${id}`, payload)
     return response.data.data
+  },
+
+  async uploadGroupImage(groupId: string, file: File): Promise<string> {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await apiClient.post<ApiResponse<{ imageUrl: string }>>(`/groups/${groupId}/image`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data.data.imageUrl
   },
 
   async getGroup(id: string): Promise<Group> {
@@ -64,6 +76,10 @@ export const groupsApi = {
       voteType
     })
     return response.data.data
+  },
+
+  async removeVote(groupId: string, groupItineraryId: string): Promise<void> {
+    await apiClient.delete(`/groups/${groupId}/itineraries/${groupItineraryId}/vote`)
   },
 
   async addComment(groupId: string, content: string, parentId?: string): Promise<Comment> {

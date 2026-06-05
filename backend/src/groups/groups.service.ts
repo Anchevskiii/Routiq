@@ -3,10 +3,13 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { GroupRole, InvitationStatus } from '@prisma/client';
+import { GroupRole, InvitationStatus, NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -27,6 +30,8 @@ export class GroupsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly supabaseService: SupabaseService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ─── Group CRUD ───────────────────────────────────────────
@@ -190,6 +195,7 @@ export class GroupsService {
               },
             },
             votes: {
+              where: { deletedAt: null },
               select: {
                 voteType: true,
                 userId: true,
@@ -223,14 +229,9 @@ export class GroupsService {
     const itineraries = group.itineraries
       .filter((gi) => gi.itinerary && !gi.itinerary.deletedAt)
       .map((gi) => {
-        const upvotes = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
-        const downvotes = gi.votes.filter(
-          (v) => v.voteType === 'DOWNVOTE',
-        ).length;
-        return {
-          ...gi,
-          score: upvotes - downvotes,
-        };
+        // Score = number of upvotes (downvotes don't subtract)
+        const score = gi.votes.filter((v) => v.voteType === 'UPVOTE').length;
+        return { ...gi, score };
       });
 
     return {
@@ -238,7 +239,13 @@ export class GroupsService {
       itineraries,
     };
   }
-  async createGroup(userId: string, createGroupDto: CreateGroupDto) {
+
+  async createGroup(
+    userId: string,
+    createGroupDto: CreateGroupDto,
+    imageBuffer?: Buffer,
+    imageMimetype?: string,
+  ) {
     const group = await this.prisma.group.create({
       data: {
         name: createGroupDto.name,
@@ -258,28 +265,35 @@ export class GroupsService {
       },
       include: {
         createdBy: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
+          select: { id: true, name: true, avatarUrl: true },
         },
         members: {
           include: {
             user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatarUrl: true,
-              },
+              select: { id: true, name: true, email: true, avatarUrl: true },
             },
           },
         },
       },
     });
 
-    // Log activity
+    // Group + membership now exist, safe to upload image
+    if (imageBuffer && imageMimetype) {
+      try {
+        const { imageUrl } = await this.uploadGroupImage(
+          group.id,
+          userId,
+          imageBuffer,
+          imageMimetype,
+        );
+        group.imageUrl = imageUrl;
+      } catch (err) {
+        this.logger.warn(
+          `Image upload during group creation failed: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
     await this.logActivity(group.id, userId, 'GROUP_CREATED', {
       groupName: group.name,
     });
@@ -307,6 +321,41 @@ export class GroupsService {
     await this.logActivity(groupId, userId, 'GROUP_UPDATED');
 
     return group;
+  }
+
+  async uploadGroupImage(
+    groupId: string,
+    userId: string,
+    buffer: Buffer,
+    mimetype: string,
+  ): Promise<{ imageUrl: string }> {
+    await this.requireRole(groupId, userId, [GroupRole.OWNER, GroupRole.ADMIN]);
+
+    const client = this.supabaseService.getClient();
+    if (!client)
+      throw new InternalServerErrorException('Storage service unavailable');
+
+    const ext = mimetype.split('/')[1] ?? 'jpg';
+    const path = `groups/${groupId}/${Date.now()}.${ext}`;
+
+    const { error } = await client.storage
+      .from('group-images')
+      .upload(path, buffer, { contentType: mimetype, upsert: true });
+
+    if (error) {
+      this.logger.error(`Group image upload failed: ${error.message}`);
+      throw new InternalServerErrorException('Failed to upload image');
+    }
+
+    const { data } = client.storage.from('group-images').getPublicUrl(path);
+    const imageUrl = data.publicUrl;
+
+    await this.prisma.group.update({
+      where: { id: groupId },
+      data: { imageUrl },
+    });
+
+    return { imageUrl };
   }
 
   async deleteGroup(groupId: string, userId: string) {
@@ -447,6 +496,18 @@ export class GroupsService {
         group.name,
         groupId,
       );
+      // In-app notification — fire-and-forget, never block the invite flow
+      this.notificationsService
+        .createNotification(
+          userToInvite.id,
+          NotificationType.GROUP_INVITATION,
+          `${inviter.name} invited you to "${group.name}"`,
+          'Tap to view the invitation.',
+          { groupId },
+        )
+        .catch((err) =>
+          this.logger.warn(`Notification failed: ${err?.message}`),
+        );
     }
 
     return newMember;
@@ -868,6 +929,35 @@ export class GroupsService {
       commentId: comment.id,
     });
 
+    // Notify all group members except the commenter
+    const [groupInfo, members] = await Promise.all([
+      this.prisma.group.findUnique({
+        where: { id: groupId },
+        select: { name: true },
+      }),
+      this.prisma.groupMember.findMany({
+        where: {
+          groupId,
+          status: 'ACCEPTED',
+          deletedAt: null,
+          userId: { not: userId },
+        },
+        select: { userId: true },
+      }),
+    ]);
+    const commenter = comment.user.name;
+    await Promise.allSettled(
+      members.map((m) =>
+        this.notificationsService.createNotification(
+          m.userId,
+          NotificationType.COMMENT,
+          `${commenter} commented in "${groupInfo?.name}"`,
+          comment.content.slice(0, 100),
+          { groupId, commentId: comment.id },
+        ),
+      ),
+    );
+
     return comment;
   }
 
@@ -974,6 +1064,7 @@ export class GroupsService {
       },
       update: {
         voteType: mappedVoteType,
+        deletedAt: null, // clear soft-delete if vote was previously removed
       },
       create: {
         groupItineraryId,
@@ -991,7 +1082,42 @@ export class GroupsService {
       },
     });
 
+    // Notify itinerary owner when someone else votes
+
+    try {
+      const itinerary = await this.prisma.itinerary.findFirst({
+        where: { id: groupItinerary.itineraryId, deletedAt: null },
+        select: { userId: true, destination: true },
+      });
+      if (itinerary && itinerary.userId !== userId) {
+        await this.notificationsService.createNotification(
+          itinerary.userId,
+          NotificationType.VOTE,
+          `${vote.user.name} voted on your "${itinerary.destination}" itinerary`,
+          `${mappedVoteType === 'UPVOTE' ? '👍 Upvote' : '👎 Downvote'} in group`,
+          {
+            groupId,
+            groupItineraryId,
+            itineraryId: groupItinerary.itineraryId,
+          },
+        );
+      }
+    } catch (err) {
+      this.logger.warn(`Vote notification failed: ${err}`);
+    }
+
     return vote;
+  }
+
+  async removeVote(groupId: string, groupItineraryId: string, userId: string) {
+    await this.requireAcceptedMember(groupId, userId);
+
+    await this.prisma.vote.updateMany({
+      where: { groupItineraryId, userId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+
+    return { success: true };
   }
 
   // ─── Activity Log ─────────────────────────────────────────

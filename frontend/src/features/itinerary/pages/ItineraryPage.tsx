@@ -12,10 +12,10 @@ import { ROUTES } from '@/constants/routes'
 import { useAuth } from '@/app/Providers'
 
 import { ItineraryHeader } from '../components/ItineraryHeader'
-import { TripIntelligenceSidebar } from '../components/TripIntelligenceSidebar'
 import { ItineraryMap } from '../components/ItineraryMap'
 import { SortableDaysList } from '../components/SortableDaysList'
 import { GroupDetailSidebar } from '@/features/groups/components/GroupDetailSidebar'
+import { ItinerarySelectionProvider } from '../context/ItinerarySelectionContext'
 
 type Tab = 'it' | 'mp'
 
@@ -23,6 +23,42 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'it', label: 'Itinerary' },
   { id: 'mp', label: 'Map' },
 ]
+
+import type { Day, Activity } from '@/types/itinerary.types'
+
+// ─── Helpers to avoid deep nesting and unnecessary assertions ─────────────────
+
+function updateActivitiesOrder(days: Day[], dayId: string, activityIds: string[]): Day[] {
+  return days.map(day => {
+    if (day.id !== dayId || !day.activities) return day
+    const acts = day.activities
+    const reordered = activityIds
+      .map((actId, i) => {
+        const act = acts.find(a => a.id === actId)
+        return act ? { ...act, sortOrder: i } : null
+      })
+      .filter((a): a is Activity => a !== null)
+    return { ...day, activities: reordered }
+  })
+}
+
+function updateDaysOrder(days: Day[], dayIds: string[], startDateStr?: string | null): Day[] {
+  const startDate = startDateStr ? new Date(startDateStr) : null
+  return dayIds
+    .map((dayId, i) => {
+      const day = days.find(d => d.id === dayId)
+      if (!day) return null
+      if (startDate) {
+        const date = new Date(startDate)
+        date.setDate(startDate.getDate() + i)
+        return { ...day, dayNumber: i + 1, date: date.toISOString() }
+      }
+      return { ...day, dayNumber: i + 1 }
+    })
+    .filter((d): d is Day => d !== null)
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export const ItineraryPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -47,14 +83,33 @@ export const ItineraryPage: React.FC = () => {
     enabled: !!groupId,
   })
 
-  const currentMember = group?.members.find(m => m.userId === user?.id)
+  const currentMember = group?.members?.find(m => m.userId === user?.id)
   const currentUserRole = currentMember?.role ?? 'MEMBER'
   const invalidate = () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
 
   const reorderActivitiesMutation = useMutation({
     mutationFn: ({ dayId, activityIds }: { dayId: string; activityIds: string[] }) =>
       itineraryApi.reorderActivities(id!, dayId, activityIds),
-    onSuccess: invalidate,
+
+    onMutate: async ({ dayId, activityIds }) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.itinerary(id!) })
+      const previous = queryClient.getQueryData(QUERY_KEYS.itinerary(id!))
+
+      queryClient.setQueryData(QUERY_KEYS.itinerary(id!), (old: typeof itinerary) => {
+        if (!old?.days) return old
+        return {
+          ...old,
+          days: updateActivitiesOrder(old.days, dayId, activityIds),
+        }
+      })
+      return { previous }
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(QUERY_KEYS.itinerary(id!), context.previous)
+    },
+
+    onSettled: invalidate,
   })
 
   const reorderDaysMutation = useMutation({
@@ -64,10 +119,7 @@ export const ItineraryPage: React.FC = () => {
       const previous = queryClient.getQueryData(QUERY_KEYS.itinerary(id!))
       queryClient.setQueryData(QUERY_KEYS.itinerary(id!), (old: typeof itinerary) => {
         if (!old?.days) return old
-        const reordered = dayIds
-          .map((dayId, i) => { const day = old.days!.find(d => d.id === dayId); return day ? { ...day, dayNumber: i + 1 } : null })
-          .filter(Boolean) as typeof old.days
-        return { ...old, days: reordered }
+        return { ...old, days: updateDaysOrder(old.days, dayIds, old.startDate) }
       })
       return { previous }
     },
@@ -92,7 +144,7 @@ export const ItineraryPage: React.FC = () => {
         <div className="h-[320px] bg-[rgba(22,24,48,0.6)] rounded-[22px]" />
         <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
           <div className="space-y-4">
-            {[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-[rgba(22,24,48,0.4)] rounded-[18px]" />)}
+            {[0, 1, 2].map((val) => <div key={`skeleton-${val}`} className="h-32 bg-[rgba(22,24,48,0.4)] rounded-[18px]" />)}
           </div>
           <div className="h-96 bg-[rgba(22,24,48,0.4)] rounded-[18px]" />
         </div>
@@ -116,8 +168,10 @@ export const ItineraryPage: React.FC = () => {
   const sharedListProps = {
     days,
     itineraryId: id!,
+    startDate: itinerary.startDate,
     sensors,
     addActivityDayId,
+    destination: itinerary.destination,
     onDragEnd: handleDragEnd,
     onAddActivity: setAddActivityDayId,
     onReorderActivities: (dayId: string, activityIds: string[]) => reorderActivitiesMutation.mutate({ dayId, activityIds }),
@@ -128,23 +182,25 @@ export const ItineraryPage: React.FC = () => {
 
   /* ── group view ── */
   if (groupId && group) return (
-    <div className="px-8 py-6 pb-16">
-      <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
+    <ItinerarySelectionProvider>
+    <div className="px-4 py-6 pb-16 sm:px-8">
+      <nav className="flex flex-col sm:flex-row sm:items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
         <Link to={ROUTES.GROUPS} className="hover:text-[#a3a1c8] transition-colors">Groups</Link>
         <span className="opacity-40">/</span>
         <Link to={ROUTES.GROUP_DETAIL(group.id)} className="hover:text-[#a3a1c8] transition-colors">{group.name}</Link>
         <span className="opacity-40">/</span>
         <span className="text-[#f0eeff]">{itinerary.destination}</span>
       </nav>
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
         <div className="flex-1 min-w-0">
           <ItineraryHeader itinerary={itinerary} showActions={false} compact itineraryId={id} />
           <h2 className="text-xl font-semibold text-[#f0eeff] flex items-center gap-2.5 mt-6 mb-4">
-            <Compass className="w-5 h-5 text-sky-400" /> Daily Route
+            <Compass className="w-5 h-5 text-sky-400" />
+            <span>Daily Route</span>
           </h2>
           <SortableDaysList {...sharedListProps} />
         </div>
-        <div className="w-80 shrink-0 sticky top-6 self-start">
+        <div className="w-full max-w-[480px] xl:w-80 shrink-0 xl:sticky xl:top-6 xl:self-start">
           <GroupDetailSidebar
             groupId={group.id}
             members={group.members}
@@ -155,10 +211,12 @@ export const ItineraryPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </ItinerarySelectionProvider>
   )
 
   /* ── standard view ── */
   return (
+    <ItinerarySelectionProvider>
     <div className="px-6 py-6 pb-16 max-w-[1400px] mx-auto">
       <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
         <Link to="/dashboard" className="hover:text-[#a3a1c8] transition-colors">Routiq</Link>
@@ -196,39 +254,42 @@ export const ItineraryPage: React.FC = () => {
       </div>
 
       {tab === 'it' && (
-        <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 340px' }}>
+        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
           <div>
             <h2 className="flex items-center gap-2.5 text-[16px] font-semibold text-gray-900 dark:text-[#f0eeff] mb-4" style={{ letterSpacing: '-0.01em' }}>
               <span className="w-7 h-7 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
                 <Compass className="w-3.5 h-3.5" />
               </span>
-              Daily Route
+              <span>Daily Route</span>
             </h2>
             <SortableDaysList {...sharedListProps} />
           </div>
 
-          <aside className="flex flex-col gap-3.5 sticky top-5 self-start">
+          <aside className="hidden lg:flex flex-col gap-3.5 sticky top-5 self-start">
             <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-[0_2px_12px_-4px_rgba(0,0,0,0.10),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)]">
               <div className="flex items-center gap-2.5 px-4 py-3.5">
                 <div className="w-7 h-7 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 grid place-items-center text-sky-500 dark:text-[#22d3ee] flex-shrink-0">
                   <MapPin className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[14px] font-semibold text-gray-900 dark:text-[#f0eeff]">Map</span>
+                <span>Map</span>
               </div>
               <div className="border-t border-gray-100 dark:border-white/[0.07]">
                 <ItineraryMap days={days} destination={itinerary.destination} />
               </div>
             </div>
-            <TripIntelligenceSidebar itinerary={itinerary} />
           </aside>
         </div>
       )}
 
       {tab === 'mp' && (
-        <div className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-none">
-          <ItineraryMap days={days} destination={itinerary.destination} />
+        <div
+          className="bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-sm dark:shadow-none flex flex-col"
+          style={{ height: 'calc(100vh - 220px)', minHeight: 500 }}
+        >
+          <ItineraryMap days={days} destination={itinerary.destination} fullscreen />
         </div>
       )}
     </div>
+    </ItinerarySelectionProvider>
   )
 }

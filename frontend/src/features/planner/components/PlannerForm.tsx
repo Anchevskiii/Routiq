@@ -6,6 +6,7 @@ import { addMonths, subMonths, startOfMonth, getDaysInMonth, getDay, isSameDay, 
 import { cn } from '@/utils/cn'
 import { plannerSchema, type PlannerFormValues } from '../schemas/plannerSchema'
 import { DEST_DB } from '../planner.data'
+import { useGoogleMaps } from '@/components/providers/GoogleMapsProvider'
 
 interface Props {
   onSubmit: (values: PlannerFormValues) => void
@@ -13,9 +14,9 @@ interface Props {
 }
 
 const BUDGET_OPTS = [
-  { id: 'Budget',    label: 'Budget',    sub: '€ · ≤ €80/day' },
-  { id: 'Mid-range', label: 'Mid-range', sub: '€€ · €80–250'  },
-  { id: 'Luxury',    label: 'Luxury',    sub: '€€€ · €250+'   },
+  { id: 'Budget',    label: '€',   sub: '' },
+  { id: 'Mid-range', label: '€€',  sub: '' },
+  { id: 'Luxury',    label: '€€€', sub: '' },
 ]
 
 const PACE_OPTS = [
@@ -95,34 +96,30 @@ function useWikiData(destination: string): WikiData {
   return data
 }
 
-function OkBadge() {
-  return (
-    <span className="ml-auto inline-flex items-center gap-1 text-[9px] font-mono font-semibold uppercase tracking-[0.08em] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-400/10 border border-emerald-200 dark:border-emerald-400/25 px-1.5 py-[3px] rounded-[5px]">
-      <svg viewBox="0 0 24 24" width="9" height="9" stroke="currentColor" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
-      SET
-    </span>
-  )
-}
+// OkBadge replaced by green border + label color on field
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
-function CalendarPopup({ value, minDate, onChange, onClose }: {
+function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: Readonly<{
   value: string
   minDate?: string
+  rangeOther?: string  // the other anchor date for range highlight
   onChange: (val: string) => void
   onClose: () => void
-}) {
+}>) {
   const today      = startOfToday()
   const initDate   = value ? parseISO(value) : today
   const [viewDate, setViewDate] = React.useState(startOfMonth(initDate))
+  const [hoverDate, setHoverDate] = React.useState<Date | null>(null)
 
-  const selected = value ? parseISO(value) : null
-  const min      = minDate ? parseISO(minDate) : null
+  const selected       = value ? parseISO(value) : null
+  const min            = minDate ? parseISO(minDate) : null
+  const rangeAnchor    = rangeOther ? parseISO(rangeOther) : null
 
-  const firstDow = (getDay(viewDate) + 6) % 7 // Mon=0
+  const firstDow = (getDay(viewDate) + 6) % 7
   const numDays  = getDaysInMonth(viewDate)
   const cells: (number | null)[] = [
-    ...Array(firstDow).fill(null),
+    ...new Array(firstDow).fill(null),
     ...Array.from({ length: numDays }, (_, i) => i + 1),
   ]
   while (cells.length % 7 !== 0) cells.push(null)
@@ -141,7 +138,7 @@ function CalendarPopup({ value, minDate, onChange, onClose }: {
       {/* Month nav */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
         <button type="button" onClick={() => setViewDate(d => subMonths(d, 1))}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-[#6e6c93] hover:text-gray-700 dark:hover:text-[#f0eeff] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-[#f0eeff] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
         >
           <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
@@ -149,7 +146,7 @@ function CalendarPopup({ value, minDate, onChange, onClose }: {
           {format(viewDate, 'MMMM yyyy')}
         </span>
         <button type="button" onClick={() => setViewDate(d => addMonths(d, 1))}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-[#6e6c93] hover:text-gray-700 dark:hover:text-[#f0eeff] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-[#f0eeff] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors"
         >
           <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </button>
@@ -166,26 +163,45 @@ function CalendarPopup({ value, minDate, onChange, onClose }: {
         </div>
 
         {/* Day grid */}
-        <div className="grid grid-cols-7">
+        <div role="grid" tabIndex={-1} className="grid grid-cols-7" onMouseLeave={() => setHoverDate(null)}>
           {cells.map((day, i) => {
-            if (!day) return <div key={i} />
+            if (!day) return <div key={`empty-${i}`} />
             const date       = new Date(viewDate.getFullYear(), viewDate.getMonth(), day)
             const iso        = format(date, 'yyyy-MM-dd')
             const isSel      = !!selected && isSameDay(date, selected)
             const isTodayDay = isToday(date)
             const isDisabled = !!min && isBefore(date, min)
+
+            // Range highlight: from rangeOther anchor to hoverDate
+            // rangeOther takes priority (e.g. startDate when picking endDate)
+            const anchor = rangeAnchor ?? selected
+            const hover  = hoverDate
+            const isInRange = !isDisabled && anchor && hover
+              ? (() => {
+                  const lo = isBefore(anchor, hover) ? anchor : hover
+                  const hi = isBefore(anchor, hover) ? hover : anchor
+                  return !isBefore(date, lo) && !isBefore(hi, date) && !isSameDay(date, lo) && !isSameDay(date, hi)
+                })()
+              : false
+            const isRangeEdge = !isDisabled && anchor && hover && isSameDay(date, hover) && !isSameDay(date, anchor)
+            const isRangeAnchorEdge = !isDisabled && rangeAnchor && hover && isSameDay(date, rangeAnchor) && !isSameDay(date, hover)
+
             return (
-              <button key={i} type="button" disabled={isDisabled} onClick={() => onChange(iso)}
+              <button key={iso} type="button" disabled={isDisabled}
+                onClick={() => onChange(iso)}
+                onMouseEnter={() => !isDisabled && setHoverDate(date)}
                 className={cn(
                   'relative h-8 w-full rounded-lg text-[13px] font-medium transition-all',
-                  isDisabled  && 'text-gray-300 dark:text-[#2e2c45] cursor-not-allowed',
-                  isSel       && 'bg-blue-600 text-white font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.45)] dark:shadow-[0_2px_12px_rgba(37,99,235,0.55)]',
-                  isTodayDay && !isSel && 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20',
-                  !isDisabled && !isSel && !isTodayDay && 'text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-100 dark:hover:bg-white/[0.06]',
+                  isDisabled   && 'text-gray-300 dark:text-[#2e2c45] cursor-not-allowed',
+                  isSel        && 'bg-blue-600 text-white font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.45)] dark:shadow-[0_2px_12px_rgba(37,99,235,0.55)] z-10',
+                  (isRangeEdge || isRangeAnchorEdge) && !isSel && 'bg-blue-400/80 dark:bg-blue-500/70 text-white font-semibold rounded-lg',
+                  isInRange    && 'bg-blue-50 dark:bg-blue-500/[0.12] text-blue-700 dark:text-blue-300 rounded-none',
+                  isTodayDay  && !isSel && !isInRange && 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20',
+                  !isDisabled && !isSel && !isTodayDay && !isInRange && !isRangeEdge && 'text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-100 dark:hover:bg-white/[0.06]',
                 )}
               >
                 {day}
-                {isTodayDay && !isSel && (
+                {isTodayDay && !isSel && !isInRange && (
                   <span className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[3px] h-[3px] rounded-full bg-blue-500 dark:bg-blue-400" />
                 )}
               </button>
@@ -206,23 +222,72 @@ function CalendarPopup({ value, minDate, onChange, onClose }: {
   )
 }
 
-function FieldLabel({ n, text, req, ok }: { n: string; text: string; req?: boolean; ok?: boolean }) {
+function FieldLabel({ text, req }: Readonly<{ text: string; req?: boolean }>) {
   return (
-    <div className="flex items-center gap-2 mb-2.5 text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-[#6e6c93]">
-      <span className="inline-flex items-center justify-center px-1.5 py-[3px] rounded-[5px] text-[10px] font-mono font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-400/10 border border-sky-200 dark:border-sky-400/20">
-        {n}
-      </span>
+    <div className="flex items-center gap-2 mb-2.5 text-[10px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-white/50">
       {text}
       {req && <span className="text-pink-500">*</span>}
-      {ok && <OkBadge />}
     </div>
   )
+}
+
+interface AutocompleteInstance {
+  addListener(eventName: string, handler: () => void): google.maps.MapsEventListener
+  getPlace(): google.maps.places.PlaceResult
 }
 
 export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<PlannerFormValues>({
     resolver: zodResolver(plannerSchema),
   })
+
+  const { isLoaded } = useGoogleMaps()
+  const autocompleteInputRef = useRef<HTMLInputElement | null>(null)
+  const autocompleteInstanceRef = useRef<AutocompleteInstance | null>(null)
+
+  useEffect(() => {
+    if (!isLoaded || !autocompleteInputRef.current || autocompleteInstanceRef.current) return
+
+    const placesLib = google.maps.places as unknown as Record<
+      string,
+      new (
+        input: HTMLInputElement,
+        options?: {
+          types?: string[];
+          fields?: string[];
+        }
+      ) => AutocompleteInstance
+    >;
+    const AutocompleteConstructor = placesLib['Autocomplete'];
+
+    const instance = new AutocompleteConstructor(
+      autocompleteInputRef.current,
+      {
+        types: ['(cities)'],
+        fields: ['name', 'formatted_address', 'place_id', 'geometry'],
+      }
+    )
+
+    autocompleteInstanceRef.current = instance
+
+    instance.addListener('place_changed', () => {
+      const place = instance.getPlace()
+      if (place) {
+        const formattedAddress = place.formatted_address || place.name || ''
+        setValue('destination', formattedAddress, { shouldValidate: true })
+
+        if (place.geometry?.location) {
+          setValue('latitude', place.geometry.location.lat())
+          setValue('longitude', place.geometry.location.lng())
+        }
+        if (place.place_id) {
+          setValue('placeId', place.place_id)
+        }
+      }
+    })
+  }, [isLoaded, setValue])
+
+  const { ref: destinationRef, ...destinationRest } = register('destination')
 
   const [budget,    setBudget]    = useState('Mid-range')
   const [pace,      setPace]      = useState('Balanced')
@@ -233,7 +298,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   const startDate   = watch('startDate')   || ''
   const endDate     = watch('endDate')     || ''
   const travelType  = watch('travelType')  || ''
-  const wiki        = useWikiData(destination)
+  useWikiData(destination) // kept for potential future use
 
   const dur = useMemo(() => {
     if (!startDate || !endDate) return null
@@ -250,24 +315,31 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
   const SUGGESTIONS = DEST_DB.slice(0, 6)
 
-  const estBudget = useMemo(() => {
+  // estBudget kept for metrics section if re-enabled
+  useMemo(() => {
     if (!dur) return null
-    const perDay = budget === 'Budget' ? 80 : budget === 'Mid-range' ? 180 : 380
+    let perDay = 380
+    if (budget === 'Budget') {
+      perDay = 80
+    } else if (budget === 'Mid-range') {
+      perDay = 180
+    }
     return Math.round(perDay * dur * travelers)
   }, [dur, budget, travelers])
 
-  return (
-    <div className="grid gap-6 items-start" style={{ gridTemplateColumns: 'minmax(0, 1.05fr) minmax(340px, 1fr)' }}>
+  let ctaText = 'Generate itinerary'
+  if (isLoading) {
+    ctaText = 'Preparing Your Trip…'
+  } else if (!allFilled) {
+    const missing = 4 - reqFilled
+    ctaText = `Complete ${missing} field${missing === 1 ? '' : 's'}`
+  }
 
-      {/* ═══ LEFT ═══ */}
-      <div className="min-w-0 flex flex-col gap-5">
+  return (
+    <div className="max-w-[680px] mx-auto flex flex-col gap-5">
 
         {/* Heading */}
         <div>
-          <div className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-500 dark:text-sky-400 mb-3">
-            <span className="w-[7px] h-[7px] rounded-full bg-sky-400 shadow-[0_0_0_4px_rgba(56,189,248,0.18),0_0_12px_rgba(56,189,248,0.5)] animate-pulse" />
-            AI <span className="opacity-60 mx-0.5">·</span> Planner <span className="opacity-60 mx-0.5">·</span> v3.2
-          </div>
           <h1 className="text-[48px] font-semibold leading-[0.95] text-gray-900 dark:text-[#f0eeff] mb-3" style={{ letterSpacing: '-0.035em' }}>
             Plan your next{' '}
             <em className="font-serif italic font-normal not-italic" style={{
@@ -280,25 +352,8 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
             </em>
           </h1>
           <p className="text-[15px] text-gray-500 dark:text-[#a3a1c8] leading-relaxed max-w-[520px]">
-            Tell Routiq where you're going. Watch your trip take shape on the right while you fill it in.
+            Tell Routiq where you're going and watch your trip come together.
           </p>
-        </div>
-
-        {/* Progress strip */}
-        <div className="flex items-center gap-3.5">
-          <div className="flex-1 h-[6px] rounded-full bg-gray-100 dark:bg-white/[0.06] overflow-hidden">
-            <div
-              className="h-full rounded-full transition-[width] duration-500"
-              style={{
-                width: `${pct}%`,
-                background: 'linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee)',
-                boxShadow: '0 0 14px rgba(56,189,248,0.45)',
-              }}
-            />
-          </div>
-          <span className="text-[12px] font-mono text-gray-500 dark:text-[#a3a1c8] shrink-0">
-            <strong className="text-gray-900 dark:text-[#f0eeff] font-semibold">{totalFilled}</strong>/7 fields complete
-          </span>
         </div>
 
         {/* Form card */}
@@ -307,22 +362,35 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
             <input type="hidden" {...register('startDate')} />
             <input type="hidden" {...register('endDate')} />
             <input type="hidden" {...register('travelType')} />
+            <input type="hidden" {...register('latitude')} />
+            <input type="hidden" {...register('longitude')} />
+            <input type="hidden" {...register('placeId')} />
 
             {/* 01 Destination */}
             <div className="mb-[22px]">
-              <FieldLabel n="01" text="Destination" req ok={fields.destination} />
+              <FieldLabel text="Destination" req />
               <div className="relative">
-                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-[#6e6c93] pointer-events-none" />
+                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40 pointer-events-none" />
                 <input
-                  {...register('destination')}
+                  type="text"
                   placeholder="e.g. Tokyo, Lisbon, Reykjavík…"
                   autoComplete="off" spellCheck={false}
-                  className="w-full bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] py-3.5 pl-10 pr-4 text-[15px] font-medium text-gray-900 dark:text-[#f0eeff] placeholder:text-gray-400 dark:placeholder:text-[#6e6c93] outline-none focus:border-sky-400/70 dark:focus:border-sky-400/40 focus:ring-4 focus:ring-sky-400/10 dark:focus:bg-[rgba(8,9,26,0.75)] transition-all"
+                  {...destinationRest}
+                  ref={(e) => {
+                    destinationRef(e)
+                    autocompleteInputRef.current = e
+                  }}
+                  className={cn(
+                    "w-full bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] rounded-[12px] py-3.5 pl-10 pr-4 text-[15px] font-medium text-gray-900 dark:text-[#f0eeff] placeholder:text-gray-400 dark:placeholder:text-[#6e6c93] outline-none transition-all",
+                    fields.destination
+                      ? "border border-emerald-400/70 dark:border-emerald-400/40 ring-4 ring-emerald-400/10"
+                      : "border border-gray-200 dark:border-white/[0.07] focus:border-sky-400/70 dark:focus:border-sky-400/40 focus:ring-4 focus:ring-sky-400/10 dark:focus:bg-[rgba(8,9,26,0.75)]"
+                  )}
                 />
               </div>
               {errors.destination && <p className="mt-1.5 text-sm text-red-500">{errors.destination.message}</p>}
               <div className="flex items-center flex-wrap gap-1.5 mt-2.5">
-                <span className="text-[11px] font-mono text-gray-400 dark:text-[#6e6c93] mr-1">Try:</span>
+                <span className="text-[11px] font-mono text-gray-400 dark:text-white/40 mr-1">Try:</span>
                 {SUGGESTIONS.map(s => (
                   <button key={s.name} type="button"
                     onClick={() => setValue('destination', s.name, { shouldValidate: true })}
@@ -339,23 +407,24 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
               <div className="grid grid-cols-2 gap-3">
                 {/* Start */}
                 <div>
-                  <FieldLabel n="02" text="Start date" ok={fields.startDate} />
+                  <FieldLabel text="Start date" />
                   <div className="relative">
-                    <label className="relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] px-3.5 py-3 hover:border-sky-300 dark:hover:border-sky-400/40 focus-within:border-sky-400/80 focus-within:ring-2 focus-within:ring-sky-400/15 dark:focus-within:border-sky-400/50 transition-all cursor-pointer" onClick={() => setOpenCal(openCal === 'start' ? null : 'start')}>
+                    <button type="button" className={cn("w-full text-left relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] rounded-[12px] px-3.5 py-3 transition-all cursor-pointer", fields.startDate ? "border border-emerald-400/70 dark:border-emerald-400/40 ring-2 ring-emerald-400/10" : "border border-gray-200 dark:border-white/[0.07] hover:border-sky-300 dark:hover:border-sky-400/40")} onClick={() => setOpenCal(openCal === 'start' ? null : 'start')}>
                       <div className="w-8 h-8 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
                         <Calendar className="w-3.5 h-3.5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-[#6e6c93] mb-1">Departure</div>
-                        <div className={`text-[13px] font-medium ${startDate ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-400 dark:text-[#6e6c93]'}`}>
+                        <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-white/40 mb-1">Departure</div>
+                        <div className={`text-[13px] font-medium ${startDate ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-400 dark:text-white/40'}`}>
                           {startDate ? format(parseISO(startDate), 'd MMM yyyy') : 'Pick a date'}
                         </div>
                       </div>
-                    </label>
+                    </button>
                     {openCal === 'start' && (
                       <CalendarPopup
                         value={startDate}
                         minDate={undefined}
+                        rangeOther={endDate || undefined}
                         onChange={val => { setValue('startDate', val, { shouldValidate: true }); setOpenCal(null) }}
                         onClose={() => setOpenCal(null)}
                       />
@@ -365,23 +434,24 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                 </div>
                 {/* End */}
                 <div>
-                  <FieldLabel n="03" text="End date" ok={fields.endDate} />
+                  <FieldLabel text="End date" />
                   <div className="relative">
-                    <label className="relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] px-3.5 py-3 hover:border-sky-300 dark:hover:border-sky-400/40 focus-within:border-sky-400/80 focus-within:ring-2 focus-within:ring-sky-400/15 dark:focus-within:border-sky-400/50 transition-all cursor-pointer" onClick={() => setOpenCal(openCal === 'end' ? null : 'end')}>
+                    <button type="button" className={cn("w-full text-left relative flex items-center gap-2.5 bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] rounded-[12px] px-3.5 py-3 transition-all cursor-pointer", fields.endDate ? "border border-emerald-400/70 dark:border-emerald-400/40 ring-2 ring-emerald-400/10" : "border border-gray-200 dark:border-white/[0.07] hover:border-sky-300 dark:hover:border-sky-400/40")} onClick={() => setOpenCal(openCal === 'end' ? null : 'end')}>
                       <div className="w-8 h-8 rounded-[9px] bg-sky-50 dark:bg-sky-400/10 text-sky-500 dark:text-sky-400 grid place-items-center flex-shrink-0">
                         <Calendar className="w-3.5 h-3.5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-[#6e6c93] mb-1">Return</div>
-                        <div className={`text-[13px] font-medium ${endDate ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-400 dark:text-[#6e6c93]'}`}>
+                        <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-white/40 mb-1">Return</div>
+                        <div className={`text-[13px] font-medium ${endDate ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-400 dark:text-white/40'}`}>
                           {endDate ? format(parseISO(endDate), 'd MMM yyyy') : 'Pick a date'}
                         </div>
                       </div>
-                    </label>
+                    </button>
                     {openCal === 'end' && (
                       <CalendarPopup
                         value={endDate}
                         minDate={startDate || undefined}
+                        rangeOther={startDate || undefined}
                         onChange={val => { setValue('endDate', val, { shouldValidate: true }); setOpenCal(null) }}
                         onClose={() => setOpenCal(null)}
                       />
@@ -401,7 +471,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 04 Experience type */}
             <div className="mb-[22px]">
-              <FieldLabel n="04" text="Experience type" req ok={fields.travelType} />
+              <FieldLabel text="Experience type" req />
               <div className="grid grid-cols-4 gap-2.5">
                 {EXP_TYPES.map(opt => {
                   const selected = travelType === opt.value
@@ -435,7 +505,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                       </div>
                       <div className="relative z-10">
                         <div className="text-[13px] font-semibold text-gray-800 dark:text-[#f0eeff]">{opt.name}</div>
-                        <div className="text-[9px] font-mono uppercase tracking-[0.1em] text-gray-400 dark:text-[#6e6c93] mt-0.5">{opt.tags}</div>
+                        <div className="text-[9px] font-mono uppercase tracking-[0.1em] text-gray-400 dark:text-white/40 mt-0.5">{opt.tags}</div>
                       </div>
                       {selected && (
                         <div className="absolute top-2 right-2 w-[18px] h-[18px] rounded-full bg-gradient-to-b from-blue-500 to-blue-600 grid place-items-center z-10 shadow-[0_4px_10px_-4px_rgba(37,99,235,0.5)]">
@@ -451,16 +521,15 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 05 Budget */}
             <div className="mb-[22px]">
-              <FieldLabel n="05" text="Budget" ok />
+              <FieldLabel text="Budget" />
               <div className="grid grid-cols-3 gap-1.5 bg-gray-100 dark:bg-[rgba(8,9,26,0.4)] border border-gray-200 dark:border-white/[0.07] rounded-[11px] p-[3px]">
                 {BUDGET_OPTS.map(o => (
                   <button key={o.id} type="button" onClick={() => setBudget(o.id)}
-                    className={['py-2 px-2 rounded-[8px] text-center transition-all', budget === o.id
-                      ? 'bg-white dark:bg-gradient-to-b dark:from-blue-500 dark:to-blue-600 text-blue-700 dark:text-white shadow-sm dark:shadow-[0_4px_12px_-4px_rgba(37,99,235,0.5)]'
-                      : 'text-gray-500 dark:text-[#a3a1c8] hover:text-gray-800 dark:hover:text-[#f0eeff]'].join(' ')}
+                    className={cn('py-2 px-2 rounded-[8px] text-center transition-all', budget === o.id
+                      ? 'bg-blue-500 dark:bg-gradient-to-b dark:from-blue-500 dark:to-blue-600 text-white shadow-sm ring-1 ring-blue-400/50 dark:ring-0 dark:shadow-[0_4px_12px_-4px_rgba(37,99,235,0.5)]'
+                      : 'text-gray-500 dark:text-[#a3a1c8] hover:text-gray-800 dark:hover:text-[#f0eeff]')}
                   >
                     <div className="text-[13px] font-semibold leading-none">{o.label}</div>
-                    <div className={`text-[9.5px] font-mono mt-1 leading-none ${budget === o.id ? 'text-blue-500 dark:text-white/70' : 'text-gray-400 dark:text-[#6e6c93]'}`} style={{ letterSpacing: '0.04em' }}>{o.sub}</div>
                   </button>
                 ))}
               </div>
@@ -468,16 +537,15 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 06 Pace */}
             <div className="mb-[22px]">
-              <FieldLabel n="06" text="Pace" ok />
+              <FieldLabel text="Pace" />
               <div className="grid grid-cols-3 gap-1.5 bg-gray-100 dark:bg-[rgba(8,9,26,0.4)] border border-gray-200 dark:border-white/[0.07] rounded-[11px] p-[3px]">
                 {PACE_OPTS.map(o => (
                   <button key={o.id} type="button" onClick={() => setPace(o.id)}
-                    className={['py-2 px-2 rounded-[8px] text-center transition-all', pace === o.id
-                      ? 'bg-white dark:bg-gradient-to-b dark:from-blue-500 dark:to-blue-600 text-blue-700 dark:text-white shadow-sm dark:shadow-[0_4px_12px_-4px_rgba(37,99,235,0.5)]'
-                      : 'text-gray-500 dark:text-[#a3a1c8] hover:text-gray-800 dark:hover:text-[#f0eeff]'].join(' ')}
+                    className={cn('py-2 px-2 rounded-[8px] text-center transition-all', pace === o.id
+                      ? 'bg-blue-500 dark:bg-gradient-to-b dark:from-blue-500 dark:to-blue-600 text-white shadow-sm ring-1 ring-blue-400/50 dark:ring-0 dark:shadow-[0_4px_12px_-4px_rgba(37,99,235,0.5)]'
+                      : 'text-gray-500 dark:text-[#a3a1c8] hover:text-gray-800 dark:hover:text-[#f0eeff]')}
                   >
                     <div className="text-[13px] font-semibold leading-none">{o.label}</div>
-                    <div className={`text-[9.5px] font-mono mt-1 leading-none ${pace === o.id ? 'text-blue-500 dark:text-white/70' : 'text-gray-400 dark:text-[#6e6c93]'}`} style={{ letterSpacing: '0.04em' }}>{o.sub}</div>
                   </button>
                 ))}
               </div>
@@ -485,7 +553,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
             {/* 07 Travelers */}
             <div className="mb-[26px]">
-              <FieldLabel n="07" text="Travelers" ok />
+              <FieldLabel text="Travelers" />
               <div className="inline-flex items-center gap-3 bg-gray-50 dark:bg-[rgba(8,9,26,0.4)] border border-gray-200 dark:border-white/[0.07] rounded-[12px] px-3.5 py-2.5">
                 <button type="button" onClick={() => setTravelers(t => Math.max(1, t - 1))}
                   className="w-8 h-8 rounded-[9px] bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-500 dark:text-[#a3a1c8] hover:text-gray-900 dark:hover:text-[#f0eeff] hover:border-gray-300 dark:hover:border-white/[0.14] transition-all">
@@ -493,7 +561,7 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                 </button>
                 <div className="text-center min-w-[64px]">
                   <div className="text-[18px] font-semibold text-gray-900 dark:text-[#f0eeff] leading-none">{travelers}</div>
-                  <div className="text-[11px] font-mono text-gray-400 dark:text-[#6e6c93] mt-0.5">{travelers === 1 ? 'traveler' : 'travelers'}</div>
+                  <div className="text-[11px] font-mono text-gray-400 dark:text-white/40 mt-0.5">{travelers === 1 ? 'traveler' : 'travelers'}</div>
                 </div>
                 <button type="button" onClick={() => setTravelers(t => Math.min(20, t + 1))}
                   className="w-8 h-8 rounded-[9px] bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-500 dark:text-[#a3a1c8] hover:text-gray-900 dark:hover:text-[#f0eeff] hover:border-gray-300 dark:hover:border-white/[0.14] transition-all">
@@ -502,13 +570,30 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
               </div>
             </div>
 
+            {/* Progress strip */}
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="flex-1 h-[6px] rounded-full bg-gray-100 dark:bg-white/[0.06] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-[width] duration-500"
+                  style={{
+                    width: `${pct}%`,
+                    background: 'linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee)',
+                    boxShadow: '0 0 14px rgba(56,189,248,0.45)',
+                  }}
+                />
+              </div>
+              <span className="text-[12px] font-mono text-gray-500 dark:text-[#a3a1c8] shrink-0">
+                <strong className="text-gray-900 dark:text-[#f0eeff] font-semibold">{totalFilled}</strong>/7 fields complete
+              </span>
+            </div>
+
             {/* CTA row */}
             <div className="flex gap-3">
               <button type="submit" disabled={isLoading || !allFilled}
                 className="flex-1 relative overflow-hidden bg-gradient-to-b from-blue-500 to-blue-600 text-white rounded-[14px] px-6 py-4 font-medium text-[15px] flex items-center justify-center gap-2.5 shadow-[0_12px_30px_-10px_rgba(37,99,235,0.6),inset_0_1px_0_rgba(255,255,255,0.2)] transition-transform hover:-translate-y-px disabled:opacity-55 disabled:cursor-not-allowed disabled:transform-none"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>{isLoading ? 'Preparing Your Trip…' : !allFilled ? `Complete ${4 - reqFilled} field${4 - reqFilled === 1 ? '' : 's'}` : 'Generate itinerary'}</span>
+                <span>{ctaText}</span>
                 <ArrowRight className="w-4 h-4" />
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/[0.18] to-transparent animate-shimmer pointer-events-none" />
               </button>
@@ -519,123 +604,14 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
               </button>
             </div>
 
-            {/* Metrics */}
+            {/* Metrics — commented out
             <div className="grid grid-cols-2 gap-3.5 mt-[22px] pt-[22px] border-t border-dashed border-gray-200 dark:border-white/[0.07]">
-              {[
-                { label: 'Duration', value: dur ? `${dur}` : null, unit: 'days', meter: Math.min(100, (dur ?? 0) * 7) },
-                { label: 'Est. budget', value: estBudget ? `€${estBudget.toLocaleString()}` : null, unit: '', meter: estBudget ? Math.min(100, estBudget / 50) : 0 },
-              ].map(m => (
-                <div key={m.label}>
-                  <div className="text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-[#6e6c93] mb-1.5">{m.label}</div>
-                  <div className={`text-[20px] font-semibold leading-none flex items-baseline gap-1.5 mb-2 ${m.value ? 'text-gray-900 dark:text-[#f0eeff]' : 'text-gray-300 dark:text-[#6e6c93]'}`} style={{ letterSpacing: '-0.02em' }}>
-                    {m.value || '—'}
-                    {m.value && m.unit && <span className="text-[12px] font-mono font-medium text-gray-400 dark:text-[#6e6c93]">{m.unit}</span>}
-                  </div>
-                  <div className="h-1 rounded-full bg-gray-100 dark:bg-white/[0.06] overflow-hidden">
-                    <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${m.meter}%`, background: 'linear-gradient(90deg, #38bdf8, #22d3ee)', boxShadow: '0 0 8px rgba(56,189,248,0.45)' }} />
-                  </div>
-                </div>
-              ))}
+              ...
             </div>
+            */}
 
           </form>
         </div>
-      </div>
-
-      {/* ═══ RIGHT: live preview ═══ */}
-      <div className="sticky top-6 flex flex-col gap-3.5">
-
-        {/* Photo card */}
-        <div
-          className="relative rounded-[22px] overflow-hidden border border-gray-200 dark:border-white/[0.07] shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)]"
-          style={{ aspectRatio: '4/5', maxHeight: 720 }}
-        >
-          {/* Photo */}
-          {wiki.photo && (
-            <img
-              src={wiki.photo}
-              alt={destination}
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
-              style={{ opacity: 0.85 }}
-            />
-          )}
-
-          {/* Empty state */}
-          {!wiki.photo && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center px-8 bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-100 dark:from-transparent dark:via-transparent dark:to-transparent"
-              style={{ ['--dark-bg' as string]: 'none' }}
-            >
-              <div className="absolute inset-0 dark:block hidden" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 30%, rgba(56,189,248,0.15), transparent 70%), radial-gradient(ellipse 70% 50% at 50% 90%, rgba(37,99,235,0.20), transparent 70%), linear-gradient(180deg, #0a1226 0%, #060914 100%)' }} />
-              {/* Globe */}
-              <div className="relative z-10">
-                <div
-                  className="w-[130px] h-[130px] rounded-full animate-spin"
-                  style={{
-                    background: 'radial-gradient(circle at 30% 30%, rgba(56,189,248,0.5), transparent 60%), radial-gradient(circle at 70% 60%, rgba(168,85,247,0.35), transparent 60%), conic-gradient(from 0deg, #1e3a8a, #0c4a6e, #155e75, #1e40af, #1e3a8a)',
-                    boxShadow: '0 0 60px rgba(56,189,248,0.25), inset -10px -10px 40px rgba(0,0,0,0.4), inset 5px 5px 20px rgba(255,255,255,0.15)',
-                    animationDuration: '30s',
-                  }}
-                />
-                <div
-                  className="absolute rounded-full border border-dashed border-sky-400/40 animate-spin"
-                  style={{ inset: '-8px', animationDuration: '18s', animationDirection: 'reverse' }}
-                />
-              </div>
-              <div className="relative z-10">
-                <h3 className="text-[20px] font-semibold text-gray-700 dark:text-white/90 mb-2" style={{ letterSpacing: '-0.02em' }}>
-                  Your trip <em className="font-serif italic font-normal text-sky-500 dark:text-sky-400">preview</em>
-                </h3>
-                <p className="text-[13px] text-gray-500 dark:text-white/50 leading-relaxed max-w-[260px]">
-                  As you fill out the form, this card will come alive with your destination photo.
-                </p>
-              </div>
-              <span className="relative z-10 inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-[0.12em] text-gray-400 dark:text-white/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.8)] animate-pulse" />
-                Waiting for input
-              </span>
-            </div>
-          )}
-
-          {/* Loaded overlay */}
-          {wiki.photo && (
-            <div
-              className="absolute inset-0 flex flex-col justify-between p-5 sm:p-6"
-              style={{ background: 'linear-gradient(180deg, rgba(8,9,26,0) 0%, rgba(8,9,26,0.2) 35%, rgba(8,9,26,0.92) 100%), linear-gradient(90deg, rgba(8,9,26,0.55) 0%, transparent 55%)' }}
-            >
-              {/* Top: location badge */}
-              <div className="flex justify-between items-start">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[rgba(8,9,26,0.65)] border border-white/[0.12] backdrop-blur text-[11px] font-mono font-semibold uppercase tracking-[0.1em] text-white/80">
-                  <MapPin className="w-3 h-3 text-sky-400" />
-                  {destination.split(',')[0]}
-                </span>
-              </div>
-
-              {/* Bottom: name + tagline + stats */}
-              <div>
-                <h2 className="text-[38px] font-semibold text-white leading-[0.95] mb-2" style={{ letterSpacing: '-0.03em', textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
-                  {destination}
-                </h2>
-                {wiki.extract && (
-                  <p className="text-[13px] text-white/60 leading-snug mb-4 max-w-[340px]">{wiki.extract}</p>
-                )}
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'Duration', val: dur ? `${dur} days` : '—' },
-                    { label: 'Travelers', val: `${travelers}` },
-                    { label: 'Budget',   val: budget },
-                  ].map(s => (
-                    <div key={s.label} className="rounded-[11px] px-3 py-2.5" style={{ background: 'rgba(8,9,26,0.55)', border: '1px solid rgba(255,255,255,0.10)', backdropFilter: 'blur(10px)' }}>
-                      <div className="text-[9px] font-mono font-semibold uppercase tracking-[0.14em] text-white/40 mb-1.5">{s.label}</div>
-                      <div className="text-[13px] font-semibold text-white">{s.val}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-      </div>
     </div>
   )
 }

@@ -189,11 +189,17 @@ describe('GroupsController', () => {
     it('creates a group and returns it', async () => {
       mockGroupsService.createGroup.mockResolvedValue(mockGroup);
 
-      const result = await controller.createGroup(mockUser, createDto);
+      const result = await controller.createGroup(
+        mockUser,
+        createDto,
+        undefined,
+      );
 
       expect(mockGroupsService.createGroup).toHaveBeenCalledWith(
         mockUser.sub,
         createDto,
+        undefined,
+        undefined,
       );
       expect(result).toEqual(mockGroup);
     });

@@ -1,7 +1,7 @@
 # Routiq — AI platforma za načrtovanje potovanj
 
-> Routiq je spletna aplikacija za načrtovanje potovanj s pomočjo umetne inteligence.  
-> Uporabnik vnese destinacijo, datume in tip potovanja — sistem generira personaliziran dnevni itinerar z atrakcijami, vremensko napovedjo in optimizirano potjo na Google Maps.
+## English Summary
+Routiq is a state-of-the-art web application for AI-powered travel itinerary planning. Users provide a destination, travel dates, and travel style, and the system automatically generates a personalized day-by-day itinerary complete with curated attractions, weather forecasts, and an optimized route on Google Maps. The backend is built with NestJS 10, TypeScript, Prisma, and PostgreSQL (hosted on Supabase), while the frontend is built with React 18, Vite, and Tailwind CSS.
 
 **Ekipa:** Jan Ančevski · Klemen Novak · Mojca Marin
 
@@ -17,7 +17,7 @@
 | [REST API referenca](docs/api-reference.md) | Vsi endpointi z metodami, parametri in opisi |
 | [Varnostna arhitektura](docs/security.md) | JWT tok, shranjevanje tokenov, API ključi, rate limiting, Helmet |
 | [Testiranje](docs/testing.md) | Testna strategija, pokritost, spec datoteke, kako zagnati |
-| [CI/CD pipeline](docs/ci-cd.md) | GitHub Actions, deploy na Vercel in Render |
+| [CI/CD pipeline](docs/ci-cd.md) | GitHub Actions, deploy na Vercel in Railway |
 | [Vodenje projekta](docs/project-management.md) | Git workflow, iteracije, commit konvencija, PR pravila |
 | [Izzivi in rešitve](docs/challenges.md) | Konkretni problemi ki so se pojavili med razvojem |
 | [Standardi pisanja kode](docs/coding-standards.md) | TypeScript pravila, imenovanje, strukturna pravila |
@@ -33,7 +33,7 @@
 └──────────────────┬──────────────────────────────────────────────┘
                    │ HTTPS / REST (Axios)
 ┌──────────────────▼──────────────────────────────────────────────┐
-│                  Render.com — NestJS REST API                   │
+│                  Railway.app — NestJS REST API                  │
 │  Auth │ Itinerary │ Groups │ Weather │ Attractions │ Export     │
 └──┬────┴────┬───────┴────────┴────────┴─────────────┴─────┬──────┘
    │         │                                              │
@@ -51,10 +51,11 @@ Podroben deployment diagram → [Arhitektura sistema](docs/architecture.md#deplo
 
 | Sklop | Opis |
 |---|---|
-| **AI generiranje** | Google Gemini 2.5 Flash generira itinerar prek SSE streaming — vsak dan se prikaže sproti |
+| **AI generiranje** | Google Gemini 2.5 Flash generira itinerar prek SSE streaming — podatki o napredku se uporabijo za animacijo in časovno oceno nalaganja, končni itinerar pa se ob koncu shrani v bazo in prikaže celostno. |
 | **Interaktivni zemljevid** | Google Maps z atrakcijami, optimizirano potjo in vremensko napovedjo |
 | **Urejanje itinerarja** | Drag & drop razporejanje aktivnosti, dodajanje in brisanje |
-| **Skupinska potovanja** | Kreiranje skupin, e-mail povabila (Resend), glasovanje za itinerarje |
+| **Skupinska potovanja** | Kreiranje skupin, e-mail povabila (Resend), glasovanje za itinerarje (score = upvoti) |
+| **In-app obvestila** | Obvestila za glasovanje, komentarje in skupinska povabila z unread badge |
 | **Klepet** | Komentarji s threading (podrejenimi odgovori) in emoji reakcijami |
 | **Izvoz** | PDF (klient, @react-pdf/renderer) in .ics (strežnik) |
 | **Avtentikacija** | E-mail/geslo + Google OAuth, JWT prek Supabase Auth |
@@ -76,7 +77,8 @@ Podroben deployment diagram → [Arhitektura sistema](docs/architecture.md#deplo
 | **Vreme** | Google Weather API |
 | **E-pošta** | Resend (transakcijska e-pošta) |
 | **Deploy FE** | Vercel |
-| **Deploy BE** | Render.com |
+| **Deploy BE** | Railway.app |
+| **Kakovost kode** | SonarCloud |
 
 > ⚠️ **Axios 1.14.0 je pinana** — verziji 1.14.1 in 0.30.4 sta bili marca 2026 kompromitirani v supply chain napadu. Ne posodabljaj brez preveritve. Podrobnosti: [Izzivi in rešitve](docs/challenges.md#supply-chain-napad-na-axios).
 
@@ -107,9 +109,9 @@ cd ../frontend && cp .env.example .env
 
 # 4. Pripravi bazo
 cd backend
-npx prisma generate
-npx prisma migrate dev
-npx prisma db seed    # opcijsko
+npm run prisma:generate
+npm run prisma:migrate dev
+npm run prisma:seed    # opcijsko
 
 # 5. Zaženi
 # Terminal 1
@@ -127,7 +129,11 @@ Swagger API dokumentacija: `http://localhost:3000/api/docs` (samo v development)
 # backend/.env
 DATABASE_URL=postgresql://...           # Supabase connection pooler (pgbouncer)
 DIRECT_URL=postgresql://...             # Direktna konekcija za Prisma migracije
-SUPABASE_JWT_SECRET=...                 # Iz Supabase dashboard → Settings → API
+SUPABASE_URL=https://...supabase.co     # Supabase project URL
+SUPABASE_SERVICE_ROLE_KEY=...           # Service role key (backend JWT verifikacija)
+SUPABASE_JWT_SECRET=...                 # JWT secret iz Supabase dashboard
+CORS_ORIGIN=http://localhost:5173       # Dovoljeni frontend origin(i)
+BACKEND_URL=http://localhost:3000       # Backend URL (OAuth redirecti, share linki)
 GEMINI_API_KEY=...
 GOOGLE_PLACES_API_KEY=...
 GOOGLE_MAPS_DIRECTIONS_API_KEY=...
@@ -169,18 +175,21 @@ routiq/                         # Monorepo koren
 │   ├── prisma/
 │   │   └── schema.prisma       # Celotna podatkovna shema
 │   └── src/
-│       ├── auth/               # Supabase Auth integracija
+│       ├── auth/               # Placeholder modul (auth prek Supabase na FE)
+│       ├── supabase/           # Supabase client za JWT verifikacijo
 │       ├── users/              # Profil, nastavitve, avatar
 │       ├── itinerary/          # AI generiranje + CRUD (jedro)
 │       ├── gemini/             # Gemini SSE streaming service
 │       ├── attractions/        # Google Places proxy
 │       ├── weather/            # Google Weather proxy + cache
 │       ├── groups/             # Skupinska potovanja
+│       ├── notifications/      # In-app obvestila (vote, invite, komentar)
 │       ├── export/             # .ics generiranje
 │       ├── mail/               # Resend e-pošta
 │       └── common/             # Guards, filters, interceptors, utils
 ├── .github/workflows/
-│   └── ci.yml                  # GitHub Actions CI pipeline
+│   ├── ci.yml                  # GitHub Actions CI pipeline (backend + frontend)
+│   └── sonarcloud.yml          # SonarCloud analiza pokritosti kode
 └── docs/                       # Detajlna dokumentacija (→ kazalo zgoraj)
 ```
 
@@ -191,10 +200,18 @@ Popoln pregled vseh datotek: [DIRECTORY.md](DIRECTORY.md)
 ## Testi
 
 ```bash
+# Backend (Jest)
 cd backend
 npx jest                    # Vsi unit testi
-npx jest --coverage         # Z poročilom pokritosti
+npx jest --coverage         # Z LCOV poročilom pokritosti
 npx jest --watch            # Watch mode
+npm run test:integration    # Integration testi (zahteva PostgreSQL)
+
+# Frontend (Vitest)
+cd frontend
+npm run test:unit:run       # Enkratni tek
+npm run test:unit           # Watch mode
+npx vitest run --coverage   # Z LCOV pokritostjo
 ```
 
 Podrobna dokumentacija testov: [Testiranje](docs/testing.md)
@@ -206,7 +223,8 @@ Podrobna dokumentacija testov: [Testiranje](docs/testing.md)
 | Okolje | Storitev | Branch |
 |---|---|---|
 | Frontend | Vercel | `main` |
-| Backend | Render.com | `main` |
+| Backend | Railway.app | `main` |
+| CI teki | GitHub Actions | `main`, `development` |
 
 CI/CD pipeline se sproži ob vsakem PR/push na `main`. Podrobnosti: [CI/CD pipeline](docs/ci-cd.md)
 

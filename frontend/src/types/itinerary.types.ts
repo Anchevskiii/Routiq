@@ -110,6 +110,9 @@ export interface CreateItineraryDto {
   endDate: string
   days: number
   travelType: TravelTypeValue
+  latitude?: number
+  longitude?: number
+  placeId?: string
 }
 
 export interface UpdateItineraryDto {
@@ -123,6 +126,12 @@ export interface UpdateActivityDto {
   title?: string
   startTime?: string
   durationMinutes?: number
+}
+
+export interface AddActivityResponse {
+  activity: Activity
+  trimmedActivity?: { id: string; title: string; newDurationMinutes: number }
+  pushedActivities?: { id: string; title: string; newStartTime: string }[]
 }
 
 export interface AddActivityDto {
