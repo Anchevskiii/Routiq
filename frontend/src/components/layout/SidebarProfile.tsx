@@ -18,12 +18,16 @@ export const SidebarProfile: React.FC<Props> = ({ collapsed, name, avatarUrl, em
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
   const ref = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
   const { logout } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      const inTrigger = ref.current?.contains(target)
+      const inPopup = popupRef.current?.contains(target)
+      if (!inTrigger && !inPopup) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -51,6 +55,7 @@ export const SidebarProfile: React.FC<Props> = ({ collapsed, name, avatarUrl, em
 
   const popup = open ? (
     <div
+      ref={popupRef}
       style={popupStyle}
       className="bg-white dark:bg-[#1a1830] border border-gray-100 dark:border-white/[0.08] rounded-xl shadow-lg dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden"
     >
