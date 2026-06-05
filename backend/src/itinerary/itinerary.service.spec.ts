@@ -424,7 +424,11 @@ describe('ItineraryService', () => {
         weather: { create: {} },
       });
       mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
-        savedItineraryRecord,
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
       );
 
       // Simulate two observable events: progress then complete
@@ -762,7 +766,11 @@ describe('ItineraryService', () => {
       });
       mockGeminiService.streamGenerate.mockResolvedValue(generatedItinerary);
       mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
-        savedItineraryRecord,
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
       );
       mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
 
@@ -1238,7 +1246,11 @@ describe('ItineraryService', () => {
         }),
       );
       mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
-        savedItineraryRecord,
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
       );
 
       const events: ItineraryGenerateStreamEvent[] = [];
@@ -1247,6 +1259,8 @@ describe('ItineraryService', () => {
         complete: () => {
           const dayEvents = events.filter((e) => e.type === 'day');
           expect(dayEvents.length).toBeGreaterThanOrEqual(1);
+          const telemetryEvents = events.filter((e) => e.type === 'telemetry');
+          expect(telemetryEvents.length).toBeGreaterThanOrEqual(2); // Should have at least preparation and day telemetry
           done();
         },
         error: done,

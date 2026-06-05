@@ -5,6 +5,9 @@ import { ROUTES } from '@/constants/routes'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 
 // Public pages (lazy loaded)
+const LandingPage = lazy(() =>
+  import('@/features/landing/pages/LandingPage').then(m => ({ default: m.LandingPage }))
+)
 const LoginPage = lazy(() =>
   import('@/features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage }))
 )
@@ -40,6 +43,9 @@ const NotificationsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('@/features/profile/pages/ProfilePage').then(m => ({ default: m.ProfilePage }))
 )
+const HelpPage = lazy(() =>
+  import('@/features/help/pages/HelpPage').then(m => ({ default: m.HelpPage }))
+)
 
 // Layout components
 import { AppShell } from '@/components/layout/AppShell'
@@ -54,6 +60,7 @@ const PageFallback: React.FC = () => (
     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
   </div>
 )
+
 
 export const AppRouter: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth()
@@ -91,16 +98,20 @@ export const AppRouter: React.FC = () => {
           }
         />
 
-        {/* Protected routes */}
+        {/* Landing page — unauthenticated root */}
         <Route
-          path="/"
+          path={ROUTES.HOME}
+          element={isAuthenticated ? <Navigate to={ROUTES.DASHBOARD} replace /> : <LandingPage />}
+        />
+
+        {/* Protected routes — pathless layout so '/' is free for landing */}
+        <Route
           element={
             <ProtectedRoute>
               <AppShell />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
           <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
           <Route path={ROUTES.PLANNER} element={<PlannerPage />} />
           <Route path={ROUTES.TRIPS} element={<TripsPage />} />
@@ -110,6 +121,7 @@ export const AppRouter: React.FC = () => {
           <Route path={ROUTES.GROUP_DETAIL(':id')} element={<GroupDetailPage />} />
           <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
           <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
+          <Route path={ROUTES.HELP} element={<HelpPage />} />
         </Route>
 
         {/* Shared itinerary route */}

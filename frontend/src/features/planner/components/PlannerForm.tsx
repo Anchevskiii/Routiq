@@ -6,6 +6,7 @@ import { addMonths, subMonths, startOfMonth, getDaysInMonth, getDay, isSameDay, 
 import { cn } from '@/utils/cn'
 import { plannerSchema, type PlannerFormValues } from '../schemas/plannerSchema'
 import { DEST_DB } from '../planner.data'
+import { useGoogleMaps } from '@/components/providers/GoogleMapsProvider'
 
 interface Props {
   onSubmit: (values: PlannerFormValues) => void
@@ -162,7 +163,7 @@ function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: Readon
         </div>
 
         {/* Day grid */}
-        <div className="grid grid-cols-7" onMouseLeave={() => setHoverDate(null)}>
+        <div role="grid" tabIndex={-1} className="grid grid-cols-7" onMouseLeave={() => setHoverDate(null)}>
           {cells.map((day, i) => {
             if (!day) return <div key={`empty-${i}`} />
             const date       = new Date(viewDate.getFullYear(), viewDate.getMonth(), day)
@@ -230,10 +231,63 @@ function FieldLabel({ text, req }: Readonly<{ text: string; req?: boolean }>) {
   )
 }
 
+interface AutocompleteInstance {
+  addListener(eventName: string, handler: () => void): google.maps.MapsEventListener
+  getPlace(): google.maps.places.PlaceResult
+}
+
 export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<PlannerFormValues>({
     resolver: zodResolver(plannerSchema),
   })
+
+  const { isLoaded } = useGoogleMaps()
+  const autocompleteInputRef = useRef<HTMLInputElement | null>(null)
+  const autocompleteInstanceRef = useRef<AutocompleteInstance | null>(null)
+
+  useEffect(() => {
+    if (!isLoaded || !autocompleteInputRef.current || autocompleteInstanceRef.current) return
+
+    const placesLib = google.maps.places as unknown as Record<
+      string,
+      new (
+        input: HTMLInputElement,
+        options?: {
+          types?: string[];
+          fields?: string[];
+        }
+      ) => AutocompleteInstance
+    >;
+    const AutocompleteConstructor = placesLib['Autocomplete'];
+
+    const instance = new AutocompleteConstructor(
+      autocompleteInputRef.current,
+      {
+        types: ['(cities)'],
+        fields: ['name', 'formatted_address', 'place_id', 'geometry'],
+      }
+    )
+
+    autocompleteInstanceRef.current = instance
+
+    instance.addListener('place_changed', () => {
+      const place = instance.getPlace()
+      if (place) {
+        const formattedAddress = place.formatted_address || place.name || ''
+        setValue('destination', formattedAddress, { shouldValidate: true })
+
+        if (place.geometry?.location) {
+          setValue('latitude', place.geometry.location.lat())
+          setValue('longitude', place.geometry.location.lng())
+        }
+        if (place.place_id) {
+          setValue('placeId', place.place_id)
+        }
+      }
+    })
+  }, [isLoaded, setValue])
+
+  const { ref: destinationRef, ...destinationRest } = register('destination')
 
   const [budget,    setBudget]    = useState('Mid-range')
   const [pace,      setPace]      = useState('Balanced')
@@ -308,6 +362,9 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
             <input type="hidden" {...register('startDate')} />
             <input type="hidden" {...register('endDate')} />
             <input type="hidden" {...register('travelType')} />
+            <input type="hidden" {...register('latitude')} />
+            <input type="hidden" {...register('longitude')} />
+            <input type="hidden" {...register('placeId')} />
 
             {/* 01 Destination */}
             <div className="mb-[22px]">
@@ -315,9 +372,14 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
               <div className="relative">
                 <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40 pointer-events-none" />
                 <input
-                  {...register('destination')}
+                  type="text"
                   placeholder="e.g. Tokyo, Lisbon, Reykjavík…"
                   autoComplete="off" spellCheck={false}
+                  {...destinationRest}
+                  ref={(e) => {
+                    destinationRef(e)
+                    autocompleteInputRef.current = e
+                  }}
                   className={cn(
                     "w-full bg-gray-50 dark:bg-[rgba(8,9,26,0.5)] rounded-[12px] py-3.5 pl-10 pr-4 text-[15px] font-medium text-gray-900 dark:text-[#f0eeff] placeholder:text-gray-400 dark:placeholder:text-[#6e6c93] outline-none transition-all",
                     fields.destination

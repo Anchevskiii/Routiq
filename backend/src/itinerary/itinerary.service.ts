@@ -30,7 +30,8 @@ export type ItineraryGenerateStreamEvent =
   | { type: 'attractions'; data: FormattedPlace[] }
   | { type: 'day'; data: Prisma.ItineraryDayCreateWithoutItineraryInput }
   | { type: 'complete'; itineraryId: string }
-  | { type: 'error'; error: string };
+  | { type: 'error'; error: string }
+  | { type: 'telemetry'; data: Record<string, unknown> };
 
 @Injectable()
 export class ItineraryService {
@@ -43,6 +44,8 @@ export class ItineraryService {
     private readonly weatherService: WeatherService,
   ) {}
 
+  private readonly enableDetailedTelemetry = true;
+
   async generateItinerary(
     userId: string,
     createItineraryDto: CreateItineraryDto,
@@ -52,7 +55,7 @@ export class ItineraryService {
         createItineraryDto,
       );
     const generated = await this.geminiService.streamGenerate(prepared.prompt);
-    const itinerary =
+    const result =
       await this.itineraryGenerationService.persistGeneratedItinerary({
         userId,
         createItineraryDto,
@@ -64,7 +67,7 @@ export class ItineraryService {
         promptHash: this.hashString(prepared.prompt),
       });
 
-    return this.getItineraryById(itinerary.id, userId);
+    return this.getItineraryById(result.itinerary.id, userId);
   }
 
   async getUserItineraries(userId: string, page = 1, limit = 10) {
@@ -802,6 +805,17 @@ export class ItineraryService {
             data: prepared.attractions,
           });
 
+          if (this.enableDetailedTelemetry) {
+            subscriber.next({
+              type: 'telemetry',
+              data: {
+                event: 'DATA_PREPARATION_COMPLETE',
+                durationMs: Date.now() - requestStart,
+                timestamp: new Date().toISOString(),
+              },
+            });
+          }
+
           subscriber.next({
             type: 'status',
             message: 'Our AI is now crafting your perfect route...',
@@ -833,6 +847,19 @@ export class ItineraryService {
                       this.logger.log(
                         `[PERF] Day ${dayJson.day} processed and emitted after ${Date.now() - requestStart}ms (enrichment took ${Date.now() - dayStart}ms)`,
                       );
+
+                      if (this.enableDetailedTelemetry) {
+                        subscriber.next({
+                          type: 'telemetry',
+                          data: {
+                            event: 'DAY_EMITTED',
+                            dayNumber: dayJson.day,
+                            durationMs: Date.now() - requestStart,
+                            dayProcessingTimeMs: Date.now() - dayStart,
+                            timestamp: new Date().toISOString(),
+                          },
+                        });
+                      }
 
                       subscriber.next({
                         type: 'day',
@@ -873,12 +900,27 @@ export class ItineraryService {
                     }),
                   ).subscribe({
                     next: (saved) => {
+                      const totalTimeMs = Date.now() - requestStart;
                       this.logger.log(
-                        `[PERF] Itinerary persisted in ${Date.now() - persistStart}ms. Total generation time: ${Date.now() - requestStart}ms`,
+                        `[PERF] Itinerary persisted in ${Date.now() - persistStart}ms (Geocoding: ${saved.geocodeTimeMs}ms, DB Tx: ${saved.txTimeMs}ms). Total: ${totalTimeMs}ms`,
                       );
+
+                      if (this.enableDetailedTelemetry) {
+                        subscriber.next({
+                          type: 'telemetry',
+                          data: {
+                            event: 'PERSISTENCE_COMPLETE',
+                            geocodeTimeMs: saved.geocodeTimeMs,
+                            txTimeMs: saved.txTimeMs,
+                            totalTimeMs,
+                            timestamp: new Date().toISOString(),
+                          },
+                        });
+                      }
+
                       subscriber.next({
                         type: 'complete',
-                        itineraryId: saved.id,
+                        itineraryId: saved.itinerary.id,
                       });
                       subscriber.complete();
                     },

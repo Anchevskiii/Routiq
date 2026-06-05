@@ -79,6 +79,25 @@ const fakeAttractionsService = {
       },
     ];
   },
+  async searchAttractions(
+    _query: string,
+    _destination: string,
+  ): Promise<FormattedPlace[]> {
+    return [
+      {
+        id: 'place_1',
+        name: 'Central Plaza',
+        description: 'Historic plaza in the city center.',
+        location: { lat: 48.8566, lng: 2.3522 },
+        address: '1 Plaza St',
+        type: 'tourist_attraction',
+        rating: 4.6,
+        userRatingsTotal: 1200,
+        photos: [],
+        sourceType: 'mainstream',
+      },
+    ];
+  },
   async geocodeAddress(
     address: string,
   ): Promise<{ lat: number; lng: number } | null> {

@@ -315,7 +315,7 @@ const ProgressSection: React.FC<Readonly<{
         <div style={{ flex: 1, height: 8, background: trackBg, borderRadius: 5, overflow: 'hidden' }}>
           <div style={{
             height: '100%', borderRadius: 5, width: `${displayProgress}%`,
-            background: isComplete
+            backgroundImage: isComplete
               ? 'linear-gradient(90deg, #10b981, #34d399)'
               : 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
             backgroundSize: '200% 100%',
@@ -382,7 +382,9 @@ export const GenerationLoading: React.FC<Readonly<Props>> = ({
       // Fast when there's a big gap (new day arrived), slow when creeping
       const gap  = target - current
       let step = 0.08
-      if (gap > 8) {
+      if (isComplete) {
+        step = 10
+      } else if (gap > 8) {
         step = gap * 0.12
       } else if (gap > 2) {
         step = 0.4
@@ -392,7 +394,7 @@ export const GenerationLoading: React.FC<Readonly<Props>> = ({
       setDisplayProgress(Math.round(next * 10) / 10)
     }, 80)
     return () => clearInterval(id)
-  }, [targetProgress])
+  }, [targetProgress, isComplete])
 
   const numericProgress = Math.round(displayProgress)
 

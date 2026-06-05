@@ -21,6 +21,7 @@ const mockPrisma = {
 const mockAttractionsService = {
   getCuratedPlaces: jest.fn(),
   geocodeAddress: jest.fn().mockResolvedValue({ lat: 48.8566, lng: 2.3522 }),
+  searchAttractions: jest.fn().mockResolvedValue([]),
 };
 
 const mockWeatherService = {
@@ -167,18 +168,22 @@ describe('ItineraryGenerationService', () => {
             aiPromptHash: 'hash',
             generatedAt: expect.any(Date),
             generationTimeMs: expect.any(Number),
+            generalTips: {
+              create: expect.arrayContaining([
+                expect.objectContaining({
+                  content: 'Check local transportation options before arrival.',
+                }),
+                expect.objectContaining({
+                  content: 'Keep digital copies of your travel documents.',
+                }),
+                expect.objectContaining({
+                  content: 'Respect local customs and traditions.',
+                }),
+              ]),
+            },
           }),
         }),
       );
-
-      expect(tx.itineraryTip.createMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.any(Array),
-        }),
-      );
-
-      const createManyArg = tx.itineraryTip.createMany.mock.calls[0][0];
-      expect(createManyArg.data).toHaveLength(3);
     });
   });
 
@@ -309,9 +314,6 @@ describe('ItineraryGenerationService', () => {
       });
 
       expect(tx.itinerary.create).toHaveBeenCalled();
-      expect(tx.itineraryDay.create).toHaveBeenCalled();
-      expect(tx.itineraryWeatherSnapshot.create).toHaveBeenCalled();
-      expect(tx.itineraryActivity.createMany).toHaveBeenCalled();
       // geocodeAddress called because mapped activity has null lat/lng
       expect(mockAttractionsService.geocodeAddress).toHaveBeenCalled();
     });
@@ -365,8 +367,70 @@ describe('ItineraryGenerationService', () => {
         promptHash: 'hash',
       });
 
-      expect(tx.itineraryActivity.createMany).toHaveBeenCalled();
+      expect(tx.itinerary.create).toHaveBeenCalled();
       expect(mockAttractionsService.geocodeAddress).not.toHaveBeenCalled();
+    });
+
+    it('uses searchAttractions result when found during geocoding', async () => {
+      mockAttractionsService.searchAttractions.mockResolvedValueOnce([
+        {
+          id: 'found-place-id',
+          name: 'Awesome Eiffel Tower',
+          address: 'Champ de Mars, Paris',
+          location: { lat: 48.8584, lng: 2.2945 },
+        },
+      ]);
+
+      const tx = {
+        itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-1' }) },
+        itineraryTip: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        itineraryDay: { create: jest.fn().mockResolvedValue({ id: 'day-1' }) },
+        itineraryWeatherSnapshot: {
+          create: jest.fn().mockResolvedValue({ id: 'weather-1' }),
+        },
+        itineraryActivity: {
+          createMany: jest.fn().mockResolvedValue({ count: 1 }),
+        },
+      };
+      mockPrisma.$transaction.mockImplementation(
+        (cb: (txClient: unknown) => unknown) => cb(tx),
+      );
+
+      const generated: GeneratedItinerary = {
+        days: [
+          {
+            day: 1,
+            theme: 'Arrival',
+            activities: [
+              {
+                title: 'Eiffel Tower',
+                location: 'Champ de Mars',
+                duration: 2,
+              } as unknown as GeneratedActivity,
+            ],
+            meals: [],
+          },
+        ],
+        summary: {},
+        generalTips: [],
+      };
+
+      await service.persistGeneratedItinerary({
+        userId: 'user-1',
+        createItineraryDto: baseDto as unknown as CreateItineraryDto,
+        generated,
+        generationStart: Date.now() - 1000,
+        weatherData: weatherData as unknown as WeatherData,
+        attractions: [] as unknown as FormattedPlace[],
+        prompt: 'PROMPT',
+        promptHash: 'hash',
+      });
+
+      expect(tx.itinerary.create).toHaveBeenCalled();
+      expect(mockAttractionsService.searchAttractions).toHaveBeenCalledWith(
+        'Champ de Mars',
+        baseDto.destination,
+      );
     });
 
     it('links to group when groupId is provided', async () => {
@@ -454,8 +518,57 @@ describe('ItineraryGenerationService', () => {
         promptHash: 'h',
       });
 
-      expect(tx.itineraryWeatherSnapshot.create).not.toHaveBeenCalled();
-      expect(tx.itineraryActivity.createMany).toHaveBeenCalled();
+      expect(tx.itinerary.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            days: {
+              create: expect.arrayContaining([
+                expect.objectContaining({
+                  weather: undefined,
+                }),
+              ]),
+            },
+          }),
+        }),
+      );
+    });
+
+    it('creates day when activities is missing', async () => {
+      const tx = {
+        itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-1' }) },
+        itineraryTip: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        itineraryDay: { create: jest.fn().mockResolvedValue({ id: 'day-1' }) },
+        itineraryWeatherSnapshot: { create: jest.fn() },
+        itineraryActivity: { createMany: jest.fn() },
+      };
+      mockPrisma.$transaction.mockImplementation(
+        (cb: (txClient: unknown) => unknown) => cb(tx),
+      );
+
+      jest.spyOn(service, 'mapSingleDay').mockReturnValueOnce({
+        dayNumber: 1,
+        date: new Date(),
+        theme: 'Test',
+        activities: undefined, // No activities create block
+        weather: undefined,
+      } as unknown as Prisma.ItineraryDayCreateWithoutItineraryInput);
+
+      await service.persistGeneratedItinerary({
+        userId: 'user-1',
+        createItineraryDto: baseDto as unknown as CreateItineraryDto,
+        generated: {
+          days: [{ day: 1, theme: 'Test', activities: [], meals: [] }],
+          summary: {},
+          generalTips: [],
+        },
+        generationStart: Date.now(),
+        weatherData: weatherData as unknown as WeatherData,
+        attractions: [] as unknown as FormattedPlace[],
+        prompt: 'P',
+        promptHash: 'h',
+      });
+
+      expect(tx.itinerary.create).toHaveBeenCalled();
     });
   });
 
@@ -752,5 +865,179 @@ describe('ItineraryGenerationService private helpers', () => {
       ).calculateHaversineDistance(51.5074, -0.1278, 48.8566, 2.3522);
       expect(d1).toBeCloseTo(d2, 5);
     });
+
+    it('falls back to userRatingsTotal sorting if ratings are equal', () => {
+      const equalAttractions: FormattedPlace[] = [
+        {
+          id: 'a1',
+          name: 'Place A',
+          address: 'Addr A',
+          description: 'D1',
+          type: 't1',
+          sourceType: 'mainstream',
+          photos: [],
+          rating: 4.0,
+          userRatingsTotal: 100,
+          location: { lat: 48.8566, lng: 2.3522 },
+        },
+        {
+          id: 'a2',
+          name: 'Place B',
+          address: 'Addr B',
+          description: 'D2',
+          type: 't2',
+          sourceType: 'niche',
+          photos: [],
+          rating: 4.0, // equal rating
+          userRatingsTotal: 200, // higher ratings total
+          location: { lat: 48.8606, lng: 2.3376 },
+        },
+      ];
+
+      const result = (
+        service as unknown as ServicePrivates
+      ).buildTravelTimeContext(equalAttractions);
+      expect(result).toContain('Place B -> Place A');
+    });
+  });
+});
+
+describe('ItineraryGenerationService extra branches', () => {
+  let service: ItineraryGenerationService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = buildService();
+  });
+
+  it('handles missing days and missing generalTips in persistGeneratedItinerary', async () => {
+    const tx = {
+      itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-empty' }) },
+      itineraryTip: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      itineraryDay: { create: jest.fn() },
+    };
+    mockPrisma.$transaction.mockImplementation(
+      (cb: (txClient: unknown) => unknown) => cb(tx),
+    );
+
+    await service.persistGeneratedItinerary({
+      userId: 'user-1',
+      createItineraryDto: baseDto as unknown as CreateItineraryDto,
+      generated: {
+        days: undefined as unknown as GeneratedDay[],
+        generalTips: undefined as unknown as string[],
+      } as unknown as GeneratedItinerary,
+      generationStart: Date.now(),
+      weatherData: weatherData as unknown as WeatherData,
+      attractions: [] as unknown as FormattedPlace[],
+      prompt: 'P',
+      promptHash: 'h',
+    });
+
+    expect(tx.itinerary.create).toHaveBeenCalled();
+  });
+
+  it('handles non-array activities.create in persistGeneratedItinerary', async () => {
+    const tx = {
+      itinerary: {
+        create: jest.fn().mockResolvedValue({ id: 'itin-non-array' }),
+      },
+      itineraryTip: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      itineraryDay: { create: jest.fn() },
+      itineraryWeatherSnapshot: { create: jest.fn() },
+      itineraryActivity: { createMany: jest.fn() },
+    };
+    mockPrisma.$transaction.mockImplementation(
+      (cb: (txClient: unknown) => unknown) => cb(tx),
+    );
+
+    jest.spyOn(service, 'mapSingleDay').mockReturnValue({
+      dayNumber: 1,
+      date: new Date(),
+      theme: 'Test',
+      activities: {
+        // Return a single object instead of an array
+        create: {
+          title: 'Single Object Activity',
+          activityType: ActivityType.ATTRACTION,
+          sortOrder: 0,
+          latitude: null,
+          longitude: null,
+          location: '',
+        } as unknown as Prisma.ItineraryActivityCreateWithoutDayInput[],
+      },
+    } as unknown as Prisma.ItineraryDayCreateWithoutItineraryInput);
+
+    // Mock searchAttractions to return bestMatch with empty name/address
+    mockAttractionsService.searchAttractions.mockResolvedValueOnce([
+      {
+        id: 'place-empty-fields',
+        name: '', // trigger fallback
+        address: '', // trigger fallback
+        location: { lat: 10, lng: 20 },
+      },
+    ]);
+
+    await service.persistGeneratedItinerary({
+      userId: 'user-1',
+      createItineraryDto: baseDto as unknown as CreateItineraryDto,
+      generated: {
+        days: [{ day: 1, theme: 'Test', activities: [], meals: [] }],
+      } as unknown as GeneratedItinerary,
+      generationStart: Date.now(),
+      weatherData: weatherData as unknown as WeatherData,
+      attractions: [] as unknown as FormattedPlace[],
+      prompt: 'P',
+      promptHash: 'h',
+    });
+
+    expect(tx.itinerary.create).toHaveBeenCalled();
+  });
+
+  it('maps day activities and meals with specific fallbacks in mapSingleDay', () => {
+    const day = {
+      day: 1,
+      theme: '',
+      activities: [
+        {
+          shortName: 'Eiffel Short',
+          title: 'Visit Eiffel Tower',
+        },
+        {
+          placeId: 'place-1', // matches Eiffel Tower mock
+          // shortName and title missing
+        },
+        {
+          // shortName, title, and matched attraction missing
+          location: 'Random Spot',
+        },
+      ],
+      meals: [
+        {
+          type: 'restaurant',
+          // recommendation is missing
+          location: 'Restaurant Street',
+        },
+      ],
+    };
+
+    const result = service.mapSingleDay(
+      day as unknown as GeneratedDay,
+      baseDto.startDate,
+      weatherData as unknown as WeatherData,
+      attractions as unknown as FormattedPlace[],
+    );
+
+    const activities = (
+      result.activities as unknown as {
+        create: { title: string; mealType?: string }[];
+      }
+    ).create;
+    expect(result.theme).toBe('Day 1: Exploration');
+    expect(activities[0].title).toBe('Eiffel Short');
+    expect(activities[1].title).toBe('Eiffel Tower');
+    expect(activities[2].title).toBe('Spot');
+    expect(activities[3].title).toBe('Meal');
+    expect(activities[3].mealType).toBe('restaurant');
   });
 });

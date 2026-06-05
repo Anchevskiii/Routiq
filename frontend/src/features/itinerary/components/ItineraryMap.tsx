@@ -13,17 +13,36 @@ interface Props {
   fullscreen?: boolean
 }
 
-function infoHtml(a: PlacedActivity) {
-  const mapsUrl = `https://maps.google.com/?q=${a.lat},${a.lng}`
-  return `<div style="font-family:system-ui,sans-serif;padding:2px;min-width:150px">
-    <div style="font-size:10px;font-weight:700;color:${a.color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Day ${a.dayNumber}</div>
-    <div style="font-size:13px;font-weight:600;color:#14122b;line-height:1.3">${a.title}</div>
-    ${a.startTime ? `<div style="font-size:11px;color:#9b98be;margin-top:2px">${a.startTime}</div>` : ''}
-    <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:600;color:#2563eb;text-decoration:none">View on Google Maps ↗</a>
+interface PlacedActivityExtended extends PlacedActivity {
+  photoUrl?: string | null
+}
+
+const getGoogleMapsUrl = (title: string, location?: string | null, destination?: string, placeId?: string | null): string => {
+  let querySuffix = ''
+  if (location) {
+    querySuffix = ' ' + location
+  } else if (destination) {
+    querySuffix = ' ' + destination
+  }
+  const base = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + querySuffix)}`
+  return placeId ? `${base}&query_place_id=${placeId}` : base
+}
+
+function infoHtml(a: PlacedActivityExtended, destination?: string) {
+  const mapsUrl = getGoogleMapsUrl(a.title, a.location, destination, a.placeId)
+
+  return `<div style="font-family:system-ui,sans-serif;padding:0;min-width:180px;max-width:230px;color:#14122b">
+    ${a.photoUrl ? `<div style="width:calc(100% + 24px);margin:-12px -12px 8px -12px;height:85px;overflow:hidden;border-radius:8px 8px 0 0"><img src="${a.photoUrl}" alt="${a.title}" style="width:100%;height:100%;object-fit:cover" /></div>` : ''}
+    <div style="${a.photoUrl ? '' : 'padding-top:4px;'}">
+      <div style="font-size:10px;font-weight:700;color:${a.color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Day ${a.dayNumber}</div>
+      <div style="font-size:12px;font-weight:600;line-height:1.35;margin-bottom:2px">${a.title}</div>
+      ${a.startTime ? `<div style="font-size:10px;color:#9b98be">${a.startTime}</div>` : ''}
+      <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:600;color:#2563eb;text-decoration:none">View on Google Maps ↗</a>
+    </div>
   </div>`
 }
 
-export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = false }) => {
+export const ItineraryMap: React.FC<Readonly<Props>> = ({ days, destination, fullscreen = false }) => {
   const { isLoaded, loadError } = useGoogleMaps()
   const { placed, loading } = usePlacedActivities(days, isLoaded, destination)
   const { selectedActivityId } = useItinerarySelection()
@@ -57,7 +76,7 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
         background: activity.color,
         borderColor: 'rgba(255,255,255,0.9)',
         glyphColor: 'white',
-        glyph: String(idx + 1),
+        glyphText: String(idx + 1),
         scale: 1.1,
       })
       const marker = new google.maps.marker.AdvancedMarkerElement({
@@ -67,15 +86,15 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
         zIndex: idx,
       })
       marker.appendChild(pin)
-      marker.addListener('click', () => {
+      marker.addListener('gmp-click', () => {
         setActive(activity)
-        infoWindowRef.current?.setContent(infoHtml(activity))
+        infoWindowRef.current?.setContent(infoHtml(activity, destination))
         infoWindowRef.current?.open(mapInstanceRef.current!, marker)
       })
       markersRef.current.push({ marker, activity })
     })
     mapInstanceRef.current.fitBounds(bounds, 48)
-  }, [placed, isLoaded])
+  }, [placed, isLoaded, destination])
 
   const fitVisible = useCallback((visible: PlacedActivity[]) => {
     if (!mapInstanceRef.current || visible.length === 0) return
@@ -100,13 +119,15 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
   // Rebuild a pin element for a marker — selected = larger blue, normal = activity colour
   // Returns PinElement directly to avoid deprecated content/element usage
   const rebuildPin = useCallback((activity: PlacedActivity, isSelected: boolean) => {
+    const idx = placed.findIndex(a => a.id === activity.id)
     return new google.maps.marker.PinElement({
       background: isSelected ? '#2563eb' : activity.color,
       borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.9)',
       glyphColor: 'white',
+      glyphText: idx === -1 ? undefined : String(idx + 1),
       scale: isSelected ? 1.4 : 1.1,
     })
-  }, [])
+  }, [placed])
 
   // Centre map and highlight marker when an activity is selected from the list
   useEffect(() => {
@@ -125,9 +146,9 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
     if (!found) return
     map.panTo({ lat: found.activity.lat, lng: found.activity.lng })
     setActive(found.activity)
-    infoWindowRef.current?.setContent(infoHtml(found.activity))
+    infoWindowRef.current?.setContent(infoHtml(found.activity, destination))
     infoWindowRef.current?.open(map, found.marker)
-  }, [selectedActivityId, isLoaded, rebuildPin])
+  }, [selectedActivityId, isLoaded, rebuildPin, destination])
 
   const toggleExpand = () => {
     setExpanded(e => !e)
