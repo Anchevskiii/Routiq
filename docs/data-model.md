@@ -100,6 +100,8 @@ erDiagram
         string mealType
         string priceRange
         string transportMethod
+        string transportCost
+        string transportNotes
         datetime deletedAt
     }
 
@@ -309,6 +311,8 @@ Posamezna aktivnost v dnevu (atrakcija, obrok, prevoz...).
 | `placeId` | String? | Google Places ID za additional data |
 | `mealType` | String? | Za MEAL: "zajtrk", "kosilo", "večerja" |
 | `transportMethod` | String? | Za TRANSPORT: "avto", "pešačenje"... |
+| `transportCost` | String? | Strošek prevoza |
+| `transportNotes` | String? | Opombe glede prevoza |
 
 ### `itinerary_weather_snapshots`
 

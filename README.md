@@ -17,7 +17,7 @@ Routiq is a state-of-the-art web application for AI-powered travel itinerary pla
 | [REST API referenca](docs/api-reference.md) | Vsi endpointi z metodami, parametri in opisi |
 | [Varnostna arhitektura](docs/security.md) | JWT tok, shranjevanje tokenov, API ključi, rate limiting, Helmet |
 | [Testiranje](docs/testing.md) | Testna strategija, pokritost, spec datoteke, kako zagnati |
-| [CI/CD pipeline](docs/ci-cd.md) | GitHub Actions, deploy na Vercel in Render |
+| [CI/CD pipeline](docs/ci-cd.md) | GitHub Actions, deploy na Vercel in Railway |
 | [Vodenje projekta](docs/project-management.md) | Git workflow, iteracije, commit konvencija, PR pravila |
 | [Izzivi in rešitve](docs/challenges.md) | Konkretni problemi ki so se pojavili med razvojem |
 | [Standardi pisanja kode](docs/coding-standards.md) | TypeScript pravila, imenovanje, strukturna pravila |
@@ -33,7 +33,7 @@ Routiq is a state-of-the-art web application for AI-powered travel itinerary pla
 └──────────────────┬──────────────────────────────────────────────┘
                    │ HTTPS / REST (Axios)
 ┌──────────────────▼──────────────────────────────────────────────┐
-│                  Render.com — NestJS REST API                   │
+│                  Railway.app — NestJS REST API                  │
 │  Auth │ Itinerary │ Groups │ Weather │ Attractions │ Export     │
 └──┬────┴────┬───────┴────────┴────────┴─────────────┴─────┬──────┘
    │         │                                              │
@@ -77,7 +77,7 @@ Podroben deployment diagram → [Arhitektura sistema](docs/architecture.md#deplo
 | **Vreme** | Google Weather API |
 | **E-pošta** | Resend (transakcijska e-pošta) |
 | **Deploy FE** | Vercel |
-| **Deploy BE** | Render.com |
+| **Deploy BE** | Railway.app |
 | **Kakovost kode** | SonarCloud |
 
 > ⚠️ **Axios 1.14.0 je pinana** — verziji 1.14.1 in 0.30.4 sta bili marca 2026 kompromitirani v supply chain napadu. Ne posodabljaj brez preveritve. Podrobnosti: [Izzivi in rešitve](docs/challenges.md#supply-chain-napad-na-axios).
@@ -109,9 +109,9 @@ cd ../frontend && cp .env.example .env
 
 # 4. Pripravi bazo
 cd backend
-npx prisma generate
-npx prisma migrate dev
-npx prisma db seed    # opcijsko
+npm run prisma:generate
+npm run prisma:migrate dev
+npm run prisma:seed    # opcijsko
 
 # 5. Zaženi
 # Terminal 1
@@ -223,7 +223,7 @@ Podrobna dokumentacija testov: [Testiranje](docs/testing.md)
 | Okolje | Storitev | Branch |
 |---|---|---|
 | Frontend | Vercel | `main` |
-| Backend | Render.com | `main` |
+| Backend | Railway.app | `main` |
 | CI teki | GitHub Actions | `main`, `development` |
 
 CI/CD pipeline se sproži ob vsakem PR/push na `main`. Podrobnosti: [CI/CD pipeline](docs/ci-cd.md)

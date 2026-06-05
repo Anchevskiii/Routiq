@@ -30,7 +30,6 @@ import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { JwtPayload } from '../common/types/jwt-payload.type';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
-import { ItineraryThrottlerGuard } from './guards/itinerary-throttler.guard';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
 import { ReorderDaysDto } from './dto/reorder-days.dto';
 import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
@@ -56,7 +55,6 @@ export class ItineraryController {
     description: 'Itinerary generated and streamed successfully.',
   })
   @Throttle({ 'itinerary-generate': { limit: 5, ttl: 60000 } })
-  @UseGuards(ItineraryThrottlerGuard)
   @Post('generate')
   async generateItinerary(
     @CurrentUser() user: JwtPayload,

@@ -223,7 +223,7 @@ VITE_APP_NAME=Routiq
 VITE_APP_DESCRIPTION=Travel planning made simple
 ```
 
-> ⚠️ `VITE_GOOGLE_MAPS_API_KEY` je edini API ključ ki gre na frontend (Maps JS SDK zahteva client-side ključ). Vse ostale ključe (Gemini, Google Weather, Places, Spotify) **nikoli** ne izpostavljamo na klientu – gredo izključno na backend.
+> ⚠️ `VITE_GOOGLE_MAPS_API_KEY` je edini API ključ ki gre na frontend (Maps JS SDK zahteva client-side ključ). Vse ostale ključe (Gemini, Google Weather, Places) **nikoli** ne izpostavljamo na klientu – gredo izključno na backend.
 
 ---
 
@@ -447,7 +447,7 @@ Rules:
 - Tailwind CSS only for styling – no inline styles, no CSS modules.
 - Keep components under ~150 lines. Split if longer.
 - Do not install new packages without team approval.
-- Never expose API keys (Gemini, Google Weather, Spotify, Places) on the client.
+- Never expose API keys (Gemini, Google Weather, Places) on the client.
   Only VITE_GOOGLE_MAPS_API_KEY is allowed on frontend.
 - AI generation uses SSE streaming from backend – never call Gemini directly from FE.
 
@@ -568,11 +568,11 @@ Kratki opis feature-a ali fixa.
 | **Klemen** | Urejanje itinerarja: swap/dodaj/odstrani atrakcijo, drag & drop vrstni red. |
 | **Mojca** | Groups feature: GroupsPage, GroupDetailPage, GroupCard, InviteMemberForm, glasovanje za atrakcije. |
 
-### Iteracija 4 – Spotify, i18n, optimizacije
+### Iteracija 4 – i18n, optimizacije
 
 | Dev | Naloge |
 |---|---|
-| **Jan** | Spotify playlist prikaz (opcijsko), i18n osnova z react-i18next. |
+| **Jan** | i18n osnova z react-i18next. |
 | **Klemen** | Performančne optimizacije: lazy loading strani, Skeleton loaderji, error boundaryji. |
 | **Mojca** | Dashboard (seznam shranjenih potovanj), Profile stran, UX polish. |
 

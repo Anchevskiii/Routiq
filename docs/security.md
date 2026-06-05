@@ -163,7 +163,7 @@ FRONTEND_URL=https://routiq.vercel.app
 ### Frontend (.env) — edina izjema
 
 ```env
-VITE_API_URL=https://routiq.onrender.com/api
+VITE_API_URL=https://routiq.up.railway.app/api
 VITE_GOOGLE_MAPS_API_KEY=...          # Omejen ključ!
 VITE_SUPABASE_URL=https://xxx.supabase.co
 VITE_SUPABASE_ANON_KEY=...            # Anon ključ (ne service role!)

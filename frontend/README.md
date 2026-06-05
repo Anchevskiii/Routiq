@@ -64,9 +64,9 @@ frontend/
    npm run dev
    ```
 
-   On **Windows**, `npm run dev` first runs **`predev`**, which executes **`../scripts/free-port.ps1 -Port 5173`**. That finds processes **listening on 5173** (usually a leftover Vite/Node instance), logs **PID and name**, and stops them so Vite can bind to **5173** every time.
+   Vite is configured with **`strictPort: true`**: if port `5173` is already taken, the command fails instead of switching to another port. This avoids mismatched URLs and CORS issues.
 
-   Vite is configured with **`strictPort: true`**: if 5173 is still taken after cleanup, the command **fails** instead of switching to 5174+ (which avoids mismatched URLs and CORS). Run npm from **`frontend/`** so `../scripts/` resolves correctly.
+   If port `5173` is occupied, stop the process manually before launching the frontend.
 
 ## Development Commands
 
