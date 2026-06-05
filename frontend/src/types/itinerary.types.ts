@@ -110,6 +110,9 @@ export interface CreateItineraryDto {
   endDate: string
   days: number
   travelType: TravelTypeValue
+  latitude?: number
+  longitude?: number
+  placeId?: string
 }
 
 export interface UpdateItineraryDto {

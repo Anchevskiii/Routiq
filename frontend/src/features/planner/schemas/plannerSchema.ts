@@ -11,6 +11,9 @@ export const plannerSchema = z.object({
       required_error: 'Travel type is required',
     })
   ),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  placeId: z.string().optional(),
 }).superRefine((values, ctx) => {
   if (!values.startDate || !values.endDate) return
   const start = parseISO(values.startDate)
