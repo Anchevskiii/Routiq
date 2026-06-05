@@ -48,13 +48,21 @@ const stripVenueType = (s: string): string => {
   return s.trim()
 }
 
+const cleanWikipediaTitle = (title: string): string => {
+  let s = title.trim();
+  s = s.replace(/^(explore|visit|discover|see|walk\s+around|walk\s+through|sightseeing\s+at|tour\s+of|trip\s+to|journey\s+to|relax\s+at|enjoy)\s+(the\s+)?/i, '');
+  s = s.replace(/^(breakfast|lunch|dinner|brunch|coffee|drinks)\s+(at|in)\s+(the\s+)?/i, '');
+  return s.trim();
+}
+
 async function trySearchWikipedia(title: string, destination?: string): Promise<string | null> {
   if (title.length < 3) return null
+  const cleanTitle = cleanWikipediaTitle(title)
   const queries = [
-    destination ? `${title} ${destination}` : title,
-    title,
-    destination ? `${stripVenueType(title)} ${destination}` : stripVenueType(title),
-    stripVenueType(title),
+    destination ? `${cleanTitle} ${destination}` : cleanTitle,
+    cleanTitle,
+    destination ? `${stripVenueType(cleanTitle)} ${destination}` : stripVenueType(cleanTitle),
+    stripVenueType(cleanTitle),
   ].filter((q, i, arr) => q && q.length > 2 && arr.indexOf(q) === i)
 
   for (const query of queries) {

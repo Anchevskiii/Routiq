@@ -30,6 +30,13 @@ const VENUE_WORDS = new Set([
   'trail', 'tour', 'site', 'nature', 'cutting'
 ])
 
+const cleanWikipediaTitle = (title: string): string => {
+  let s = title.trim();
+  s = s.replace(/^(explore|visit|discover|see|walk\s+around|walk\s+through|sightseeing\s+at|tour\s+of|trip\s+to|journey\s+to|relax\s+at|enjoy)\s+(the\s+)?/i, '');
+  s = s.replace(/^(breakfast|lunch|dinner|brunch|coffee|drinks)\s+(at|in)\s+(the\s+)?/i, '');
+  return s.trim();
+}
+
 const stripVenueType = (s: string): string => {
   const words = s.split(/\s+/)
   for (const word of words) {
@@ -78,12 +85,13 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
 
     const fetchPhoto = async () => {
       try {
+        const cleanTitle = cleanWikipediaTitle(activity.title)
         const queries = [
-          destination ? `${activity.title} ${destination}` : activity.title,
-          activity.title,
-          destination ? `${stripVenueType(activity.title)} ${destination}` : stripVenueType(activity.title),
-          stripVenueType(activity.title),
-          activity.title.split(' ').slice(0, 2).join(' '),
+          destination ? `${cleanTitle} ${destination}` : cleanTitle,
+          cleanTitle,
+          destination ? `${stripVenueType(cleanTitle)} ${destination}` : stripVenueType(cleanTitle),
+          stripVenueType(cleanTitle),
+          cleanTitle.split(' ').slice(0, 2).join(' '),
         ].filter((q, i, arr) => q && q.length > 2 && arr.indexOf(q) === i) // dedupe
 
         for (const q of queries) {
@@ -127,15 +135,15 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
 
   const dotBorder  = isMeal ? 'border-orange-400' : 'border-sky-400'
   const dotShadow  = 'shadow-[0_0_0_3px_white] dark:shadow-[0_0_0_3px_rgba(8,9,26,1)]'
-  const iconEl     = isMeal ? <Utensils className="w-5 h-5 text-orange-500 dark:text-orange-400" /> : <Camera className="w-5 h-5 text-sky-500 dark:text-sky-400" />
+  const iconEl     = isMeal ? <Utensils className="w-6 h-6 text-orange-500 dark:text-orange-400" /> : <Camera className="w-6 h-6 text-sky-500 dark:text-sky-400" />
   const iconBg     = isMeal ? 'bg-orange-50 dark:bg-gradient-to-br dark:from-orange-500/20 dark:to-rose-500/15' : 'bg-sky-50 dark:bg-gradient-to-br dark:from-sky-500/20 dark:to-blue-500/15'
   const catBadge   = isMeal
     ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-400/10 border border-orange-200 dark:border-orange-400/25'
     : 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-400/10 border border-sky-200 dark:border-sky-400/25'
 
   const photoContainerClass = photoUrl
-    ? 'w-14 h-14 rounded-[10px] flex-shrink-0 overflow-hidden'
-    : `w-14 h-14 rounded-[10px] flex-shrink-0 overflow-hidden grid place-items-center ${iconBg}`
+    ? 'w-20 h-20 rounded-[10px] flex-shrink-0 overflow-hidden'
+    : `w-20 h-20 rounded-[10px] flex-shrink-0 overflow-hidden grid place-items-center ${iconBg}`
 
   return (
     <div className="relative grid grid-cols-[28px_72px_1fr_auto] gap-3.5 py-2.5 group/act">

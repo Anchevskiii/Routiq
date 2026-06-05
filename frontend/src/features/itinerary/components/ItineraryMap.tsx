@@ -22,12 +22,14 @@ function infoHtml(a: PlacedActivityExtended, destination?: string) {
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.title)}${a.location ? encodeURIComponent(' ' + a.location) : destination ? encodeURIComponent(' ' + destination) : ''}&query_place_id=${a.placeId}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.title)}${a.location ? encodeURIComponent(' ' + a.location) : destination ? encodeURIComponent(' ' + destination) : ''}`
 
-  return `<div style="font-family:system-ui,sans-serif;padding:4px;min-width:180px;max-width:240px">
-    ${a.photoUrl ? `<div style="width:100%;height:100px;border-radius:8px;overflow:hidden;margin-bottom:8px"><img src="${a.photoUrl}" alt="${a.title}" style="width:100%;height:100%;object-fit:cover" /></div>` : ''}
-    <div style="font-size:10px;font-weight:700;color:${a.color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Day ${a.dayNumber}</div>
-    <div style="font-size:13px;font-weight:600;color:#14122b;line-height:1.3">${a.title}</div>
-    ${a.startTime ? `<div style="font-size:11px;color:#9b98be;margin-top:2px">${a.startTime}</div>` : ''}
-    <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:8px;font-size:11px;font-weight:600;color:#2563eb;text-decoration:none">View on Google Maps ↗</a>
+  return `<div style="font-family:system-ui,sans-serif;padding:0;min-width:210px;max-width:260px;color:#14122b">
+    ${a.photoUrl ? `<div style="width:calc(100% + 24px);margin:-12px -12px 10px -12px;height:120px;overflow:hidden;border-radius:8px 8px 0 0"><img src="${a.photoUrl}" alt="${a.title}" style="width:100%;height:100%;object-fit:cover" /></div>` : ''}
+    <div style="${a.photoUrl ? '' : 'padding-top:4px;'}">
+      <div style="font-size:10px;font-weight:700;color:${a.color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Day ${a.dayNumber}</div>
+      <div style="font-size:13px;font-weight:600;line-height:1.4;margin-bottom:2px">${a.title}</div>
+      ${a.startTime ? `<div style="font-size:11px;color:#9b98be">${a.startTime}</div>` : ''}
+      <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:10px;font-size:12px;font-weight:600;color:#2563eb;text-decoration:none">View on Google Maps ↗</a>
+    </div>
   </div>`
 }
 
