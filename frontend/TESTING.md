@@ -59,7 +59,13 @@ npm run test:unit:run
 ```
 
 ### B. End-to-End Tests (Playwright)
-E2E tests run in a real browser. Playwright automatically boots up the Vite development server in the background using `--mode e2e` so it is isolated from your active dev server.
+E2E tests run in a real browser. Playwright automatically boots up the Vite development server in the background using `--mode e2e` so it is isolated from your active dev server. Required E2E environment variables are set in `playwright.config.ts` — you do not need a local `.env.e2e` file to run Playwright.
+
+If you manually start the dev server in e2e mode (`npm run dev -- --mode e2e`), copy the template first:
+
+```bash
+cp .env.e2e.example .env.e2e
+```
 
 ```bash
 # Run E2E tests headlessly

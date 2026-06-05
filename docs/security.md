@@ -136,7 +136,8 @@ Vsa mesta kjer pride do napake vrnejo konzistenten format brez razkrivanja inter
 
 ```
 NIKOLI ne commitamo .env datotek v git!
-.gitignore vsebuje: .env, .env.local, .env.production
+.gitignore vsebuje: .env, .env.* (razen *.env.example / .env.*.example), *.pem, *.key, secrets.*
+Za teste uporabi predloge: backend/.env.test.example, frontend/.env.e2e.example
 ```
 
 ### Backend (.env) — ostane na strežniku
