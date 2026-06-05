@@ -315,7 +315,7 @@ const ProgressSection: React.FC<Readonly<{
         <div style={{ flex: 1, height: 8, background: trackBg, borderRadius: 5, overflow: 'hidden' }}>
           <div style={{
             height: '100%', borderRadius: 5, width: `${displayProgress}%`,
-            background: isComplete
+            backgroundImage: isComplete
               ? 'linear-gradient(90deg, #10b981, #34d399)'
               : 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)',
             backgroundSize: '200% 100%',

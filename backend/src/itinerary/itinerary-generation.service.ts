@@ -147,7 +147,14 @@ export class ItineraryGenerationService {
 
     const itinerary = await this.prisma.$transaction(
       async (tx) => {
-        // 1. Create the parent Itinerary record
+        // Create general tips array
+        const generalTips = generated.generalTips ?? [
+          'Check local transportation options before arrival.',
+          'Keep digital copies of your travel documents.',
+          'Respect local customs and traditions.',
+        ];
+
+        // 1. Create the parent Itinerary record with nested days, weather, activities, and tips
         const itineraryRecord = await tx.itinerary.create({
           data: {
             userId,
@@ -162,64 +169,57 @@ export class ItineraryGenerationService {
             generationTimeMs,
             bestSeason,
             estimatedBudget,
+            generalTips: {
+              create: generalTips.map((tip, index) => ({
+                sortOrder: index,
+                content: tip,
+              })),
+            },
+            days: {
+              create: mappedDays.map((mappedDay) => ({
+                dayNumber: mappedDay.dayNumber,
+                date: mappedDay.date,
+                theme: mappedDay.theme,
+                weather: mappedDay.weather
+                  ? {
+                      create: {
+                        condition: mappedDay.weather.create.condition,
+                        tempMin: mappedDay.weather.create.tempMin,
+                        tempMax: mappedDay.weather.create.tempMax,
+                        humidity: mappedDay.weather.create.humidity,
+                        windSpeed: mappedDay.weather.create.windSpeed,
+                        precipitation: mappedDay.weather.create.precipitation,
+                        recommendation: mappedDay.weather.create.recommendation,
+                      },
+                    }
+                  : undefined,
+                activities: mappedDay.activities
+                  ? {
+                      create: (Array.isArray(mappedDay.activities.create)
+                        ? mappedDay.activities.create
+                        : [mappedDay.activities.create]
+                      ).map((act) => ({
+                        activityType: act.activityType,
+                        sortOrder: act.sortOrder,
+                        title: act.title,
+                        description: act.description,
+                        location: act.location,
+                        address: act.address,
+                        startTime: act.startTime,
+                        durationMinutes: act.durationMinutes,
+                        cost: act.cost,
+                        tips: act.tips,
+                        latitude: act.latitude,
+                        longitude: act.longitude,
+                        placeId: act.placeId,
+                        mealType: act.mealType,
+                      })),
+                    }
+                  : undefined,
+              })),
+            },
           },
         });
-
-        // 2. Create general tips sequentially
-        const generalTips = generated.generalTips ?? [
-          'Check local transportation options before arrival.',
-          'Keep digital copies of your travel documents.',
-          'Respect local customs and traditions.',
-        ];
-
-        if (generalTips.length > 0) {
-          await tx.itineraryTip.createMany({
-            data: generalTips.map((tip, index) => ({
-              itineraryId: itineraryRecord.id,
-              sortOrder: index,
-              content: tip,
-            })),
-          });
-        }
-
-        // 3. Create days, their weather snapshots, and pre-geocoded activities
-        for (const mappedDay of mappedDays) {
-          // Create the ItineraryDay record
-          const createdDay = await tx.itineraryDay.create({
-            data: {
-              itineraryId: itineraryRecord.id,
-              dayNumber: mappedDay.dayNumber,
-              date: mappedDay.date,
-              theme: mappedDay.theme,
-            },
-          });
-
-          // Create the ItineraryWeatherSnapshot record
-          if (mappedDay.weather?.create) {
-            await tx.itineraryWeatherSnapshot.create({
-              data: {
-                dayId: createdDay.id,
-                ...mappedDay.weather.create,
-              },
-            });
-          }
-
-          // Create the ItineraryActivity records
-          if (mappedDay.activities?.create) {
-            const activitiesData = Array.isArray(mappedDay.activities.create)
-              ? mappedDay.activities.create
-              : [mappedDay.activities.create];
-
-            if (activitiesData.length > 0) {
-              await tx.itineraryActivity.createMany({
-                data: activitiesData.map((act) => ({
-                  dayId: createdDay.id,
-                  ...act,
-                })),
-              });
-            }
-          }
-        }
 
         // 4. If groupId is provided, automatically link the itinerary to the group
         if (createItineraryDto.groupId) {
