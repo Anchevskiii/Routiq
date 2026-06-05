@@ -109,9 +109,9 @@ cd ../frontend && cp .env.example .env
 
 # 4. Pripravi bazo
 cd backend
-npx prisma generate
-npx prisma migrate dev
-npx prisma db seed    # opcijsko
+npm run prisma:generate
+npm run prisma:migrate dev
+npm run prisma:seed    # opcijsko
 
 # 5. Zaženi
 # Terminal 1

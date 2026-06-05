@@ -117,6 +117,7 @@ describe('Global Pipelines (e2e)', () => {
         },
       );
       rateApp.setGlobalPrefix('api');
+
       await rateApp.init();
     });
 

@@ -6,6 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AttractionsModule } from './attractions/attractions.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { ConfigModule as AppConfigModule } from './config/config.module';
 import { ExportModule } from './export/export.module';
 import { GeminiModule } from './gemini/gemini.module';
@@ -40,7 +41,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       {
         name: 'default',
         ttl: 60000, // 1 minute
-        limit: 10000, // 10000 requests per minute per IP
+        limit: 100, // 100 requests per minute per IP
       },
       {
         name: 'itinerary-generate',
@@ -77,6 +78,10 @@ import { NotificationsModule } from './notifications/notifications.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AppThrottlerGuard,
     },
   ],
 })
