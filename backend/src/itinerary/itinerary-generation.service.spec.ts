@@ -170,9 +170,15 @@ describe('ItineraryGenerationService', () => {
             generationTimeMs: expect.any(Number),
             generalTips: {
               create: expect.arrayContaining([
-                expect.objectContaining({ content: 'Check local transportation options before arrival.' }),
-                expect.objectContaining({ content: 'Keep digital copies of your travel documents.' }),
-                expect.objectContaining({ content: 'Respect local customs and traditions.' }),
+                expect.objectContaining({
+                  content: 'Check local transportation options before arrival.',
+                }),
+                expect.objectContaining({
+                  content: 'Keep digital copies of your travel documents.',
+                }),
+                expect.objectContaining({
+                  content: 'Respect local customs and traditions.',
+                }),
               ]),
             },
           }),
