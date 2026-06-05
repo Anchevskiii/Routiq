@@ -12,6 +12,7 @@ import { WeatherService } from '../src/weather/weather.service';
 import { MailService } from '../src/mail/mail.service';
 import { APP_GUARD } from '@nestjs/core';
 import { TravelType } from '@prisma/client';
+import { ItineraryThrottlerGuard } from '../src/itinerary/guards/itinerary-throttler.guard';
 import { createTestApp, TestAppContext } from './test-app';
 import { randomUUID } from 'crypto';
 
@@ -117,6 +118,7 @@ describe('Global Pipelines (e2e)', () => {
         },
       );
       rateApp.setGlobalPrefix('api');
+
       await rateApp.init();
     });
 

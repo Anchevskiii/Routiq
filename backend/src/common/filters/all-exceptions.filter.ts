@@ -45,7 +45,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       code = exception.constructor.name.replace('Exception', '').toUpperCase();
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       this.logger.warn(
-        `Prisma error caught: ${exception.code} - ${exception.message}`,
+        `Prisma error caught: ${exception.code} - ${exception.message} - Meta: ${JSON.stringify(exception.meta)}`,
       );
 
       switch (exception.code) {
@@ -58,6 +58,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
           }
           break;
         case 'P2025': // Record not found
+        case 'P2023': // Inconsistent column data (often invalid UUID format)
+        case 'P2015': // Related record not found
           status = HttpStatus.NOT_FOUND;
           code = 'NOT_FOUND';
           message = 'The requested record was not found.';

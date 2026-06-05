@@ -56,7 +56,6 @@ export class ItineraryController {
     description: 'Itinerary generated and streamed successfully.',
   })
   @Throttle({ 'itinerary-generate': { limit: 5, ttl: 60000 } })
-  @UseGuards(ItineraryThrottlerGuard)
   @Post('generate')
   async generateItinerary(
     @CurrentUser() user: JwtPayload,
