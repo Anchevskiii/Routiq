@@ -1,6 +1,7 @@
 import React from 'react'
 
 interface DurationSelectProps {
+  id?: string
   value: string
   onChange: (v: string) => void
   className?: string
@@ -16,7 +17,7 @@ const PRESETS = [
   { label: '3h', value: '180' },
 ]
 
-export const DurationSelect: React.FC<DurationSelectProps> = ({ value, onChange, className = '' }) => {
+export const DurationSelect: React.FC<DurationSelectProps> = ({ id, value, onChange, className = '' }) => {
   const num = Number(value)
 
   return (
@@ -39,6 +40,7 @@ export const DurationSelect: React.FC<DurationSelectProps> = ({ value, onChange,
       </div>
       <div className="flex items-center gap-2">
         <input
+          id={id}
           type="number"
           min={5}
           step={5}

@@ -42,7 +42,7 @@ function detectConflicts(
 
   let effectiveStart = newStart
 
-  if (preceding && preceding.durationMinutes) {
+  if (preceding?.durationMinutes) {
     const precStart = parseMinutes(preceding.startTime!)
     const precEnd = precStart + preceding.durationMinutes
     if (precEnd > newStart) {
@@ -170,10 +170,19 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     if (e.target === e.currentTarget) onClose()
   }
 
+  const getIcon = (type: string) => {
+    if (type === 'trim_preceding') return '✂️'
+    if (type === 'new_pushed') return '➡️'
+    return '⏩'
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
+      onKeyDown={e => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onClose(); } }}
+      role="button"
+      tabIndex={0}
     >
       <div className="bg-white dark:bg-[#16142e] rounded-3xl shadow-2xl border border-gray-100 dark:border-blue-600/10 w-full max-w-md">
         {/* Header */}
@@ -200,9 +209,9 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                 </p>
                 <ul className="space-y-1.5">
                   {conflicts.map((c, i) => (
-                    <li key={i} className="text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                    <li key={`conflict-${c.type}-${c.title || ''}-${i}`} className="text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
                       <span className="mt-0.5">
-                        {c.type === 'trim_preceding' ? '✂️' : c.type === 'new_pushed' ? '➡️' : '⏩'}
+                        {getIcon(c.type)}
                       </span>
                       <span>
                         {c.title
@@ -242,10 +251,11 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
           /* Normal form */
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              <label htmlFor="add-title" className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 Title <span className="text-red-500">*</span>
               </label>
               <input
+                id="add-title"
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
@@ -256,10 +266,11 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              <label htmlFor="add-location" className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 Location
               </label>
               <input
+                id="add-location"
                 ref={locationInputRef}
                 type="text"
                 value={location}
@@ -270,17 +281,17 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              <label htmlFor="add-starttime" className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 Start Time
               </label>
-              <TimeSelect value={startTime} onChange={setStartTime} placeholder="Optional" />
+              <TimeSelect id="add-starttime" value={startTime} onChange={setStartTime} placeholder="Optional" />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              <label htmlFor="add-duration" className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 Duration
               </label>
-              <DurationSelect value={duration} onChange={setDuration} />
+              <DurationSelect id="add-duration" value={duration} onChange={setDuration} />
             </div>
 
             {addMutation.isError && (

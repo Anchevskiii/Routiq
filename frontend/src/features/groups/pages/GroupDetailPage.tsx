@@ -19,7 +19,7 @@ export const GroupDetailPage: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [inviteEmail, setInviteEmail]           = useState('')
-  const [isAddItineraryOpen, setAddItinerary]   = useState(false)
+  const [isAddItineraryOpen, setIsAddItineraryOpen]   = useState(false)
   const [isSettingsOpen, setSettingsOpen]       = useState(false)
   const [toastDismissed, setToastDismissed]     = useState(false)
 
@@ -46,7 +46,7 @@ export const GroupDetailPage: React.FC = () => {
     mutationFn: (itineraryId: string) => groupsApi.addItineraryToGroup(id!, itineraryId),
     onSuccess: () => {
       toast.success('Itinerary added')
-      setAddItinerary(false)
+      setIsAddItineraryOpen(false)
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(id!) })
     },
     onError: () => toast.error('Failed to add itinerary'),
@@ -89,7 +89,7 @@ export const GroupDetailPage: React.FC = () => {
 
       <GroupHeader
         group={group}
-        onImport={() => setAddItinerary(true)}
+        onImport={() => setIsAddItineraryOpen(true)}
         onGenerate={() => navigate(`${ROUTES.PLANNER}?groupId=${id}`)}
         onSettings={() => setSettingsOpen(true)}
       />
@@ -105,7 +105,7 @@ export const GroupDetailPage: React.FC = () => {
             currentUserId={user?.id}
             toastDismissed={toastDismissed}
             onDismissToast={() => setToastDismissed(true)}
-            onAddItinerary={() => setAddItinerary(true)}
+            onAddItinerary={() => setIsAddItineraryOpen(true)}
           />
         </div>
 
@@ -127,7 +127,7 @@ export const GroupDetailPage: React.FC = () => {
 
       {isAddItineraryOpen && (
         <AddItineraryModal
-          onClose={() => setAddItinerary(false)}
+          onClose={() => setIsAddItineraryOpen(false)}
           onAdd={itineraryId => addItineraryMutation.mutate(itineraryId)}
           isSubmitting={addItineraryMutation.isPending}
         />

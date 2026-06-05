@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Clock, X } from 'lucide-react'
 
 interface TimeSelectProps {
+  id?: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
@@ -23,6 +24,7 @@ function generateSlots(): string[] {
 const SLOTS = generateSlots()
 
 export const TimeSelect: React.FC<TimeSelectProps> = ({
+  id,
   value,
   onChange,
   placeholder = 'Set time',
@@ -32,7 +34,7 @@ export const TimeSelect: React.FC<TimeSelectProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
-  const selectedIndex = value ? SLOTS.findIndex(s => s === value) : -1
+  const selectedIndex = value ? SLOTS.indexOf(value) : -1
 
   const scrollToSelected = useCallback((index: number) => {
     if (!listRef.current || index < 0) return
@@ -40,7 +42,7 @@ export const TimeSelect: React.FC<TimeSelectProps> = ({
   }, [])
 
   useEffect(() => {
-    if (open) scrollToSelected(selectedIndex >= 0 ? selectedIndex : 0)
+    if (open) scrollToSelected(Math.max(selectedIndex, 0))
   }, [open, selectedIndex, scrollToSelected])
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export const TimeSelect: React.FC<TimeSelectProps> = ({
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       <button
+        id={id}
         type="button"
         onClick={() => setOpen(v => !v)}
         className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all

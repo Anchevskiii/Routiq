@@ -438,65 +438,15 @@ export class ItineraryService {
       orderBy: { sortOrder: 'asc' },
     });
 
-    let insertAt = existing.length; // 0-based index to insert at (append)
+    const insertAt = this.calculateInsertionIndex(existing, dto.startTime);
 
-    if (dto.startTime) {
-      const newTime = this.parseTime(dto.startTime);
-      insertAt = existing.findIndex(
-        (a) =>
-          a.startTime !== null &&
-          a.startTime !== undefined &&
-          this.parseTime(a.startTime) > newTime,
-      );
-      if (insertAt === -1) insertAt = existing.length;
-    }
+    const trimmedActivity = await this.handlePrecedingActivityTrimming(
+      existing,
+      insertAt,
+      dto.startTime,
+    );
 
-    // If the new activity has a startTime, trim the preceding activity's duration
-    // to end exactly when the new one starts (instead of silently cascading it forward)
-    let trimmedActivity:
-      | { id: string; title: string; newDurationMinutes: number }
-      | undefined;
-
-    if (dto.startTime && insertAt > 0) {
-      const preceding = existing[insertAt - 1];
-      if (
-        preceding.startTime !== null &&
-        preceding.startTime !== undefined &&
-        preceding.durationMinutes !== null &&
-        preceding.durationMinutes !== undefined
-      ) {
-        const prevStartMin = this.parseTime(preceding.startTime);
-        const prevEndMin = prevStartMin + preceding.durationMinutes;
-        const newStartMin = this.parseTime(dto.startTime);
-
-        if (prevEndMin > newStartMin) {
-          const newDuration = newStartMin - prevStartMin;
-          if (newDuration > 0) {
-            await this.prisma.itineraryActivity.update({
-              where: { id: preceding.id },
-              data: { durationMinutes: newDuration },
-            });
-            trimmedActivity = {
-              id: preceding.id,
-              title: preceding.title,
-              newDurationMinutes: newDuration,
-            };
-          }
-        }
-      }
-    }
-
-    // Shift sortOrders for activities after insert position
-    if (insertAt < existing.length) {
-      await this.prisma.$transaction(
-        existing.slice(insertAt).map((a) =>
-          this.prisma.itineraryActivity.update({
-            where: { id: a.id },
-            data: { sortOrder: a.sortOrder + 1 },
-          }),
-        ),
-      );
-    }
+    await this.shiftSortOrdersAfter(existing, insertAt);
 
     const created = await this.prisma.itineraryActivity.create({
       data: {
@@ -514,8 +464,6 @@ export class ItineraryService {
       },
     });
 
-    // Cascade from the new activity's own position forward, anchored to the
-    // preceding activity's end time — never touches activities before the insertion point
     let pushedActivities: {
       id: string;
       title: string;
@@ -544,6 +492,77 @@ export class ItineraryService {
 
     return { activity: created, trimmedActivity, pushedActivities };
   }
+
+  private calculateInsertionIndex(
+    existing: any[],
+    startTime?: string,
+  ): number {
+    if (!startTime) {
+      return existing.length;
+    }
+    const newTime = this.parseTime(startTime);
+    const idx = existing.findIndex(
+      (a) =>
+        a.startTime !== null &&
+        a.startTime !== undefined &&
+        this.parseTime(a.startTime) > newTime,
+    );
+    return idx === -1 ? existing.length : idx;
+  }
+
+  private async handlePrecedingActivityTrimming(
+    existing: any[],
+    insertAt: number,
+    startTime?: string,
+  ): Promise<{ id: string; title: string; newDurationMinutes: number } | undefined> {
+    if (!startTime || insertAt <= 0) {
+      return undefined;
+    }
+    const preceding = existing[insertAt - 1];
+    if (
+      preceding.startTime !== null &&
+      preceding.startTime !== undefined &&
+      preceding.durationMinutes !== null &&
+      preceding.durationMinutes !== undefined
+    ) {
+      const prevStartMin = this.parseTime(preceding.startTime);
+      const prevEndMin = prevStartMin + preceding.durationMinutes;
+      const newStartMin = this.parseTime(startTime);
+
+      if (prevEndMin > newStartMin) {
+        const newDuration = newStartMin - prevStartMin;
+        if (newDuration > 0) {
+          await this.prisma.itineraryActivity.update({
+            where: { id: preceding.id },
+            data: { durationMinutes: newDuration },
+          });
+          return {
+            id: preceding.id,
+            title: preceding.title,
+            newDurationMinutes: newDuration,
+          };
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private async shiftSortOrdersAfter(
+    existing: any[],
+    insertAt: number,
+  ): Promise<void> {
+    if (insertAt < existing.length) {
+      await this.prisma.$transaction(
+        existing.slice(insertAt).map((a) =>
+          this.prisma.itineraryActivity.update({
+            where: { id: a.id },
+            data: { sortOrder: a.sortOrder + 1 },
+          }),
+        ),
+      );
+    }
+  }
+
 
   async deleteActivity(
     itineraryId: string,

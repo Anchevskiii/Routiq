@@ -24,12 +24,12 @@ export const ActivityEditForm: React.FC<Props> = ({
   <div className="mb-3 p-4 bg-gray-50 dark:bg-slate-800/40 rounded-xl border border-gray-100 dark:border-slate-700 space-y-3">
     <div className="grid grid-cols-2 gap-3">
       <div className="flex flex-col gap-1.5">
-        <label className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Start Time</label>
-        <TimeSelect value={editTime} onChange={onTimeChange} placeholder="Not set" />
+        <label htmlFor="edit-starttime" className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Start Time</label>
+        <TimeSelect id="edit-starttime" value={editTime} onChange={onTimeChange} placeholder="Not set" />
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Duration</label>
-        <DurationSelect value={editDuration} onChange={onDurationChange} />
+        <label htmlFor="edit-duration" className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Duration</label>
+        <DurationSelect id="edit-duration" value={editDuration} onChange={onDurationChange} />
       </div>
     </div>
     <div className="flex gap-2 pt-1">
