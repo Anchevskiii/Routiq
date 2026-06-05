@@ -1,16 +1,7 @@
 import React, { useState, useRef } from 'react'
 import './HelpPage.css'
-
-type FaqCat = 'all' | 'gen' | 'edit' | 'groups' | 'export' | 'account'
-
-interface FaqItem {
-  id: number
-  cat: Exclude<FaqCat, 'all'>
-  color: string
-  q: string
-  a: string
-  keywords: string
-}
+import { filterFaq, countForCat } from './faq.utils'
+import type { FaqCat, FaqItem } from './faq.utils'
 
 const FAQ: FaqItem[] = [
   { id: 1, cat: 'gen',     color: '#6366f1', q: 'Kako dolgo traja generiranje načrta?',          keywords: 'generiranje čas',           a: 'Običajno med <strong>20 in 60 sekundami</strong> — čas je odvisen od števila dni in kompleksnosti potovanja. Med čakanjem ti pokažemo zanimivosti o destinaciji.' },
@@ -44,15 +35,7 @@ export const HelpPage: React.FC = () => {
   const [query, setQuery] = useState('')
   const faqRef = useRef<HTMLDivElement>(null)
 
-  const q = query.trim().toLowerCase()
-  const words = q.split(/\s+/).filter(w => w.length >= 2)
-  const visible = FAQ.filter(item => {
-    const matchCat = q ? true : (cat === 'all' || item.cat === cat)
-    const matchQ = !words.length || words.some(w =>
-      item.q.toLowerCase().includes(w) || item.keywords.includes(w)
-    )
-    return matchCat && matchQ
-  })
+  const visible = filterFaq(FAQ, cat, query)
 
   function goFaq() {
     faqRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -64,10 +47,7 @@ export const HelpPage: React.FC = () => {
     setTimeout(goFaq, 50)
   }
 
-  function countFor(id: FaqCat) {
-    if (id === 'all') return FAQ.length
-    return FAQ.filter(i => i.cat === id).length
-  }
+  function countFor(id: FaqCat) { return countForCat(FAQ, id) }
 
   return (
     <div>
