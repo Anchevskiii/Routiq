@@ -251,9 +251,10 @@ export const LandingPage: React.FC = () => {
     <div className="lp">
       {/* Nav */}
       <nav className="lp-nav">
-        <div
+        <button
+          type="button"
           className="lp-nav-brand"
-          style={{ cursor: 'pointer' }}
+          style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
           onClick={() => { const c = document.querySelector('.lp') as HTMLElement; if (c) smoothScrollTo(c, 0) }}
         >
           <span className="lp-nav-logo">
@@ -263,7 +264,7 @@ export const LandingPage: React.FC = () => {
             </svg>
           </span>
           Routiq
-        </div>
+        </button>
         <div className="lp-nav-links">
           <button className="lp-nav-link" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-map'); if (c && el) smoothScrollTo(c, el.offsetTop) }}>Maps</button>
           <button className="lp-nav-link" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-integrations'); if (c && el) smoothScrollTo(c, el.offsetTop) }}>Integrations</button>

@@ -7,6 +7,43 @@ export interface StreamOptions<T, P = unknown> {
   onProgress?: (data: P) => void
 }
 
+interface ParsedSSE {
+  type?: string
+  error?: string
+}
+
+function handleSSEData<T, P>(
+  jsonString: string,
+  options: StreamOptions<T, P> | undefined,
+  setError: (err: string | null) => void,
+  setIsLoading: (loading: boolean) => void,
+  cancelReader: () => void
+): boolean {
+  try {
+    const data = JSON.parse(jsonString) as ParsedSSE
+
+    if (data.type === 'error') {
+      const message = data.error || 'Unknown stream error'
+      setError(message)
+      options?.onError?.(message)
+      setIsLoading(false)
+      cancelReader()
+      return true
+    }
+
+    if (data.type === 'complete') {
+      options?.onSuccess?.(data as T)
+    } else {
+      options?.onProgress?.(data as P)
+    }
+  } catch (e) {
+    if (import.meta.env.DEV) {
+      console.error('Error parsing SSE data:', e)
+    }
+  }
+  return false
+}
+
 export const useStream = <T = unknown, P = unknown>() => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,31 +84,14 @@ export const useStream = <T = unknown, P = unknown>() => {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const jsonString = line.replace('data: ', '')
-            try {
-              const data = JSON.parse(jsonString) as {
-                type?: string
-                error?: string
-              }
-
-              if (data.type === 'error') {
-                const message = data.error || 'Unknown stream error'
-                setError(message)
-                options?.onError?.(message)
-                setIsLoading(false)
-                reader.cancel().catch(() => undefined)
-                return
-              }
-              
-              if (data.type === 'complete') {
-                options?.onSuccess?.(data as T)
-              } else {
-                options?.onProgress?.(data as P)
-              }
-            } catch (e) {
-              if (import.meta.env.DEV) {
-                console.error('Error parsing SSE data:', e)
-              }
-            }
+            const shouldStop = handleSSEData(
+              jsonString,
+              options,
+              setError,
+              setIsLoading,
+              () => { reader.cancel().catch(() => undefined) }
+            )
+            if (shouldStop) return
           }
         }
         chunk = await reader.read()
@@ -87,3 +107,4 @@ export const useStream = <T = unknown, P = unknown>() => {
 
   return { stream, isLoading, error }
 }
+

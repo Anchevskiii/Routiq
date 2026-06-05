@@ -122,14 +122,14 @@ a.lp-btn-primary:hover { background: #1e40af; transform: translateY(-1px); box-s
 
 /* ghost button inside hero — always light since hero has dark overlay */
 .lp-hero .lp-btn-ghost {
-  color: rgba(255,255,255,.82);
-  border-color: rgba(255,255,255,.28);
-  background: rgba(255,255,255,.06);
+  color: #ffffff;
+  border-color: rgba(255,255,255,.4);
+  background: rgba(255,255,255,.1);
 }
 .lp-hero .lp-btn-ghost:hover {
-  background: rgba(255,255,255,.14);
-  color: #fff;
-  border-color: rgba(255,255,255,.5);
+  background: rgba(255,255,255,.22);
+  color: #ffffff;
+  border-color: rgba(255,255,255,.75);
 }
 .lp-hero-note { font-size: 13px; color: rgba(255,255,255,.82); margin-top: 18px; }
 .lp-hero-note span { margin: 0 8px; }
@@ -422,8 +422,8 @@ a.lp-btn-primary:hover { background: #1e40af; transform: translateY(-1px); box-s
 .lp-cta-note span { margin: 0 10px; }
 
 /* Override btn-ghost inside cta for contrast */
-.lp-cta .lp-btn-ghost { color: rgba(255,255,255,.8); border-color: rgba(255,255,255,.25); }
-.lp-cta .lp-btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.5); }
+.lp-cta .lp-btn-ghost { color: #ffffff; border-color: rgba(255,255,255,.45); }
+.lp-cta .lp-btn-ghost:hover { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.75); }
 
 /* ── footer ─────────────────────────────────────────── */
 .lp-footer {

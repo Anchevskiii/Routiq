@@ -7,8 +7,7 @@ export const PrivacyPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-[#08091a] text-gray-900 dark:text-gray-100 transition-colors duration-200">
       <nav className="max-w-4xl mx-auto px-6 py-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-800">
         <Link to={ROUTES.HOME} className="flex items-center gap-2 font-bold text-lg">
-          <span className="w-8 h-8 rounded bg-primary flex items-center justify-center text-white">R</span>
-          Routiq
+          <span className="w-8 h-8 rounded bg-primary flex items-center justify-center text-white">R</span> Routiq
         </Link>
         <Link to={ROUTES.HOME} className="text-sm hover:text-primary transition-colors">
           Back to Home
