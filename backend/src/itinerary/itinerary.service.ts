@@ -18,7 +18,7 @@ import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { ItineraryGenerationService } from './itinerary-generation.service';
-import { InvitationStatus, Prisma } from '@prisma/client';
+import { InvitationStatus, Prisma, ItineraryActivity } from '@prisma/client';
 import { WeatherService } from '../weather/weather.service';
 import { GeneratedDay, GeneratedItinerary } from './types';
 
@@ -494,7 +494,7 @@ export class ItineraryService {
   }
 
   private calculateInsertionIndex(
-    existing: any[],
+    existing: ItineraryActivity[],
     startTime?: string,
   ): number {
     if (!startTime) {
@@ -511,10 +511,12 @@ export class ItineraryService {
   }
 
   private async handlePrecedingActivityTrimming(
-    existing: any[],
+    existing: ItineraryActivity[],
     insertAt: number,
     startTime?: string,
-  ): Promise<{ id: string; title: string; newDurationMinutes: number } | undefined> {
+  ): Promise<
+    { id: string; title: string; newDurationMinutes: number } | undefined
+  > {
     if (!startTime || insertAt <= 0) {
       return undefined;
     }
@@ -548,7 +550,7 @@ export class ItineraryService {
   }
 
   private async shiftSortOrdersAfter(
-    existing: any[],
+    existing: ItineraryActivity[],
     insertAt: number,
   ): Promise<void> {
     if (insertAt < existing.length) {
@@ -562,7 +564,6 @@ export class ItineraryService {
       );
     }
   }
-
 
   async deleteActivity(
     itineraryId: string,
