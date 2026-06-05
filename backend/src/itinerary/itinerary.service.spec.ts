@@ -721,7 +721,7 @@ describe('ItineraryService', () => {
       });
 
       expect(mockPrisma.itineraryActivity.create).toHaveBeenCalled();
-      expect(result.title).toBe('New Act');
+      expect(result.activity.title).toBe('New Act');
     });
   });
 
@@ -835,7 +835,7 @@ describe('ItineraryService', () => {
       });
 
       expect(mockPrisma.itineraryActivity.create).toHaveBeenCalled();
-      expect(result.title).toBe('New Act');
+      expect(result.activity.title).toBe('New Act');
     });
 
     it('inserts at start when new activity starts before all existing', async () => {
@@ -854,7 +854,7 @@ describe('ItineraryService', () => {
         startTime: '08:00',
       });
 
-      expect(result.title).toBe('Early Act');
+      expect(result.activity.title).toBe('Early Act');
     });
   });
 

@@ -168,6 +168,7 @@ export const ItineraryPage: React.FC = () => {
   const sharedListProps = {
     days,
     itineraryId: id!,
+    startDate: itinerary.startDate,
     sensors,
     addActivityDayId,
     onDragEnd: handleDragEnd,
