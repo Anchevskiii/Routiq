@@ -97,10 +97,58 @@ export class ItineraryGenerationService {
     const estimatedBudget =
       generated.summary?.estimatedBudget ?? 'Contact local guides for pricing';
 
-    return this.prisma.$transaction(
+    const geocodeStart = Date.now();
+
+    // 1. Pre-map all days and pre-geocode all activities in parallel OUTSIDE the transaction
+    const mappedDays = await Promise.all(
+      (generated.days ?? []).map(async (day) => {
+        const mappedDay = this.mapSingleDay(
+          day,
+          createItineraryDto.startDate,
+          weatherData,
+          attractions,
+        );
+
+        if (mappedDay.activities?.create) {
+          const activitiesData = Array.isArray(mappedDay.activities.create)
+            ? mappedDay.activities.create
+            : [mappedDay.activities.create];
+
+          if (activitiesData.length > 0) {
+            const enrichedActivities = await Promise.all(
+              activitiesData.map(async (act) => {
+                if (act.latitude === null || act.longitude === null) {
+                  const query = act.location || act.title;
+                  if (query) {
+                    const fullQuery = `${query}, ${createItineraryDto.destination}`;
+                    const coords =
+                      await this.attractionsService.geocodeAddress(fullQuery);
+                    if (coords) {
+                      return {
+                        ...act,
+                        latitude: coords.lat,
+                        longitude: coords.lng,
+                      };
+                    }
+                  }
+                }
+                return act;
+              }),
+            );
+            mappedDay.activities.create = enrichedActivities;
+          }
+        }
+        return mappedDay;
+      }),
+    );
+
+    const geocodeTimeMs = Date.now() - geocodeStart;
+    const txStart = Date.now();
+
+    const itinerary = await this.prisma.$transaction(
       async (tx) => {
         // 1. Create the parent Itinerary record
-        const itinerary = await tx.itinerary.create({
+        const itineraryRecord = await tx.itinerary.create({
           data: {
             userId,
             destination: createItineraryDto.destination,
@@ -127,26 +175,19 @@ export class ItineraryGenerationService {
         if (generalTips.length > 0) {
           await tx.itineraryTip.createMany({
             data: generalTips.map((tip, index) => ({
-              itineraryId: itinerary.id,
+              itineraryId: itineraryRecord.id,
               sortOrder: index,
               content: tip,
             })),
           });
         }
 
-        // 3. Create days, their weather snapshots, and activities sequentially
-        for (const day of generated.days ?? []) {
-          const mappedDay = this.mapSingleDay(
-            day,
-            createItineraryDto.startDate,
-            weatherData,
-            attractions,
-          );
-
+        // 3. Create days, their weather snapshots, and pre-geocoded activities
+        for (const mappedDay of mappedDays) {
           // Create the ItineraryDay record
           const createdDay = await tx.itineraryDay.create({
             data: {
-              itineraryId: itinerary.id,
+              itineraryId: itineraryRecord.id,
               dayNumber: mappedDay.dayNumber,
               date: mappedDay.date,
               theme: mappedDay.theme,
@@ -170,29 +211,8 @@ export class ItineraryGenerationService {
               : [mappedDay.activities.create];
 
             if (activitiesData.length > 0) {
-              const enrichedActivities = await Promise.all(
-                activitiesData.map(async (act) => {
-                  if (act.latitude === null || act.longitude === null) {
-                    const query = act.location || act.title;
-                    if (query) {
-                      const fullQuery = `${query}, ${createItineraryDto.destination}`;
-                      const coords =
-                        await this.attractionsService.geocodeAddress(fullQuery);
-                      if (coords) {
-                        return {
-                          ...act,
-                          latitude: coords.lat,
-                          longitude: coords.lng,
-                        };
-                      }
-                    }
-                  }
-                  return act;
-                }),
-              );
-
               await tx.itineraryActivity.createMany({
-                data: enrichedActivities.map((act) => ({
+                data: activitiesData.map((act) => ({
                   dayId: createdDay.id,
                   ...act,
                 })),
@@ -206,18 +226,26 @@ export class ItineraryGenerationService {
           await tx.groupItinerary.create({
             data: {
               groupId: createItineraryDto.groupId,
-              itineraryId: itinerary.id,
+              itineraryId: itineraryRecord.id,
               addedById: userId,
             },
           });
         }
 
-        return itinerary;
+        return itineraryRecord;
       },
       {
-        timeout: 15000, // 15 seconds timeout to prevent transaction cancellation during remote DB writes
+        timeout: 5000, // Reverted to 5 seconds now that slow geocoding API calls are moved out
       },
     );
+
+    const txTimeMs = Date.now() - txStart;
+
+    return {
+      itinerary,
+      geocodeTimeMs,
+      txTimeMs,
+    };
   }
 
   mapDaysForNestedWrite(

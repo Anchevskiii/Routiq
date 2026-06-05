@@ -21,6 +21,7 @@ type ItineraryStreamEvent =
   | { type: 'day'; data: StreamingDay }
   | { type: 'complete'; itineraryId: string }
   | { type: 'error'; error: string }
+  | { type: 'telemetry'; data: Record<string, unknown> }
 
 const ORB_STYLE: React.CSSProperties = {
   position: 'absolute',
@@ -61,16 +62,53 @@ export const PlannerPage: React.FC = () => {
     if (days <= 0) { toast.error('End date must be after start date'); return }
     if (days > 14) { toast.error('Trip duration cannot exceed 14 days'); return }
 
+    const telemetryToggle = true // Toggle this boolean to easily enable/disable all dev console logs
+    const genStartTime = Date.now()
+
+    if (telemetryToggle) {
+      console.log('%c[Routiq Telemetry] Initializing Itinerary Generation...', 'color: #fbbf24; font-weight: bold; font-size: 13px;')
+      console.log(`%c[Routiq Telemetry] Start Time: ${new Date(genStartTime).toISOString()}`, 'color: #888;')
+      console.log('[Routiq Telemetry] Payload:', values)
+    }
+
     setProgress(''); setAttractions([]); setGeneratedDays([]); setDestination(values.destination)
     setTotalDays(days); setIsComplete(false); setShowLoading(true)
 
     stream(ITINERARY_ENDPOINTS.GENERATE, { ...values, days }, {
       onProgress: (data) => {
         if (data.type === 'status')      setProgress(data.message)
-        if (data.type === 'attractions') setAttractions(data.data)
-        if (data.type === 'day')         setGeneratedDays(prev => [...prev, data.data])
+        if (data.type === 'attractions') {
+          setAttractions(data.data)
+          if (telemetryToggle) {
+            console.log(`%c[Routiq Telemetry] Received ${data.data.length} Attractions after ${Date.now() - genStartTime}ms`, 'color: #38bdf8; font-weight: bold;')
+          }
+        }
+        if (data.type === 'day') {
+          setGeneratedDays(prev => [...prev, data.data])
+          if (telemetryToggle) {
+            console.log(`%c[Routiq Telemetry] Day ${data.data.dayNumber} HTML render streaming ready after ${Date.now() - genStartTime}ms`, 'color: #a855f7;')
+          }
+        }
+        if (data.type === 'telemetry') {
+          if (telemetryToggle) {
+            const { event, ...details } = data.data
+            let color = '#60a5fa' // blue
+            if (event === 'DATA_PREPARATION_COMPLETE') color = '#fbbf24' // gold
+            if (event === 'DAY_EMITTED') color = '#a855f7' // purple
+            if (event === 'PERSISTENCE_COMPLETE') color = '#10b981' // emerald
+
+            console.log(
+              `%c[Routiq Telemetry] ${event} (elapsed: ${Date.now() - genStartTime}ms)`,
+              `color: ${color}; font-weight: bold;`,
+              details
+            )
+          }
+        }
       },
       onSuccess: async (data) => {
+        if (telemetryToggle) {
+          console.log(`%c[Routiq Telemetry] Success Event: Generation & DB Save Completed in ${Date.now() - genStartTime}ms`, 'color: #10b981; font-weight: bold; font-size: 12px;')
+        }
         setIsComplete(true)
         await new Promise(r => setTimeout(r, 2800))
         setShowLoading(false)
@@ -85,6 +123,9 @@ export const PlannerPage: React.FC = () => {
         }
       },
       onError: (err) => {
+        if (telemetryToggle) {
+          console.error(`%c[Routiq Telemetry] Error Event: Failed after ${Date.now() - genStartTime}ms:`, 'font-weight: bold;', err)
+        }
         toast.error(`Generation failed: ${err}`)
         setProgress(''); setIsComplete(false); setShowLoading(false)
       },
