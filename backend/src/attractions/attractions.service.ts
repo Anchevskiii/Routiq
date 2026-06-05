@@ -44,6 +44,8 @@ export class AttractionsService {
     { data: FormattedPlace[]; timestamp: number }
   >();
   private readonly searchCacheDuration = 24 * 60 * 60 * 1000; // 24 hours in ms
+  private readonly utilityRegex =
+    /\b(atm|locker|wc|toilet|bus stop|subway station|transit station|train station|parking|car rental|supermarket|pharmacy|police|hospital|baggage storage|luggage storage|airport|taxi stand|public restroom|public toilet)\b/i;
 
   constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGooglePlacesApiKey();
@@ -171,33 +173,7 @@ export class AttractionsService {
   }
 
   private isUtilityPlace(place: FormattedPlace): boolean {
-    const nameLower = place.name.toLowerCase();
-    const genericKeywords = [
-      'atm',
-      'locker',
-      'wc',
-      'toilet',
-      'bus stop',
-      'subway station',
-      'transit station',
-      'train station',
-      'parking',
-      'car rental',
-      'supermarket',
-      'pharmacy',
-      'police',
-      'hospital',
-      'baggage storage',
-      'luggage storage',
-      'airport',
-      'taxi stand',
-      'public restroom',
-      'public toilet',
-    ];
-    return genericKeywords.some((keyword) => {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-      return regex.test(nameLower);
-    });
+    return this.utilityRegex.test(place.name);
   }
 
   private isLowQuality(place: FormattedPlace): boolean {

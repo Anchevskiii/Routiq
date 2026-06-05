@@ -371,6 +371,68 @@ describe('ItineraryGenerationService', () => {
       expect(mockAttractionsService.geocodeAddress).not.toHaveBeenCalled();
     });
 
+    it('uses searchAttractions result when found during geocoding', async () => {
+      mockAttractionsService.searchAttractions.mockResolvedValueOnce([
+        {
+          id: 'found-place-id',
+          name: 'Awesome Eiffel Tower',
+          address: 'Champ de Mars, Paris',
+          location: { lat: 48.8584, lng: 2.2945 },
+        },
+      ]);
+
+      const tx = {
+        itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-1' }) },
+        itineraryTip: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        itineraryDay: { create: jest.fn().mockResolvedValue({ id: 'day-1' }) },
+        itineraryWeatherSnapshot: {
+          create: jest.fn().mockResolvedValue({ id: 'weather-1' }),
+        },
+        itineraryActivity: {
+          createMany: jest.fn().mockResolvedValue({ count: 1 }),
+        },
+      };
+      mockPrisma.$transaction.mockImplementation(
+        (cb: (txClient: unknown) => unknown) => cb(tx),
+      );
+
+      const generated: GeneratedItinerary = {
+        days: [
+          {
+            day: 1,
+            theme: 'Arrival',
+            activities: [
+              {
+                title: 'Eiffel Tower',
+                location: 'Champ de Mars',
+                duration: 2,
+              } as unknown as GeneratedActivity,
+            ],
+            meals: [],
+          },
+        ],
+        summary: {},
+        generalTips: [],
+      };
+
+      await service.persistGeneratedItinerary({
+        userId: 'user-1',
+        createItineraryDto: baseDto as unknown as CreateItineraryDto,
+        generated,
+        generationStart: Date.now() - 1000,
+        weatherData: weatherData as unknown as WeatherData,
+        attractions: [] as unknown as FormattedPlace[],
+        prompt: 'PROMPT',
+        promptHash: 'hash',
+      });
+
+      expect(tx.itinerary.create).toHaveBeenCalled();
+      expect(mockAttractionsService.searchAttractions).toHaveBeenCalledWith(
+        'Champ de Mars',
+        baseDto.destination,
+      );
+    });
+
     it('links to group when groupId is provided', async () => {
       const tx = {
         itinerary: { create: jest.fn().mockResolvedValue({ id: 'itin-1' }) },
