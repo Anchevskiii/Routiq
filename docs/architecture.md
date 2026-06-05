@@ -17,7 +17,7 @@
 
 ## 1. Deployment diagram
 
-Sistem sestavljajo tri ločene plasti: **brskalnik** (React SPA), **strežnik** (NestJS na Render.com) in **oblačne storitve** (Supabase, Google Cloud, Resend, Vercel).
+Sistem sestavljajo tri ločene plasti: **brskalnik** (React SPA), **strežnik** (NestJS na Railway.app) in **oblačne storitve** (Supabase, Google Cloud, Resend, Vercel).
 
 ![Deployment diagram](diagrams/deployment.png)
 
@@ -32,7 +32,7 @@ graph TB
         VCDN["Edge Network\n(servira React SPA)"]
     end
 
-    subgraph Render["☁️ Render.com"]
+    subgraph Railway["☁️ Railway.app"]
         BE["NestJS REST API\n:3000 — /api\n(container deploy)"]
     end
 
@@ -307,7 +307,7 @@ backend/src/
 ├── notifications/      # GET/PATCH obvestila — in-app notifikacije (vote, invite, komentar)
 ├── export/             # GET /export/:id/ics — generiranje .ics datoteke
 ├── mail/               # sendInvitation() — Resend e-pošta
-└── health/             # GET /health — Render health check
+└── health/             # GET /health — Railway health check
 ```
 
 ### 5.3 Odgovornosti po modulu
@@ -358,7 +358,7 @@ app.setGlobalPrefix('api')
 
 ```
 Brskalnik
-  → HTTPS request na Vercel/Render
+  → HTTPS request na Vercel/Railway
   → CORS preverjanje (allowedOrigins lista)
   → Cookie parser (refresh token)
   → Helmet middleware (security headers)

@@ -41,13 +41,7 @@
 | Atrakcije | Google Places API |
 | Vreme | Google Weather API |
 | Navigacija | Google Maps Directions API |
-| Playliste | Spotify Web API — **ni implementirano** (samo env placeholderji) |
-| Izvoz | `ics` npm paket |
-| HTTP client | Axios `1.14.0` (pinana!) |
-| Rate limiting | @nestjs/throttler |
-| Logging | NestJS Logger |
-| Testing | Jest + Supertest |
-| Deploy | Render (container) |
+| Deploy | Railway (container) |
 
 > ⚠️ **Axios opomba:** Verziji `1.14.1` in `0.30.4` sta bili marca 2026 kompromitirani v supply chain napadu. Pinamo `"axios": "1.14.0"` in ne updateamo brez preveritve.
 
@@ -177,7 +171,7 @@ backend/
 │   │
 │   ├── auth/                 # Placeholder (Supabase Auth na FE)
 │   ├── supabase/             # SupabaseService — JWT verifikacija
-│   ├── health/               # Render health check
+│   ├── health/               # Railway health check
 │   ├── users/                # User profil
 │   ├── itinerary/            # AI generiranje + CRUD (core feature)
 │   ├── gemini/               # Gemini AI service
@@ -289,7 +283,7 @@ GET    /export/shared/:id/ics       → Javni .ics izvoz (🔓 @Public)
 ### `health/` – Health check
 
 ```
-GET    /health                      → Status za Render monitoring (🔓 @Public)
+GET    /health                      → Status za Railway monitoring (🔓 @Public)
 ```
 
 > PDF generira frontend z `@react-pdf/renderer`. Backend generira samo `.ics`.
@@ -546,15 +540,13 @@ const result = await Promise.race([
 
 ## 9. Zunanje integracije
 
-Vse klice na zunanje API-je (Places, Google Weather, Spotify) dela **backend**. Frontend ne kliče nobene od teh storitev direktno – API ključi morajo ostati na strežniku.
+Vse klice na zunanje API-je (Places, Google Weather) dela **backend**. Frontend ne kliče nobene od teh storitev direktno – API ključi morajo ostati na strežniku.
 
 **Google Places API** – pridobi atrakcije, muzeje, restavracije in parke za destinacijo. Rezultati se vključijo v Gemini prompt.
 
 **Google Weather API** – pridobi vremensko napoved po dnevih. Napoved cachiramo za 1 uro.
 
 **Google Maps Directions API** – optimizacija poti med atrakcijami (minimizacija potovanja znotraj dneva).
-
-**Spotify Web API** (Iteracija 4) – generiranje playliste glede na skupno trajanje vožnje med atrakcijami.
 
 ---
 
@@ -573,8 +565,6 @@ GEMINI_API_KEY=...
 GOOGLE_PLACES_API_KEY=...
 GOOGLE_MAPS_DIRECTIONS_API_KEY=...
 GOOGLE_WEATHER_API_KEY=...
-SPOTIFY_CLIENT_ID=...
-SPOTIFY_CLIENT_SECRET=...
 FRONTEND_URL=http://localhost:5173
 ```
 
@@ -675,7 +665,7 @@ Rules:
 - Controllers handle ONLY routing. No business logic in controllers.
 - Services handle ONLY business logic. No HTTP-specific code in services.
 - All DB operations go through PrismaService.
-- All API keys stay on the backend. Never expose Gemini, Google Weather, Places, or Spotify keys.
+- All API keys stay on the backend. Never expose Gemini, Google Weather, or Places keys.
 - Global ValidationPipe is set up in main.ts – do not add manual validation in controllers.
 - Rate-limit AI endpoints: max 5 requests/minute per user.
 - All responses follow { success, data } or { success, error } format via TransformInterceptor.
@@ -811,7 +801,7 @@ Kratki opis.
 
 | Dev | Naloge |
 |---|---|
-| **Jan** | `spotify/` modul (opcijsko). Rate limiting fine-tuning. |
+| **Jan** | Rate limiting fine-tuning. |
 | **Klemen** | Performančne optimizacije: retry logika, timeout management. |
 | **Mojca** | `users/` modul: avatar upload, sprememba gesla, brisanje računa (GDPR). |
 
@@ -819,7 +809,7 @@ Kratki opis.
 
 | Dev | Naloge |
 |---|---|
-| **Vsi** | Integration testi, E2E testi, Swagger API dokumentacija, deploy na Render, varnostni pregled. |
+| **Vsi** | Integration testi, E2E testi, Swagger API dokumentacija, deploy na Railway, varnostni pregled. |
 
 ---
 
