@@ -13,7 +13,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 5173 --mode e2e',
     url: 'http://localhost:5173',
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     env: {
       VITE_E2E_BYPASS_AUTH: 'true',
       VITE_GOOGLE_MAPS_API_KEY: '',
