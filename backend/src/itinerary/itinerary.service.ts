@@ -516,7 +516,11 @@ export class ItineraryService {
 
     // Cascade from the new activity's own position forward, anchored to the
     // preceding activity's end time — never touches activities before the insertion point
-    let pushedActivities: { id: string; title: string; newStartTime: string }[] = [];
+    let pushedActivities: {
+      id: string;
+      title: string;
+      newStartTime: string;
+    }[] = [];
     if (dto.startTime) {
       let anchorEndMinutes: number | null = null;
       if (insertAt > 0) {
@@ -526,11 +530,16 @@ export class ItineraryService {
             ? trimmedActivity.newDurationMinutes
             : preceding.durationMinutes;
           if (precedingDuration != null) {
-            anchorEndMinutes = this.parseTime(preceding.startTime) + precedingDuration;
+            anchorEndMinutes =
+              this.parseTime(preceding.startTime) + precedingDuration;
           }
         }
       }
-      pushedActivities = await this.cascadeActivityTimesFrom(dayId, insertAt + 1, anchorEndMinutes);
+      pushedActivities = await this.cascadeActivityTimesFrom(
+        dayId,
+        insertAt + 1,
+        anchorEndMinutes,
+      );
     }
 
     return { activity: created, trimmedActivity, pushedActivities };
@@ -735,7 +744,8 @@ export class ItineraryService {
       }
 
       prevEndMinutes =
-        activity.durationMinutes !== null && activity.durationMinutes !== undefined
+        activity.durationMinutes !== null &&
+        activity.durationMinutes !== undefined
           ? resolvedStart + activity.durationMinutes
           : null;
     }

@@ -864,6 +864,179 @@ describe('ItineraryService', () => {
 
       expect(result.activity.title).toBe('Early Act');
     });
+
+    it('trims the preceding activity duration if new activity overlap exists', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        {
+          id: 'act-preceding',
+          sortOrder: 1,
+          startTime: '10:00',
+          durationMinutes: 120,
+          title: 'Preceding',
+        },
+      ]);
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-new',
+        title: 'New Act',
+        startTime: '11:30',
+        sortOrder: 2,
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-preceding',
+        durationMinutes: 90,
+      });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'New Act',
+        startTime: '11:30',
+      });
+
+      expect(mockPrisma.itineraryActivity.update).toHaveBeenCalledWith({
+        where: { id: 'act-preceding' },
+        data: { durationMinutes: 90 },
+      });
+      expect(result.trimmedActivity).toEqual({
+        id: 'act-preceding',
+        title: 'Preceding',
+        newDurationMinutes: 90,
+      });
+    });
+
+    it('cascades subsequent activity times from insertion point', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'act-preceding',
+            sortOrder: 1,
+            startTime: '10:00',
+            durationMinutes: 60,
+            title: 'Preceding',
+          },
+          {
+            id: 'act-subsequent',
+            sortOrder: 2,
+            startTime: '11:15',
+            durationMinutes: 60,
+            title: 'Subsequent',
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'act-new',
+            sortOrder: 2,
+            startTime: '11:00',
+            durationMinutes: 60,
+            title: 'New Act',
+          },
+          {
+            id: 'act-subsequent',
+            sortOrder: 3,
+            startTime: '11:15',
+            durationMinutes: 60,
+            title: 'Subsequent',
+          },
+        ]);
+
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-new',
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 60,
+        sortOrder: 2,
+      });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 60,
+      });
+
+      expect(result.pushedActivities).toEqual([
+        {
+          id: 'act-subsequent',
+          title: 'Subsequent',
+          newStartTime: '12:00',
+        },
+      ]);
+    });
+
+    it('handles subsequent activity without startTime in cascadeActivityTimesFrom', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'act-preceding',
+            sortOrder: 1,
+            startTime: '10:00',
+            durationMinutes: 60,
+            title: 'Preceding',
+          },
+          {
+            id: 'act-subsequent',
+            sortOrder: 2,
+            startTime: '11:15',
+            durationMinutes: 60,
+            title: 'Subsequent',
+          },
+          {
+            id: 'act-no-time',
+            sortOrder: 3,
+            startTime: null,
+            durationMinutes: 60,
+            title: 'No Time',
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'act-new',
+            sortOrder: 2,
+            startTime: '11:00',
+            durationMinutes: 60,
+            title: 'New Act',
+          },
+          {
+            id: 'act-subsequent',
+            sortOrder: 3,
+            startTime: '11:15',
+            durationMinutes: 60,
+            title: 'Subsequent',
+          },
+          {
+            id: 'act-no-time',
+            sortOrder: 4,
+            startTime: null,
+            durationMinutes: 60,
+            title: 'No Time',
+          },
+        ]);
+
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-new',
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 60,
+        sortOrder: 2,
+      });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 60,
+      });
+
+      expect(result.pushedActivities).toEqual([
+        {
+          id: 'act-subsequent',
+          title: 'Subsequent',
+          newStartTime: '12:00',
+        },
+      ]);
+    });
   });
 
   describe('deleteActivity (NotFoundException for activity)', () => {
@@ -1012,6 +1185,47 @@ describe('ItineraryService', () => {
       mockPrisma.$transaction.mockResolvedValue([]);
 
       await service.updateActivity(itineraryId, 'act-1', userId, {
+        durationMinutes: 60,
+      });
+
+      expect(mockPrisma.itineraryActivity.findMany).toHaveBeenCalled();
+    });
+
+    it('uses priorityId tie-break when sorting activities with identical startTime', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({
+        id: 'act-priority',
+        dayId: 'day-1',
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-priority',
+        title: 'Priority Activity',
+      });
+      // Return activities with identical start times
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        {
+          id: 'act-other-1',
+          sortOrder: 1,
+          startTime: '10:00',
+          durationMinutes: 60,
+        },
+        {
+          id: 'act-priority',
+          sortOrder: 2,
+          startTime: '10:00',
+          durationMinutes: 60,
+        },
+        {
+          id: 'act-other-2',
+          sortOrder: 3,
+          startTime: '10:00',
+          durationMinutes: 60,
+        },
+      ]);
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      await service.updateActivity(itineraryId, 'act-priority', userId, {
+        startTime: '10:00',
         durationMinutes: 60,
       });
 
