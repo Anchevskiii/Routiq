@@ -33,9 +33,9 @@ if (typeof globalThis !== 'undefined' && !globalThis.crypto) {
 
 // Ensure a safe localStorage is available (some test stubs may replace it)
 if (typeof globalThis !== 'undefined') {
-  const ls = (globalThis as unknown as { localStorage?: Storage }).localStorage
+  const ls = globalThis.localStorage as Storage | undefined
   if (!ls || typeof ls.clear !== 'function') {
-    const store = new Map<string, string>()
+    const store = new Map()
     const mockStorage = {
       getItem: (key: string) => (store.has(key) ? (store.get(key) as string) : null),
       setItem: (key: string, value: string) => store.set(key, String(value)),
