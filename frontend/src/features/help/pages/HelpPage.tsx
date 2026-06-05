@@ -4,30 +4,30 @@ import { filterFaq, countForCat } from './faq.utils'
 import type { FaqCat, FaqItem } from './faq.utils'
 
 const FAQ: FaqItem[] = [
-  { id: 1, cat: 'gen',     color: '#6366f1', q: 'Kako dolgo traja generiranje načrta?',          keywords: 'generiranje čas',           a: 'Običajno med <strong>20 in 60 sekundami</strong> — čas je odvisen od števila dni in kompleksnosti potovanja. Med čakanjem ti pokažemo zanimivosti o destinaciji.' },
-  { id: 2, cat: 'gen',     color: '#6366f1', q: 'Koliko dni itinerarja lahko generiram?',         keywords: 'generiranje dnevi',          a: 'En itinerar lahko obsega <strong>do 14 dni</strong>. Za daljša potovanja preprosto ustvariš več povezanih načrtov.' },
-  { id: 3, cat: 'gen',     color: '#6366f1', q: 'Ali lahko znova generiram itinerar?',            keywords: 'generiranje regeneriram',    a: 'Da. Kadarkoli odpreš <strong>planer obrazec</strong>, prilagodiš želje in Routiq ustvari povsem nov predlog poti.' },
-  { id: 4, cat: 'edit',    color: '#8b5cf6', q: 'Ali lahko dodam ali odstranim aktivnosti?',     keywords: 'urejanje dodam odstranim',  a: 'Seveda. Aktivnosti urejaš z <strong>drag &amp; drop</strong> — premikaj jih med dnevi, dodajaj nove ali odstranjuj obstoječe.' },
-  { id: 5, cat: 'edit',    color: '#8b5cf6', q: 'Ali se spremembe samodejno shranijo?',          keywords: 'urejanje shranjevanje',      a: 'Da, vse spremembe se <strong>shranijo avtomatsko</strong> in sproti, tako da nikoli ne izgubiš svojega dela.' },
-  { id: 6, cat: 'groups',  color: '#a855f7', q: 'Kako povabim nekoga v skupino?',                keywords: 'skupina povabi',             a: 'V potovanju izbereš »Povabi« in pošlješ <strong>e-poštno povabilo</strong>. Povabljenec se pridruži z enim klikom.' },
-  { id: 7, cat: 'groups',  color: '#a855f7', q: 'Kako deluje glasovanje?',                       keywords: 'skupina glasovanje upvote',  a: 'Vsak član lahko da <strong>upvote ali downvote</strong> posameznim itinerarjem. Skupni rezultat (score) je enak številu upvotov — najboljša ideja zmaga.' },
-  { id: 8, cat: 'groups',  color: '#a855f7', q: 'Ali mora imeti povabljenec račun?',             keywords: 'skupina registracija račun', a: 'Da — za sodelovanje, glasovanje in klepet mora vsak član imeti <strong>svoj Routiq račun</strong>. Registracija je brezplačna.' },
-  { id: 9, cat: 'export',  color: '#ec4899', q: 'Kateri formati izvoza so podprti?',             keywords: 'izvoz pdf ics format',       a: 'Podpiramo <strong>PDF</strong> za tiskanje in deljenje ter <strong>.ics</strong> datoteke za Google in Apple Calendar.' },
-  { id: 10, cat: 'export', color: '#ec4899', q: 'Ali je izvoz brezplačen?',                      keywords: 'izvoz brezplačen cena',      a: 'Da, izvoz v PDF in koledar je <strong>popolnoma brezplačen</strong> in brez omejitev.' },
-  { id: 11, cat: 'account', color: '#f59e0b', q: 'Kako spremenim geslo?',                        keywords: 'račun geslo',                a: 'Odpri <strong>Nastavitve → Varnost → Spremeni geslo</strong>. Po potrditvi trenutnega gesla vnešeš novega.' },
-  { id: 12, cat: 'account', color: '#f59e0b', q: 'Kako izbrišem svoj račun?',                    keywords: 'račun izbriši',              a: 'V <strong>Nastavitve → Račun → Izbriši račun</strong>. Dejanje je trajno in odstrani vse tvoje načrte ter podatke.' },
+  { id: 1,  cat: 'gen',     color: '#6366f1', q: 'How long does itinerary generation take?',       keywords: 'generation time duration',         a: 'Usually between <strong>20 and 60 seconds</strong> — the time depends on the number of days and trip complexity. While you wait, we show you interesting facts about your destination.' },
+  { id: 2,  cat: 'gen',     color: '#6366f1', q: 'How many days can I generate an itinerary for?', keywords: 'generation days length',            a: 'A single itinerary can cover <strong>up to 14 days</strong>. For longer trips, simply create multiple connected plans.' },
+  { id: 3,  cat: 'gen',     color: '#6366f1', q: 'Can I regenerate my itinerary?',                 keywords: 'generation regenerate redo',        a: 'Yes. Any time you open the <strong>planner form</strong>, adjust your preferences and Routiq will create a brand-new route proposal.' },
+  { id: 4,  cat: 'edit',    color: '#8b5cf6', q: 'Can I add or remove activities?',                keywords: 'edit add remove activities',        a: 'Absolutely. Activities are managed with <strong>drag &amp; drop</strong> — move them between days, add new ones, or remove existing ones.' },
+  { id: 5,  cat: 'edit',    color: '#8b5cf6', q: 'Are changes saved automatically?',               keywords: 'edit save autosave',               a: 'Yes, all changes are <strong>saved automatically</strong> in real time, so you never lose your work.' },
+  { id: 6,  cat: 'groups',  color: '#a855f7', q: 'How do I invite someone to a group?',            keywords: 'group invite member',              a: 'In your trip, select <strong>Invite</strong> and send an email invitation. The invitee joins with a single click.' },
+  { id: 7,  cat: 'groups',  color: '#a855f7', q: 'How does voting work?',                          keywords: 'group voting upvote downvote',      a: 'Each member can <strong>upvote or downvote</strong> individual itineraries. The total score equals the number of upvotes — the best idea wins.' },
+  { id: 8,  cat: 'groups',  color: '#a855f7', q: 'Does an invitee need an account?',               keywords: 'group registration account signup', a: 'Yes — to collaborate, vote and chat, every member needs their own <strong>Routiq account</strong>. Registration is free.' },
+  { id: 9,  cat: 'export',  color: '#ec4899', q: 'Which export formats are supported?',            keywords: 'export pdf ics format',            a: 'We support <strong>PDF</strong> for printing and sharing, and <strong>.ics</strong> files for Google and Apple Calendar.' },
+  { id: 10, cat: 'export',  color: '#ec4899', q: 'Is exporting free?',                             keywords: 'export free cost price',           a: 'Yes, exporting to PDF and calendar is <strong>completely free</strong> and unlimited.' },
+  { id: 11, cat: 'account', color: '#f59e0b', q: 'How do I change my password?',                   keywords: 'account password change',          a: 'Go to <strong>Settings → Security → Change password</strong>. After confirming your current password, enter the new one.' },
+  { id: 12, cat: 'account', color: '#f59e0b', q: 'How do I delete my account?',                    keywords: 'account delete remove',            a: 'Go to <strong>Settings → Account → Delete account</strong>. This action is permanent and removes all your plans and data.' },
 ]
 
 const TABS: { id: FaqCat; label: string }[] = [
-  { id: 'all',     label: 'Vse' },
-  { id: 'gen',     label: 'Generiranje' },
-  { id: 'edit',    label: 'Urejanje' },
-  { id: 'groups',  label: 'Skupine' },
-  { id: 'export',  label: 'Izvoz' },
-  { id: 'account', label: 'Račun' },
+  { id: 'all',     label: 'All' },
+  { id: 'gen',     label: 'Generation' },
+  { id: 'edit',    label: 'Editing' },
+  { id: 'groups',  label: 'Groups' },
+  { id: 'export',  label: 'Export' },
+  { id: 'account', label: 'Account' },
 ]
 
-const CHIPS = ['Generiranje', 'Izvoz v PDF', 'Povabi skupino', 'Glasovanje']
+const CHIPS = ['Generation', 'Export to PDF', 'Invite group', 'Voting']
 
 export const HelpPage: React.FC = () => {
   const [openId, setOpenId] = useState<number | null>(null)
@@ -64,10 +64,10 @@ export const HelpPage: React.FC = () => {
                 <circle cx="12" cy="12" r="3"/>
               </svg>
             </span>
-            CENTER ZA POMOČ
+            HELP CENTER
           </span>
-          <h1 className="hp-hero-title">Kako ti lahko <span className="hp-em">pomagamo?</span></h1>
-          <p className="hp-hero-sub">Poišči odgovore, spoznaj funkcije ali nas kontaktiraj — da bo tvoje naslednje potovanje brezskrbno.</p>
+          <h1 className="hp-hero-title">How can we <span className="hp-em">help you?</span></h1>
+          <p className="hp-hero-sub">Find answers, explore features or contact us — so your next trip is worry-free.</p>
           <div className="hp-search">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
@@ -75,13 +75,13 @@ export const HelpPage: React.FC = () => {
             <input
               value={query}
               onChange={e => { setQuery(e.target.value); setCat('all') }}
-              placeholder="Išči po pogostih vprašanjih…"
+              placeholder="Search frequently asked questions…"
               autoComplete="off"
             />
-            <button className="hp-search-btn" type="button" onClick={goFaq}>Išči</button>
+            <button className="hp-search-btn" type="button" onClick={goFaq}>Search</button>
           </div>
           <div className="hp-chips">
-            <span className="hp-chip-label">Priljubljeno:</span>
+            <span className="hp-chip-label">Popular:</span>
             {CHIPS.map(c => (
               <button key={c} className="hp-chip" type="button" onClick={() => setChip(c)}>{c}</button>
             ))}
@@ -93,9 +93,9 @@ export const HelpPage: React.FC = () => {
         {/* Steps */}
         <section className="hp-section" id="help-start">
           <div className="hp-section-head">
-            <span className="hp-kicker">PRVI KORAKI</span>
-            <h2 className="hp-section-title">Od ideje do načrta v štirih korakih</h2>
-            <p className="hp-section-desc">Ustvari prvo potovanje v nekaj minutah — brez izkušenj z načrtovanjem.</p>
+            <span className="hp-kicker">GETTING STARTED</span>
+            <h2 className="hp-section-title">From idea to itinerary in four steps</h2>
+            <p className="hp-section-desc">Plan your first trip in minutes — no planning experience required.</p>
           </div>
           <div className="hp-steps">
             <div className="hp-step">
@@ -105,8 +105,8 @@ export const HelpPage: React.FC = () => {
                   <circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6 1.3 0 2.6.4 3.6 1.1"/><path d="M17 11v6M14 14h6"/>
                 </svg>
               </div>
-              <h3 className="hp-step-title">Ustvari račun</h3>
-              <p className="hp-step-desc">Registriraj se v nekaj sekundah — z e-pošto ali Google računom.</p>
+              <h3 className="hp-step-title">Create an account</h3>
+              <p className="hp-step-desc">Sign up in seconds — with email or your Google account.</p>
             </div>
             <div className="hp-step">
               <span className="hp-step-num">02</span>
@@ -116,8 +116,8 @@ export const HelpPage: React.FC = () => {
                   <circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
                 </svg>
               </div>
-              <h3 className="hp-step-title">Vnesi potovanje</h3>
-              <p className="hp-step-desc">Povej nam destinacijo, datume in tip potovanja, ki ga želiš.</p>
+              <h3 className="hp-step-title">Enter your trip</h3>
+              <p className="hp-step-desc">Tell us your destination, dates and the type of trip you want.</p>
             </div>
             <div className="hp-step">
               <span className="hp-step-num">03</span>
@@ -126,8 +126,8 @@ export const HelpPage: React.FC = () => {
                   <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8l1.4 1.4M17.8 6.2l1.4-1.4M3 21l9-9"/><path d="M12.5 7.5l4 4"/>
                 </svg>
               </div>
-              <h3 className="hp-step-title">AI ustvari načrt</h3>
-              <p className="hp-step-desc">Routiq v nekaj sekundah sestavi tvoj popoln itinerar po dnevih.</p>
+              <h3 className="hp-step-title">AI builds your plan</h3>
+              <p className="hp-step-desc">Routiq assembles a complete day-by-day itinerary in seconds.</p>
             </div>
             <div className="hp-step">
               <span className="hp-step-num">04</span>
@@ -137,8 +137,8 @@ export const HelpPage: React.FC = () => {
                   <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>
                 </svg>
               </div>
-              <h3 className="hp-step-title">Uredi &amp; deli</h3>
-              <p className="hp-step-desc">Prilagodi, povabi sopotnike ter izvozi v PDF ali koledar.</p>
+              <h3 className="hp-step-title">Edit &amp; share</h3>
+              <p className="hp-step-desc">Customise, invite travel companions and export to PDF or calendar.</p>
             </div>
           </div>
         </section>
@@ -146,10 +146,10 @@ export const HelpPage: React.FC = () => {
         {/* FAQ */}
         <section className="hp-section" id="help-faq" ref={faqRef}>
           <div className="hp-section-head">
-            <span className="hp-kicker">POGOSTA VPRAŠANJA</span>
-            <h2 className="hp-section-title">Vse, kar te zanima</h2>
+            <span className="hp-kicker">FREQUENTLY ASKED QUESTIONS</span>
+            <h2 className="hp-section-title">Everything you need to know</h2>
             <p className="hp-section-desc">
-              {query ? <>Rezultati za »<strong>{query}</strong>«</> : 'Izberi kategorijo ali poišči svoje vprašanje.'}
+              {query ? <>Results for »<strong>{query}</strong>«</> : 'Pick a category or search for your question.'}
             </p>
           </div>
 
@@ -190,8 +190,8 @@ export const HelpPage: React.FC = () => {
             </div>
           ) : (
             <div className="hp-faq-empty">
-              Za »<strong>{query}</strong>« nismo našli odgovora. Poskusi drugo iskanje ali nas{' '}
-              <a href="#help-contact" style={{ color: '#6366f1', fontWeight: 700, textDecoration: 'none' }}>kontaktiraj</a>.
+              No results for »<strong>{query}</strong>«. Try a different search or{' '}
+              <a href="#help-contact" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>contact us</a>.
             </div>
           )}
         </section>
@@ -199,20 +199,20 @@ export const HelpPage: React.FC = () => {
         {/* Features */}
         <section className="hp-section" id="help-features">
           <div className="hp-section-head">
-            <span className="hp-kicker">FUNKCIJE</span>
-            <h2 className="hp-section-title">Vse na enem mestu</h2>
-            <p className="hp-section-desc">Orodja, ki tvoje načrtovanje spremenijo v užitek.</p>
+            <span className="hp-kicker">FEATURES</span>
+            <h2 className="hp-section-title">Everything in one place</h2>
+            <p className="hp-section-desc">Tools that turn trip planning into a pleasure.</p>
           </div>
           <div className="hp-features">
             {[
-              { grad: 'linear-gradient(135deg,#6366f1,#818cf8)', title: 'AI generiranje',        desc: 'Popoln itinerar po dnevih v nekaj sekundah.',          icon: <><path d="M12 3v4M12 17v4M5 12H3M21 12h-2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4"/><circle cx="12" cy="12" r="3"/></> },
-              { grad: 'linear-gradient(135deg,#3b82f6,#6366f1)',  title: 'Interaktivni zemljevid', desc: 'Vse postanke vidiš na živem zemljevidu.',              icon: <><path d="M9 4l-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></> },
-              { grad: 'linear-gradient(135deg,#8b5cf6,#a855f7)', title: 'Skupinska potovanja',  desc: 'Načrtuj skupaj s sopotniki v realnem času.',             icon: <><circle cx="9" cy="9" r="3.5"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="8" r="2.5"/><path d="M15 19c0-2 2-4 4.5-4"/></> },
-              { grad: 'linear-gradient(135deg,#a855f7,#ec4899)', title: 'Glasovanje',            desc: 'Skupina glasuje o najboljših idejah.',                  icon: <><path d="M7 11v8H4a1 1 0 01-1-1v-6a1 1 0 011-1h3z"/><path d="M7 11l4-7a2 2 0 012 2v3h5a2 2 0 012 2.3l-1.2 6A2 2 0 0118.8 19H7"/></> },
-              { grad: 'linear-gradient(135deg,#ec4899,#f472b6)', title: 'Klepet',                desc: 'Pogovori se s skupino kar v aplikaciji.',               icon: <><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/></> },
-              { grad: 'linear-gradient(135deg,#f59e0b,#ec4899)', title: 'Izvoz PDF / ICS',       desc: 'Odnesi načrt v PDF ali svoj koledar.',                  icon: <><path d="M12 3v12M7 11l5 4 5-4"/><path d="M5 21h14"/></> },
-              { grad: 'linear-gradient(135deg,#6366f1,#8b5cf6)', title: 'Temni način',           desc: 'Prijazno do oči, podnevi in ponoči.',                   icon: <><path d="M20 14a8 8 0 11-9.5-9.8 6.5 6.5 0 009.5 9.8z"/></> },
-              { grad: 'linear-gradient(135deg,#22c55e,#3b82f6)', title: 'Pametna časovnica',     desc: 'Optimiziran vrstni red postankov in razdalj.',          icon: <><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></> },
+              { grad: 'linear-gradient(135deg,#6366f1,#818cf8)', title: 'AI generation',       desc: 'A complete day-by-day itinerary in seconds.',           icon: <><path d="M12 3v4M12 17v4M5 12H3M21 12h-2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4"/><circle cx="12" cy="12" r="3"/></> },
+              { grad: 'linear-gradient(135deg,#3b82f6,#6366f1)',  title: 'Interactive map',    desc: 'Every stop visible on a live map.',                     icon: <><path d="M9 4l-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></> },
+              { grad: 'linear-gradient(135deg,#8b5cf6,#a855f7)', title: 'Group trips',         desc: 'Plan together with travel companions in real time.',    icon: <><circle cx="9" cy="9" r="3.5"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="8" r="2.5"/><path d="M15 19c0-2 2-4 4.5-4"/></> },
+              { grad: 'linear-gradient(135deg,#a855f7,#ec4899)', title: 'Voting',               desc: 'Your group votes on the best ideas.',                   icon: <><path d="M7 11v8H4a1 1 0 01-1-1v-6a1 1 0 011-1h3z"/><path d="M7 11l4-7a2 2 0 012 2v3h5a2 2 0 012 2.3l-1.2 6A2 2 0 0118.8 19H7"/></> },
+              { grad: 'linear-gradient(135deg,#ec4899,#f472b6)', title: 'Chat',                 desc: 'Talk to your group directly inside the app.',           icon: <><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/></> },
+              { grad: 'linear-gradient(135deg,#f59e0b,#ec4899)', title: 'PDF / ICS export',    desc: 'Take your plan as a PDF or add it to your calendar.',   icon: <><path d="M12 3v12M7 11l5 4 5-4"/><path d="M5 21h14"/></> },
+              { grad: 'linear-gradient(135deg,#6366f1,#8b5cf6)', title: 'Dark mode',            desc: 'Easy on the eyes, day and night.',                     icon: <><path d="M20 14a8 8 0 11-9.5-9.8 6.5 6.5 0 009.5 9.8z"/></> },
+              { grad: 'linear-gradient(135deg,#22c55e,#3b82f6)', title: 'Smart timeline',       desc: 'Optimised order of stops and travel distances.',        icon: <><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></> },
             ].map(f => (
               <div key={f.title} className="hp-feature">
                 <div className="hp-feature-icon" style={{ background: f.grad, color: '#fff' }}>
@@ -232,15 +232,15 @@ export const HelpPage: React.FC = () => {
           <div className="hp-contact">
             <div className="hp-contact-stars" />
             <div className="hp-contact-l">
-              <div className="hp-contact-eyebrow">ŠE VEDNO POTREBUJEŠ POMOČ?</div>
-              <h2 className="hp-contact-title">Naša ekipa ti z veseljem pomaga</h2>
-              <p className="hp-contact-sub">Nisi našel odgovora? Piši nam in odgovorili ti bomo v najkrajšem možnem času — običajno v enem delovnem dnevu.</p>
+              <div className="hp-contact-eyebrow">STILL NEED HELP?</div>
+              <h2 className="hp-contact-title">Our team is happy to help</h2>
+              <p className="hp-contact-sub">Didn't find your answer? Write to us and we'll get back to you as soon as possible — usually within one business day.</p>
               <div className="hp-contact-actions">
                 <a className="hp-contact-btn" href="mailto:routiqtravel@proton.me">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>
                   </svg>
-                  Pošlji sporočilo
+                  Send a message
                 </a>
                 <a className="hp-contact-mail" href="mailto:routiqtravel@proton.me">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
