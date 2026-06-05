@@ -128,6 +128,12 @@ export interface UpdateActivityDto {
   durationMinutes?: number
 }
 
+export interface AddActivityResponse {
+  activity: Activity
+  trimmedActivity?: { id: string; title: string; newDurationMinutes: number }
+  pushedActivities?: { id: string; title: string; newStartTime: string }[]
+}
+
 export interface AddActivityDto {
   title: string
   location?: string

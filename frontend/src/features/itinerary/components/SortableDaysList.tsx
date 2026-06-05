@@ -10,6 +10,7 @@ import { AddActivityModal } from './AddActivityModal'
 interface Props {
   days: Day[]
   itineraryId: string
+  startDate?: string | null
   sensors: SensorDescriptor<SensorOptions>[]
   addActivityDayId: string | null
   destination?: string
@@ -24,6 +25,7 @@ interface Props {
 export const SortableDaysList: React.FC<Props> = ({
   days: serverDays,
   itineraryId,
+  startDate,
   sensors,
   addActivityDayId,
   destination,
@@ -50,8 +52,18 @@ export const SortableDaysList: React.FC<Props> = ({
     const newIdx = localDays.findIndex(d => d.id === over.id)
     if (oldIdx === -1 || newIdx === -1) return
 
-    // Instantly update local order — no waiting for backend
-    setLocalDays(prev => arrayMove(prev, oldIdx, newIdx))
+    // Instantly reorder with correct dayNumber + date — no waiting for backend
+    const reordered = arrayMove(localDays, oldIdx, newIdx)
+    const base = startDate ? new Date(startDate) : null
+    setLocalDays(reordered.map((day, i) => {
+      const updated = { ...day, dayNumber: i + 1 }
+      if (base) {
+        const d = new Date(base)
+        d.setDate(base.getDate() + i)
+        return { ...updated, date: d.toISOString() }
+      }
+      return updated
+    }))
 
     // Fire backend mutation via parent
     onDragEndExternal(event)
@@ -83,6 +95,7 @@ export const SortableDaysList: React.FC<Props> = ({
         <AddActivityModal
           itineraryId={itineraryId}
           dayId={addActivityDayId}
+          existingActivities={localDays.find(d => d.id === addActivityDayId)?.activities ?? []}
           onAdded={onActivityUpdated}
           onClose={onCloseAddActivity}
         />

@@ -1,7 +1,7 @@
 import { apiClient } from '@/api/axios'
 import { supabase } from '@/api/supabase'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { Activity, AddActivityDto, Itinerary, CreateItineraryDto, UpdateActivityDto } from '@/types/itinerary.types'
+import type { Activity, AddActivityDto, AddActivityResponse, Itinerary, CreateItineraryDto, UpdateActivityDto } from '@/types/itinerary.types'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
@@ -62,8 +62,8 @@ export const itineraryApi = {
     return response.data.data
   },
 
-  async addActivity(id: string, dayId: string, payload: AddActivityDto): Promise<Activity> {
-    const response = await apiClient.post<ApiResponse<Activity>>(`/itinerary/${id}/days/${dayId}/activities`, payload)
+  async addActivity(id: string, dayId: string, payload: AddActivityDto): Promise<AddActivityResponse> {
+    const response = await apiClient.post<ApiResponse<AddActivityResponse>>(`/itinerary/${id}/days/${dayId}/activities`, payload)
     return response.data.data
   },
 

@@ -47,3 +47,20 @@ if (typeof globalThis !== 'undefined') {
     Object.defineProperty(globalThis, 'localStorage', { value: mockStorage, configurable: true })
   }
 }
+
+// Ensure a safe localStorage is available (some test stubs may replace it)
+if (typeof globalThis !== 'undefined') {
+  const ls = (globalThis as unknown as { localStorage?: Storage }).localStorage
+  if (!ls || typeof ls.clear !== 'function') {
+    const store = new Map()
+    const mockStorage = {
+      getItem: (key: string) => (store.has(key) ? store.get(key) as string : null),
+      setItem: (key: string, value: string) => store.set(key, String(value)),
+      removeItem: (key: string) => store.delete(key),
+      clear: () => store.clear(),
+      key: (index: number) => Array.from(store.keys())[index] || null,
+      get length() { return store.size },
+    }
+    Object.defineProperty(globalThis, 'localStorage', { value: mockStorage, configurable: true })
+  }
+}
