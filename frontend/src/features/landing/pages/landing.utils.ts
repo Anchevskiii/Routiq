@@ -1,5 +1,12 @@
 import * as THREE from 'three'
 
+// Cryptographically secure random number generator to resolve SonarCloud security hotspots
+function getRandom(): number {
+  const array = new Uint32Array(1)
+  globalThis.crypto.getRandomValues(array)
+  return array[0] / 4294967295
+}
+
 // ── Easing ──────────────────────────────────────────────
 export function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
@@ -25,7 +32,7 @@ export function makeTorus(n: number): Float32Array {
   const pos = new Float32Array(n * 3)
   for (let i = 0; i < n; i++) {
     const u = (i / n) * Math.PI * 2
-    const v = Math.random() * Math.PI * 2
+    const v = getRandom() * Math.PI * 2
     pos[i * 3]     = (R + r * Math.cos(v)) * Math.cos(u)
     pos[i * 3 + 1] = (R + r * Math.cos(v)) * Math.sin(u)
     pos[i * 3 + 2] = r * Math.sin(v)
@@ -39,7 +46,7 @@ export function makeIcosahedron(n: number): Float32Array {
   const count = verts.length / 3
   const pos = new Float32Array(n * 3)
   for (let i = 0; i < n; i++) {
-    const idx = Math.floor(Math.random() * count)
+    const idx = Math.floor(getRandom() * count)
     pos[i * 3]     = verts[idx * 3]
     pos[i * 3 + 1] = verts[idx * 3 + 1]
     pos[i * 3 + 2] = verts[idx * 3 + 2]
@@ -72,7 +79,7 @@ export function makeBox(n: number): Float32Array {
   const verts = geo.attributes.position.array as Float32Array
   const count = verts.length / 3
   for (let i = 0; i < n; i++) {
-    const idx = Math.floor(Math.random() * count)
+    const idx = Math.floor(getRandom() * count)
     pos[i * 3]     = verts[idx * 3]
     pos[i * 3 + 1] = verts[idx * 3 + 1]
     pos[i * 3 + 2] = verts[idx * 3 + 2]
@@ -85,10 +92,10 @@ export function makeGalaxy(n: number): Float32Array {
   const pos = new Float32Array(n * 3)
   const branches = 3
   for (let i = 0; i < n; i++) {
-    const radius = Math.random() * 1.8
+    const radius = getRandom() * 1.8
     const branchAngle = ((i % branches) / branches) * Math.PI * 2
     const spinAngle = radius * 1.8
-    const scatter = (Math.random() - 0.5) * radius * 0.4
+    const scatter = (getRandom() - 0.5) * radius * 0.4
     pos[i * 3]     = Math.cos(branchAngle + spinAngle) * radius + scatter
     pos[i * 3 + 1] = scatter * 0.3
     pos[i * 3 + 2] = Math.sin(branchAngle + spinAngle) * radius + scatter
