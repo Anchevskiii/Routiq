@@ -2,9 +2,20 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
+// Mock Supabase environment variables for testing if they are not set
+if (typeof import.meta !== 'undefined' && import.meta.env) {
+  if (!import.meta.env.VITE_SUPABASE_URL) {
+    import.meta.env.VITE_SUPABASE_URL = 'https://placeholder.supabase.co'
+  }
+  if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    import.meta.env.VITE_SUPABASE_ANON_KEY = 'placeholder-anon-key'
+  }
+}
+
 afterEach(() => {
   cleanup()
 })
+
 
 // Mock globalThis.crypto.getRandomValues for JSDOM in test environment
 if (typeof globalThis !== 'undefined' && !globalThis.crypto) {
