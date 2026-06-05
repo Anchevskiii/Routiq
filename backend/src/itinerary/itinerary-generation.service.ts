@@ -97,10 +97,81 @@ export class ItineraryGenerationService {
     const estimatedBudget =
       generated.summary?.estimatedBudget ?? 'Contact local guides for pricing';
 
-    return this.prisma.$transaction(
+    const geocodeStart = Date.now();
+
+    // 1. Pre-map all days and pre-geocode all activities in parallel OUTSIDE the transaction
+    const mappedDays = await Promise.all(
+      (generated.days ?? []).map(async (day) => {
+        const mappedDay = this.mapSingleDay(
+          day,
+          createItineraryDto.startDate,
+          weatherData,
+          attractions,
+        );
+
+        if (mappedDay.activities?.create) {
+          const activitiesData = Array.isArray(mappedDay.activities.create)
+            ? mappedDay.activities.create
+            : [mappedDay.activities.create];
+
+          const enrichedActivities = await Promise.all(
+            activitiesData.map(async (act) => {
+              if (act.latitude === null || act.longitude === null) {
+                const query = act.location || act.title;
+                if (query) {
+                  const searchResults =
+                    await this.attractionsService.searchAttractions(
+                      query,
+                      createItineraryDto.destination,
+                    );
+                  const bestMatch = searchResults?.[0];
+                  if (bestMatch) {
+                    return {
+                      ...act,
+                      title: bestMatch.name || act.title,
+                      location: bestMatch.name || act.location || null,
+                      address: bestMatch.address || act.address || null,
+                      latitude: bestMatch.location.lat,
+                      longitude: bestMatch.location.lng,
+                      placeId: bestMatch.id,
+                    };
+                  } else {
+                    const fullQuery = `${query}, ${createItineraryDto.destination}`;
+                    const coords =
+                      await this.attractionsService.geocodeAddress(fullQuery);
+                    if (coords) {
+                      return {
+                        ...act,
+                        latitude: coords.lat,
+                        longitude: coords.lng,
+                      };
+                    }
+                  }
+                }
+              }
+              return act;
+            }),
+          );
+          mappedDay.activities.create = enrichedActivities;
+        }
+        return mappedDay;
+      }),
+    );
+
+    const geocodeTimeMs = Date.now() - geocodeStart;
+    const txStart = Date.now();
+
+    const itinerary = await this.prisma.$transaction(
       async (tx) => {
-        // 1. Create the parent Itinerary record
-        const itinerary = await tx.itinerary.create({
+        // Create general tips array
+        const generalTips = generated.generalTips ?? [
+          'Check local transportation options before arrival.',
+          'Keep digital copies of your travel documents.',
+          'Respect local customs and traditions.',
+        ];
+
+        // 1. Create the parent Itinerary record with nested days, weather, activities, and tips
+        const itineraryRecord = await tx.itinerary.create({
           data: {
             userId,
             destination: createItineraryDto.destination,
@@ -114,110 +185,87 @@ export class ItineraryGenerationService {
             generationTimeMs,
             bestSeason,
             estimatedBudget,
+            generalTips: {
+              create: generalTips.map((tip, index) => ({
+                sortOrder: index,
+                content: tip,
+              })),
+            },
+            days: {
+              create: mappedDays.map((mappedDay) => {
+                const weatherCreate = mappedDay.weather?.create;
+                const activitiesCreate = mappedDay.activities?.create;
+
+                return {
+                  dayNumber: mappedDay.dayNumber,
+                  date: mappedDay.date,
+                  theme: mappedDay.theme,
+                  weather: weatherCreate
+                    ? {
+                        create: {
+                          condition: weatherCreate.condition,
+                          tempMin: weatherCreate.tempMin,
+                          tempMax: weatherCreate.tempMax,
+                          humidity: weatherCreate.humidity,
+                          windSpeed: weatherCreate.windSpeed,
+                          precipitation: weatherCreate.precipitation,
+                          recommendation: weatherCreate.recommendation,
+                        },
+                      }
+                    : undefined,
+                  activities: activitiesCreate
+                    ? {
+                        create: (
+                          activitiesCreate as Prisma.ItineraryActivityCreateWithoutDayInput[]
+                        ).map((act) => ({
+                          activityType: act.activityType,
+                          sortOrder: act.sortOrder,
+                          title: act.title,
+                          description: act.description,
+                          location: act.location,
+                          address: act.address,
+                          startTime: act.startTime,
+                          durationMinutes: act.durationMinutes,
+                          cost: act.cost,
+                          tips: act.tips,
+                          latitude: act.latitude,
+                          longitude: act.longitude,
+                          placeId: act.placeId,
+                          mealType: act.mealType,
+                        })),
+                      }
+                    : undefined,
+                };
+              }),
+            },
           },
         });
-
-        // 2. Create general tips sequentially
-        const generalTips = generated.generalTips ?? [
-          'Check local transportation options before arrival.',
-          'Keep digital copies of your travel documents.',
-          'Respect local customs and traditions.',
-        ];
-
-        if (generalTips.length > 0) {
-          await tx.itineraryTip.createMany({
-            data: generalTips.map((tip, index) => ({
-              itineraryId: itinerary.id,
-              sortOrder: index,
-              content: tip,
-            })),
-          });
-        }
-
-        // 3. Create days, their weather snapshots, and activities sequentially
-        for (const day of generated.days ?? []) {
-          const mappedDay = this.mapSingleDay(
-            day,
-            createItineraryDto.startDate,
-            weatherData,
-            attractions,
-          );
-
-          // Create the ItineraryDay record
-          const createdDay = await tx.itineraryDay.create({
-            data: {
-              itineraryId: itinerary.id,
-              dayNumber: mappedDay.dayNumber,
-              date: mappedDay.date,
-              theme: mappedDay.theme,
-            },
-          });
-
-          // Create the ItineraryWeatherSnapshot record
-          if (mappedDay.weather?.create) {
-            await tx.itineraryWeatherSnapshot.create({
-              data: {
-                dayId: createdDay.id,
-                ...mappedDay.weather.create,
-              },
-            });
-          }
-
-          // Create the ItineraryActivity records
-          if (mappedDay.activities?.create) {
-            const activitiesData = Array.isArray(mappedDay.activities.create)
-              ? mappedDay.activities.create
-              : [mappedDay.activities.create];
-
-            if (activitiesData.length > 0) {
-              const enrichedActivities = await Promise.all(
-                activitiesData.map(async (act) => {
-                  if (act.latitude === null || act.longitude === null) {
-                    const query = act.location || act.title;
-                    if (query) {
-                      const fullQuery = `${query}, ${createItineraryDto.destination}`;
-                      const coords =
-                        await this.attractionsService.geocodeAddress(fullQuery);
-                      if (coords) {
-                        return {
-                          ...act,
-                          latitude: coords.lat,
-                          longitude: coords.lng,
-                        };
-                      }
-                    }
-                  }
-                  return act;
-                }),
-              );
-
-              await tx.itineraryActivity.createMany({
-                data: enrichedActivities.map((act) => ({
-                  dayId: createdDay.id,
-                  ...act,
-                })),
-              });
-            }
-          }
-        }
 
         // 4. If groupId is provided, automatically link the itinerary to the group
         if (createItineraryDto.groupId) {
           await tx.groupItinerary.create({
             data: {
               groupId: createItineraryDto.groupId,
-              itineraryId: itinerary.id,
+              itineraryId: itineraryRecord.id,
               addedById: userId,
             },
           });
         }
 
-        return itinerary;
+        return itineraryRecord;
       },
       {
-        timeout: 15000, // 15 seconds timeout to prevent transaction cancellation during remote DB writes
+        timeout: 5000, // Reverted to 5 seconds now that slow geocoding API calls are moved out
       },
     );
+
+    const txTimeMs = Date.now() - txStart;
+
+    return {
+      itinerary,
+      geocodeTimeMs,
+      txTimeMs,
+    };
   }
 
   mapDaysForNestedWrite(
@@ -353,8 +401,8 @@ export class ItineraryGenerationService {
       return Math.round(duration * 60);
     }
     if (typeof duration === 'string') {
-      const parsed = parseFloat(duration);
-      if (!isNaN(parsed)) {
+      const parsed = Number.parseFloat(duration);
+      if (!Number.isNaN(parsed)) {
         return Math.round(parsed * 60);
       }
     }

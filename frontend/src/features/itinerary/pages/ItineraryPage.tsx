@@ -170,6 +170,7 @@ export const ItineraryPage: React.FC = () => {
     itineraryId: id!,
     sensors,
     addActivityDayId,
+    destination: itinerary.destination,
     onDragEnd: handleDragEnd,
     onAddActivity: setAddActivityDayId,
     onReorderActivities: (dayId: string, activityIds: string[]) => reorderActivitiesMutation.mutate({ dayId, activityIds }),

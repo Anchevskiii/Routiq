@@ -9,6 +9,7 @@ export interface SortableDayCardProps {
   day: Day
   isFirst: boolean
   itineraryId: string
+  destination?: string
   onAddActivity: (dayId: string) => void
   onReorderActivities: (dayId: string, activityIds: string[]) => void
   onActivityUpdated: () => void
@@ -19,6 +20,7 @@ export const SortableDayCard: React.FC<SortableDayCardProps> = ({
   day,
   isFirst,
   itineraryId,
+  destination,
   onAddActivity,
   onReorderActivities,
   onActivityUpdated,
@@ -40,6 +42,7 @@ export const SortableDayCard: React.FC<SortableDayCardProps> = ({
         dragHandleProps={listeners}
         dragHandleAttributes={attributes}
         itineraryId={itineraryId}
+        destination={destination}
         onAddActivity={onAddActivity}
         onReorderActivities={onReorderActivities}
         onActivityUpdated={onActivityUpdated}
