@@ -41,7 +41,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       {
         name: 'default',
         ttl: 60000, // 1 minute
-        limit: 500, // 500 requests per minute per IP
+        limit: 100, // 100 requests per minute per IP
       },
       {
         name: 'itinerary-generate',
