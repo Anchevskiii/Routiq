@@ -42,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
     if (id === 'groups')   return location.pathname.startsWith(ROUTES.GROUPS)
     if (id === 'ai')       return location.pathname === ROUTES.PLANNER
     if (id === 'settings') return location.pathname === ROUTES.PROFILE
+    if (id === 'help')     return location.pathname === ROUTES.HELP
     return false
   }
 

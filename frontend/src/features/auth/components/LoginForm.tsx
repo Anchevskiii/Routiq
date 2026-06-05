@@ -36,31 +36,31 @@ export const LoginForm: React.FC<Props> = ({ onSuccess }) => {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="w-full max-w-sm rounded-2xl bg-white/90 dark:bg-[#1e1b38] backdrop-blur p-8 shadow-xl ring-1 ring-sky-200 dark:ring-[rgba(139,92,246,0.3)]"
+      className="w-full max-w-sm rounded-lg sm:rounded-2xl bg-white/95 dark:bg-[#1e1b38] backdrop-blur p-6 sm:p-8 shadow-xl ring-1 ring-sky-200 dark:ring-[rgba(139,92,246,0.3)] mx-4 sm:mx-0"
     >
       <p className="text-xs font-mono uppercase tracking-[0.14em] text-indigo-400">Routiq</p>
-      <h2 className="mt-1 text-3xl font-semibold text-ink">Welcome</h2>
+      <h2 className="mt-1 text-2xl sm:text-3xl font-semibold text-ink">Welcome</h2>
       <p className="mt-2 text-sm text-ink-dim">Sign in to start planning.</p>
 
-      <label className="mt-6 block text-sm font-medium text-ink-dim">Email</label>
+      <label htmlFor="login-email-input" className="mt-6 block text-sm font-medium text-ink-dim">Email</label>
       <div className={[
         'relative mt-2 rounded-[12px] border-[1.5px] bg-white dark:bg-[#16142e] transition-all',
         errors.email ? 'border-red-400' : 'border-sky-200 dark:border-[rgba(139,92,246,0.25)] focus-within:border-indigo-400 dark:focus-within:border-violet-500 focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]',
       ].join(' ')}>
         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-400" />
-        <input type="email" autoComplete="email" {...register('email')}
+        <input id="login-email-input" type="email" autoComplete="email" {...register('email')}
           className="w-full bg-transparent border-none outline-none text-ink text-sm py-3 pl-11 pr-4"
           placeholder="you@example.com" />
       </div>
       {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
 
-      <label className="mt-4 block text-sm font-medium text-ink-dim">Password</label>
+      <label htmlFor="login-password-input" className="mt-4 block text-sm font-medium text-ink-dim">Password</label>
       <div className={[
         'relative mt-2 rounded-[12px] border-[1.5px] bg-white dark:bg-[#16142e] transition-all',
         errors.password ? 'border-red-400' : 'border-sky-200 dark:border-[rgba(139,92,246,0.25)] focus-within:border-indigo-400 dark:focus-within:border-violet-500 focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]',
       ].join(' ')}>
         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-400" />
-        <input type={showPw ? 'text' : 'password'} autoComplete="current-password"
+        <input id="login-password-input" type={showPw ? 'text' : 'password'} autoComplete="current-password"
           {...register('password')}
           className="w-full bg-transparent border-none outline-none text-ink text-sm py-3 pl-11 pr-11"
           placeholder="••••••••" />
