@@ -21,13 +21,13 @@
 
 | Kategorija | Vrednost |
 |---|---|
-| Sistem | PostgreSQL 15 |
+| Sistem | PostgreSQL 15+ (CI/test: PostgreSQL 16) |
 | Hosting | Supabase (managed + pgbouncer) |
 | ORM | Prisma |
 | Shema | `backend/prisma/schema.prisma` |
 | Skupaj tabel | 15 |
 | Primary key tip | UUID (Supabase kompatibilno) |
-| Soft delete | Vse entitete imajo `deletedAt` polje |
+| Soft delete | Večina entitet ima `deletedAt`; izjeme: `itinerary_tips`, `itinerary_weather_snapshots`, `notifications`, `comment_reactions`, `calendar_exports`, `activity_logs` |
 
 **Zakaj UUID namesto auto-increment int?**  
 Supabase generira UUID za users (`id` je tipa `uuid` direktno iz Supabase Auth). Za konsistentnost so vsi PKji UUID. UUIDs so varnejši (ne moremo ugibati ID-jev) in delujejo brez centraliziranega zaporedja.
@@ -492,7 +492,7 @@ Vse entitete (razen `itinerary_weather_snapshots`, `itinerary_tips`, `calendar_e
 - Preprečuje osirotele relacije (cascade hard delete bi odstranil povezane podatke)
 - Omogoča "undo" operacije
 
-**Implementacija:** Prisma middleware v `prisma.service.ts` samodejno dodaja `WHERE deletedAt IS NULL` filter na vse `find*` operacije. Izjema: specifični klici kjer je potreben dostop do "izbrisanih" zapisov (npr. re-invite DECLINED člana).
+**Implementacija:** Prisma Client Extensions v `prisma.service.ts` (Prisma 7) samodejno dodajajo `WHERE deletedAt IS NULL` filter na `find*` operacije za podprte modele. Izjema: specifični klici kjer je potreben dostop do "izbrisanih" zapisov (npr. re-invite DECLINED člana).
 
 ```typescript
 // Primer: upsert za re-invite (dostop do DECLINED zapisa)

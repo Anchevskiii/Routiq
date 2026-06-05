@@ -34,14 +34,14 @@
 | Runtime | Node.js >= 20 LTS |
 | ORM | Prisma |
 | Baza | PostgreSQL (Supabase – hosted) |
-| Avtentikacija | JWT + Passport.js |
-| OAuth | Passport Google Strategy |
+| Avtentikacija | Supabase Auth (frontend) + `JwtAuthGuard` (backend prek `supabase.auth.getUser()`) |
+| OAuth | Google OAuth prek Supabase (`signInWithOAuth`) |
 | Validacija | class-validator + class-transformer |
 | AI | Google Gemini 2.5 Flash |
 | Atrakcije | Google Places API |
 | Vreme | Google Weather API |
 | Navigacija | Google Maps Directions API |
-| Playliste | Spotify Web API (opcijsko, iter. 4) |
+| Playliste | Spotify Web API — **ni implementirano** (samo env placeholderji) |
 | Izvoz | `ics` npm paket |
 | HTTP client | Axios `1.14.0` (pinana!) |
 | Rate limiting | @nestjs/throttler |
@@ -175,7 +175,10 @@ backend/
 │   │   ├── interceptors/     # TransformInterceptor, LoggingInterceptor
 │   │   └── types/            # Skupni tipi (ApiResponse, JwtPayload...)
 │   │
-│   ├── auth/                 # JWT + OAuth
+│   ├── auth/                 # Placeholder (Supabase Auth na FE)
+│   ├── supabase/             # SupabaseService — JWT verifikacija
+│   ├── notifications/        # In-app obvestila
+│   ├── health/               # Render health check
 │   ├── users/                # User profil
 │   ├── itinerary/            # AI generiranje + CRUD (core feature)
 │   ├── gemini/               # Gemini AI service
@@ -196,46 +199,46 @@ backend/
 
 ## 4. Moduli & endpointi
 
-### `auth/` – Avtentikacija
+### `auth/` – Placeholder modul
 
-```
-POST   /auth/register          → Registracija z email/password
-POST   /auth/login             → Prijava, vrne accessToken
-POST   /auth/refresh           → Nov accessToken prek httpOnly cookie
-POST   /auth/logout            → Počisti refresh token
-GET    /auth/google            → Redirect na Google OAuth
-GET    /auth/google/callback   → Callback, vrne tokene
-GET    /auth/me                → Vrne trenutno prijavljenega userja
-```
+Avtentikacija poteka na **frontendu** prek Supabase Auth. Backend `auth/` modul je prazen placeholder — ni HTTP endpointov. Po prijavi frontend kliče `GET /users/profile` z Bearer tokenom.
 
 ### `users/` – Upravljanje uporabnikov
 
 ```
-GET    /users/profile          → Moj profil
+GET    /users/profile          → Moj profil (sinhronizacija z Supabase JWT)
+GET    /users/settings         → Nastavitve (tema, jezik...)
+PATCH  /users/settings         → Posodobi nastavitve
 PATCH  /users/profile          → Posodobi profil
-POST   /users/avatar           → Upload avatarja
-PATCH  /users/password         → Sprememba gesla
-DELETE /users/account          → Brisanje računa (GDPR)
+POST   /users/avatar           → Upload avatarja (polje: avatar)
+DELETE /users/account          → Brisanje računa (GDPR — soft delete)
 ```
+
+> Sprememba gesla: prek Supabase SDK na klientu, ne prek backend API-ja.
 
 ### `itinerary/` – Jedro aplikacije
 
 ```
-POST   /itinerary/generate     → Generiraj itinerar (SSE stream)
-GET    /itinerary              → Moji itinerarji
-GET    /itinerary/:id          → Posamezni itinerar
-PATCH  /itinerary/:id          → Posodobi (ročno urejanje)
-DELETE /itinerary/:id          → Briši
-POST   /itinerary/:id/share    → Generiraj deljivi link
+POST   /itinerary/generate                              → Generiraj itinerar (SSE stream)
+GET    /itinerary                                       → Moji itinerarji (paginirano)
+GET    /itinerary/:id                                   → Posamezni itinerar
+PATCH  /itinerary/:id                                   → Posodobi metapodatke
+DELETE /itinerary/:id                                   → Soft delete
+POST   /itinerary/:id/share                             → Generiraj deljivi link
+GET    /itinerary/shared/:shareToken                    → Javni ogled (🔓 @Public)
+PUT    /itinerary/:id/days/reorder                      → Prerazporedi dneve
+PUT    /itinerary/:id/days/:dayId/activities/reorder    → Prerazporedi aktivnosti
+POST   /itinerary/:id/days/:dayId/activities            → Dodaj aktivnost
+PATCH  /itinerary/:id/activities/:activityId            → Uredi aktivnost
+DELETE /itinerary/:id/activities/:activityId            → Briši aktivnost
 ```
 
-### `attractions/` – Atrakcije
+### `attractions/` – Atrakcije (Google Places proxy)
 
 ```
-GET    /attractions/search?destination=&type=   → Išči atrakcije
-POST   /attractions/swap                        → Zamenjaj atrakcijo
-POST   /itinerary/:id/day/:day/attractions      → Dodaj atrakcijo
-DELETE /itinerary/:id/day/:day/attractions/:aid → Odstrani atrakcijo
+GET    /attractions/search?query=&location=&radius=   → Išči atrakcije
+GET    /attractions/:id                               → Podrobnosti atrakcije
+POST   /attractions/:id/alternatives                  → Alternativne atrakcije
 ```
 
 ### `weather/` – Vreme
@@ -249,21 +252,45 @@ Napoved cachiramo za 1 uro – ne kličemo Google Weather API pri vsakem request
 ### `groups/` – Skupinska potovanja
 
 ```
-GET    /groups                               → Moje skupine
-POST   /groups                               → Ustvari skupino
-GET    /groups/:id                           → Detajl skupin
-DELETE /groups/:id                           → Briši (samo admin)
-POST   /groups/:id/invite                    → Povabi člana
-DELETE /groups/:id/members/:uid              → Odstrani člana
-POST   /groups/:id/itineraries               → Dodaj itinerar v skupino
-POST   /groups/:id/itineraries/:iid/vote     → Glasuj za atrakcijo
-POST   /groups/:id/itineraries/:iid/comments → Dodaj komentar
+GET    /groups                                              → Moje skupine
+GET    /groups/invitations                                  → Čakajoča povabila
+POST   /groups                                              → Ustvari skupino
+GET    /groups/:id                                          → Detajl skupin
+PATCH  /groups/:id                                          → Posodobi skupino
+POST   /groups/:id/image                                    → Upload slike skupine
+DELETE /groups/:id                                          → Briši (samo OWNER)
+POST   /groups/:id/invite                                   → Povabi člana
+POST   /groups/:id/accept / decline                         → Sprejmi / zavrni povabilo
+DELETE /groups/:id/members/:memberId                        → Odstrani člana
+PATCH  /groups/:id/members/:memberId/role                   → Posodobi vlogo
+POST   /groups/:id/itineraries                              → Dodaj itinerar v skupino
+DELETE /groups/:id/itineraries/:groupItineraryId            → Odstrani iz skupine
+GET/POST /groups/:gid/itineraries/:giid/vote                → Glasovanje (UPVOTE/DOWNVOTE)
+GET/POST /groups/:groupId/comments                          → Komentarji (+ threading)
+POST   /groups/:groupId/comments/:commentId/reactions       → Emoji reakcije
+GET    /groups/:id/activity-log                             → Activity log
+```
+
+### `notifications/` – In-app obvestila
+
+```
+GET    /notifications              → Seznam obvestil
+GET    /notifications/unread-count → Število neprebranih
+PATCH  /notifications/:id/read     → Označi kot prebrano
+POST   /notifications/read-all     → Označi vsa kot prebrana
 ```
 
 ### `export/` – Izvoz
 
 ```
-GET    /export/:id/ics          → Vrne .ics datoteko
+GET    /export/:id/ics              → Vrne .ics datoteko (auth)
+GET    /export/shared/:id/ics       → Javni .ics izvoz (🔓 @Public)
+```
+
+### `health/` – Health check
+
+```
+GET    /health                      → Status za Render monitoring (🔓 @Public)
 ```
 
 > PDF generira frontend z `@react-pdf/renderer`. Backend generira samo `.ics`.
@@ -328,147 +355,20 @@ Prisma je ORM (Object-Relational Mapper) – namesto da pišeš SQL stavke, piš
 
 Celotna struktura baze je definirana v eni datoteki – `prisma/schema.prisma`. Tukaj definiraš modele (tabele) in njihove relacije. Ko spreminjaš shemo, Prisma zna ustvariti SQL migracijo sama.
 
-### Prisma shema – modeli
+### Prisma shema
 
-```prisma
-generator client {
-  provider = "prisma-client-js"
-}
+**Vir resnice:** `backend/prisma/schema.prisma` (Prisma 7 + `@prisma/adapter-pg`).
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+Ključne razlike od zgodnjih načrtov:
+- `User.id` je **Supabase UUID** (`@db.Uuid`) — brez `passwordHash`, `googleId`, `RefreshToken` tabele
+- Itinerar je **normaliziran**: `ItineraryDay`, `ItineraryActivity`, `ItineraryWeatherSnapshot`, `ItineraryTip` (ne `days Json`)
+- `Comment` je vezan na `groupId` (+ `parentId` za threading), ne na `groupItineraryId`
+- `Vote` je na `groupItineraryId` z `voteType` (UPVOTE/DOWNVOTE), ne na posamezno atrakcijo
+- `GroupRole`: OWNER, ADMIN, MODERATOR, MEMBER
+- `TravelType` vključuje tudi RELAX
+- Dodatni modeli: `Notification`, `CommentReaction`, `ActivityLog`, `CalendarExport`
 
-model User {
-  id            String      @id @default(cuid())
-  email         String      @unique
-  passwordHash  String?     // null če Google OAuth
-  googleId      String?     @unique
-  name          String
-  avatarUrl     String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  itineraries   Itinerary[]
-  groupMembers  GroupMember[]
-  comments      Comment[]
-  votes         Vote[]
-  refreshTokens RefreshToken[]
-
-  @@map("users")
-}
-
-model Itinerary {
-  id            String      @id @default(cuid())
-  userId        String
-  destination   String
-  startDate     DateTime
-  endDate       DateTime
-  travelType    TravelType
-  weatherData   Json?
-  days          Json        // Array of days z atrakcijami
-  shareToken    String?     @unique
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  groupItineraries GroupItinerary[]
-
-  @@map("itineraries")
-}
-
-model Group {
-  id          String      @id @default(cuid())
-  name        String
-  description String?
-  createdAt   DateTime    @default(now())
-
-  members     GroupMember[]
-  itineraries GroupItinerary[]
-
-  @@map("groups")
-}
-
-model GroupMember {
-  id       String    @id @default(cuid())
-  groupId  String
-  userId   String
-  role     GroupRole @default(MEMBER)
-  joinedAt DateTime  @default(now())
-
-  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([groupId, userId])
-  @@map("group_members")
-}
-
-model GroupItinerary {
-  id          String    @id @default(cuid())
-  groupId     String
-  itineraryId String
-  addedAt     DateTime  @default(now())
-
-  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  comments    Comment[]
-  votes       Vote[]
-
-  @@map("group_itineraries")
-}
-
-model Comment {
-  id               String         @id @default(cuid())
-  groupItineraryId String
-  userId           String
-  content          String
-  createdAt        DateTime       @default(now())
-
-  groupItinerary   GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("comments")
-}
-
-model Vote {
-  id               String         @id @default(cuid())
-  groupItineraryId String
-  userId           String
-  attractionId     String
-  createdAt        DateTime       @default(now())
-
-  groupItinerary   GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([groupItineraryId, userId, attractionId])
-  @@map("votes")
-}
-
-model RefreshToken {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("refresh_tokens")
-}
-
-enum TravelType {
-  CULTURAL
-  GASTRONOMIC
-  NATURE
-  ADVENTURE
-}
-
-enum GroupRole {
-  ADMIN
-  MEMBER
-}
-```
+Podroben ER diagram: [docs/data-model.md](docs/data-model.md)
 
 ### Migracije – kako deluje
 
@@ -535,19 +435,18 @@ Vsi člani ekipe delajo nad istim Supabase projektom in vidijo iste podatke.
 
 ## 7. Avtentikacija & varnost
 
-### JWT flow
+### Supabase Auth flow
 
 ```
-1. Login/Register → backend izda accessToken (15 min) + refreshToken (7 dni)
-2. accessToken → v JSON response body → FE ga shrani v memory (React context)
-3. refreshToken → httpOnly cookie (ni dostopen JS kodi – varnejše)
-4. Vsak API request: Authorization: Bearer <accessToken>
-5. Ko 401 → FE samodejno pokliče POST /auth/refresh (cookie gre avtomatično)
-6. Backend validira refreshToken → vrne nov accessToken
-7. Logout → refreshToken izbrisan iz DB + počiščen cookie
+1. Login/Register/Google OAuth → Supabase Auth na frontendu (signInWithPassword, signUp, signInWithOAuth)
+2. Supabase vrne access_token + refresh_token → shranjeno v sessionStorage (ne localStorage)
+3. Vsak API request: Authorization: Bearer <supabase_access_token> (axios interceptor)
+4. Osveževanje tokena → Supabase SDK (autoRefreshToken: true), ne backend /auth/refresh
+5. Backend JwtAuthGuard → supabase.auth.getUser(token) → upsertUser() v lokalno bazo
+6. Logout → supabase.auth.signOut() + počisti sb-access-token piškotek
 ```
 
-> `accessToken` nikoli v `localStorage` – dostopen JS napadom. Shranjen samo v memory (React context).
+> Za GET prenose (.ics) se token sinhronizira v sejni piškotek `sb-access-token`. Podrobnosti: [docs/security.md](docs/security.md)
 
 ### Guards – kako zaščitimo endpointe
 
@@ -555,12 +454,12 @@ Vsi člani ekipe delajo nad istim Supabase projektom in vidijo iste podatke.
 
 ```typescript
 @Public()
-@Post('login')
-async login(@Body() dto: LoginDto) { ... }
+@Get('shared/:shareToken')
+async getSharedItinerary(@Param('shareToken') token: string) { ... }
 
 // Zaščiten endpoint – ni potreben noben dekorator
 @Get('profile')
-async getProfile(@CurrentUser() user: User) { ... }
+async getProfile(@CurrentUser() user: JwtPayload) { ... }
 ```
 
 ### Validacija z DTO-ji
@@ -658,8 +557,10 @@ Vse klice na zunanje API-je (Places, Google Weather, Spotify) dela **backend**. 
 ```bash
 # backend/.env – NIKOLI ne commitamo!
 DATABASE_URL=...
-JWT_SECRET=...
-JWT_REFRESH_SECRET=...
+DIRECT_URL=...
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_JWT_SECRET=...
 GEMINI_API_KEY=...
 GOOGLE_PLACES_API_KEY=...
 GOOGLE_MAPS_DIRECTIONS_API_KEY=...
@@ -754,9 +655,9 @@ if (error.status === 429) {
 ```
 This is the Routiq backend — NestJS 10 + TypeScript + Prisma + PostgreSQL (Supabase).
 
-Stack: NestJS 10, TypeScript, Prisma ORM, PostgreSQL (Supabase),
-Passport.js (JWT + Google OAuth), class-validator + class-transformer,
-Axios 1.14.0 (pinned – do NOT upgrade), @nestjs/throttler, Winston, Jest + Supertest.
+Stack: NestJS 10, TypeScript, Prisma 7 ORM, PostgreSQL (Supabase),
+Supabase Auth (JWT verified via supabase.auth.getUser), class-validator + class-transformer,
+Axios 1.14.0 (pinned – do NOT upgrade), @nestjs/throttler, Helmet, Jest + Supertest.
 
 Rules:
 - Never use `any`. Use proper interfaces, types, or `unknown`.
@@ -775,15 +676,17 @@ Rules:
 - Never commit .env files.
 
 Project structure (inside backend/src/):
-- auth/        → JWT + Google OAuth
+- auth/        → Placeholder module (no HTTP routes)
+- supabase/    → Supabase client for JWT verification
 - users/       → User profile management
 - itinerary/   → Core: AI generation + CRUD
 - gemini/      → Gemini AI service
 - attractions/ → Google Places proxy
 - weather/     → Google Weather API proxy + caching
 - groups/      → Group travel management
+- notifications/ → In-app notifications
 - export/      → .ics file generation
-- spotify/     → Playlist generation (iter. 4)
+- health/      → Health check endpoint
 - common/      → Guards, filters, interceptors, decorators, types
 - prisma/      → Prisma service singleton
 ```
@@ -796,7 +699,7 @@ Project structure (inside backend/src/):
 
 ```
 main          ← Produkcija. Samo stabilen, testiran kod.
-develop       ← Aktivni razvoj. Sem gre vse.
+development   ← Aktivni razvoj. Sem gre vse.
   └── feature/auth-jwt
   └── feature/itinerary-generate
   └── feature/groups
@@ -804,7 +707,7 @@ develop       ← Aktivni razvoj. Sem gre vse.
   └── chore/prisma-setup
 ```
 
-- Vsi delamo na feature branchih iz `develop`.
+- Vsi delamo na feature branchih iz `development`.
 - `main` se merga samo ko je iteracija stabilna.
 - Branch se briše po mergeu.
 
@@ -845,7 +748,7 @@ git commit -m "chore: add votes table"
 2. PR naslov sledi commit konvenciji.
 3. PR opis vsebuje: **kaj** je narejeno + **kako preveriti** (Postman/Insomnia koraki).
 4. Drugi član pregleda in aprovira pred mergem.
-5. Avtor sam merga po approvu, samo v `develop`.
+5. Avtor sam merga po approvu, samo v `development`.
 
 ### PR predloga
 
@@ -877,7 +780,7 @@ Kratki opis.
 | Dev | Naloge |
 |---|---|
 | **Jan** | NestJS projekt setup, Prisma konfiguracija, Supabase povezava, seed data, `.env.example` |
-| **Klemen** | `auth/` modul: register, login, JWT access/refresh token, logout, `/auth/me` |
+| **Klemen** | Supabase Auth integracija na FE, `JwtAuthGuard`, `/users/profile` sinhronizacija |
 | **Mojca** | `itinerary/` modul osnova: DTO, Prisma model, basic CRUD brez AI. Gemini service setup. |
 
 ### Iteracija 2 – AI generiranje, Places, Weather

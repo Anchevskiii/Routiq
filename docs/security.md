@@ -35,7 +35,7 @@ sequenceDiagram
     FE->>SB: signInWithPassword(email, password)
     SB-->>FE: { access_token (15min), refresh_token (7dni), user }
 
-    FE->>BE: GET /auth/me + Authorization: Bearer access_token
+    FE->>BE: GET /users/profile + Authorization: Bearer access_token
     BE->>SB: getUser(access_token)
     Note over BE,SB: Backend NIKOLI ne validira JWT sam\n— vedno prek Supabase Admin SDK
     SB-->>BE: { user: { id, email, ... } }

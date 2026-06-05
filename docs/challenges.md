@@ -144,11 +144,11 @@ const itinerary = await this.prisma.itinerary.findFirst({
 Ekipa je vzporedno razvijala pet feature branchov: `feature/timetable`, `feature/exporting`, `feature/emojichat`, `style/light-mode`, `feature/editing`, `feature/groups`. Ob mergeu je prišlo do obsežnih konfliktov v skupnih komponentah (`DayCard.tsx`, `ItineraryPage.tsx`, `AttractionCard.tsx`).
 
 **Rešitev:**  
-Uveden je bil vmesni `feature/temp-merge` branch za postopno reševanje konfliktov pred merge-om v `develop`:
+Uveden je bil vmesni `feature/temp-merge` branch za postopno reševanje konfliktov pred merge-om v `development`:
 
 ```bash
 # Vmesni branch za reševanje konfliktov
-git checkout -b feature/temp-merge develop
+git checkout -b feature/temp-merge development
 git merge feature/timetable
 # Reši konflikte...
 git merge feature/exporting

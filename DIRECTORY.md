@@ -4,6 +4,13 @@
 > Frontend + Backend sta v istem repotu (monorepo).  
 > Vsaka datoteka ima kratek opis kaj vsebuje.
 
+> **Opomba (junij 2026):** Ta dokument opisuje **dejansko stanje** repota. Ključne točke:
+> - **Auth:** Supabase Auth na frontendu (`src/api/supabase.ts`, `AuthProvider` v `src/app/Providers.tsx`). Backend `auth/` je placeholder brez HTTP route-ov.
+> - **PDF izvoz:** `features/itinerary/pdf/` (ne ločen `features/export/`).
+> - **Spotify:** ni implementiran (samo env placeholderji).
+> - **Dodatne strani:** `landing/`, `help/`, `TripsPage`, `NotificationsPage` (`/trips`, `/help`, `/notifications`).
+> - **Git branch za razvoj:** `development` (ne `develop`).
+
 ---
 
 ```
@@ -22,8 +29,9 @@ routiq/                                             # Koren monorepa
 │   │   │   └── router.tsx                          # Definicija vseh route-ov z React Router v6
 │   │   │
 │   │   ├── api/                                    # Vsi HTTP klici na backend – nikoli kliči axios direktno v komponenti
-│   │   │   ├── axios.ts                            # Axios instanca: base URL, request/response interceptorji, token handling, 401 refresh
-│   │   │   ├── auth.api.ts                         # login(), register(), logout(), refreshToken(), getMe(), loginWithGoogle()
+│   │   │   ├── axios.ts                            # Axios instanca: Bearer token iz Supabase seje + sb-access-token piškotek za GET
+│   │   │   ├── auth.api.ts                         # login(), register(), logout(), getMe() → GET /users/profile, loginWithGoogle() (Supabase OAuth)
+│   │   │   ├── supabase.ts                         # Supabase client (sessionStorage, autoRefreshToken)
 │   │   │   ├── itinerary.api.ts                    # generateItinerary(), getItinerary(), listItineraries(), updateItinerary(), deleteItinerary(), shareItinerary()
 │   │   │   ├── attractions.api.ts                  # searchAttractions(), swapAttraction(), addAttraction(), removeAttraction()
 │   │   │   ├── weather.api.ts                      # getWeatherForecast()
@@ -76,9 +84,8 @@ routiq/                                             # Koren monorepa
 │   │   │   │   ├── components/
 │   │   │   │   │   ├── LoginForm.tsx               # Form z email/password, Zod validacija
 │   │   │   │   │   ├── RegisterForm.tsx            # Form za registracijo z validacijo
-│   │   │   │   │   └── GoogleSignInButton.tsx      # Gumb za Google OAuth (redirect na backend)
-│   │   │   │   └── hooks/
-│   │   │   │       └── useAuth.ts                  # Hook za dostop do AuthContexta (user, login, logout, isAuthenticated)
+│   │   │   │   │   └── GoogleSignInButton.tsx      # Gumb za Google OAuth (Supabase signInWithOAuth)
+│   │   │   │   └── hooks/                          # (useAuth je v app/Providers.tsx)
 │   │   │   │
 │   │   │   ├── planner/                            # Večstopenjski wizard za vnos potovalnih parametrov
 │   │   │   │   ├── pages/
@@ -139,13 +146,8 @@ routiq/                                             # Koren monorepa
 │   │   │   │       ├── useCreateGroup.ts           # Mutation za kreiranje skupin
 │   │   │   │       └── useGroupVote.ts             # Mutation za glasovanje za atrakcijo
 │   │   │   │
-│   │   │   ├── export/                             # PDF in ICS izvoz
-│   │   │   │   ├── components/
-│   │   │   │   │   ├── PdfExportButton.tsx         # Gumb ki generira PDF z @react-pdf/renderer in trigger download
-│   │   │   │   │   ├── IcsExportButton.tsx         # Gumb ki kliče backend /export/:id/ics in trigger download
-│   │   │   │   │   └── ItineraryDocument.tsx       # @react-pdf/renderer template za PDF (dnevi, atrakcije, karta)
-│   │   │   │   └── hooks/
-│   │   │   │       └── useExport.ts                # Logika za PDF in ICS izvoz
+│   │   │   │   # PDF: features/itinerary/pdf/ (ItineraryPdfDocument, pdf-generator)
+│   │   │   │   # ICS: api/export.api.ts → GET /export/:id/ics
 │   │   │   │
 │   │   │   ├── profile/                            # Uporabniški profil
 │   │   │   │   ├── pages/
@@ -159,11 +161,11 @@ routiq/                                             # Koren monorepa
 │   │   │   │       ├── useProfile.ts               # Fetch profila (React Query)
 │   │   │   │       └── useUpdateProfile.ts         # Mutation za posodabljanje profila
 │   │   │   │
-│   │   │   └── spotify/                            # Spotify playlist (Iteracija 4 – opcijsko)
-│   │   │       ├── components/
-│   │   │       │   └── SpotifyPlaylistCard.tsx     # Prikaz generirane playliste z linkom na Spotify
-│   │   │       └── hooks/
-│   │   │           └── useSpotifyPlaylist.ts       # Fetch playliste za itinerar
+│   │   │   ├── landing/                            # Javna landing stran (/)
+│   │   │   │   └── pages/LandingPage.tsx
+│   │   │   └── help/                               # Pomoč in FAQ (/help)
+│   │   │       └── pages/HelpPage.tsx
+│   │   │   # Spotify — NI implementiran (samo backend env placeholderji)
 │   │   │
 │   │   ├── hooks/                                  # Shared custom hooks (več featurov jih uporablja)
 │   │   │   ├── useDebounce.ts                      # Zakasnitev vrednosti za search input
@@ -173,8 +175,7 @@ routiq/                                             # Koren monorepa
 │   │   │   ├── useToast.ts                         # Programatično prikazovanje Toast obvestil
 │   │   │   └── usePagination.ts                    # Stanje paginacije (page, limit, total)
 │   │   │
-│   │   ├── context/                                # React context providerji
-│   │   │   └── AuthContext.tsx                     # Hrani user objekt, isAuthenticated, login/logout/register funkcije, token v memory
+│   │   ├── app/Providers.tsx                       # AuthProvider + useAuth() — user, login, logout, register
 │   │   │
 │   │   ├── types/                                  # Skupni TypeScript tipi
 │   │   │   ├── api.types.ts                        # Generični API tipi: ApiResponse<T>, PaginatedResponse<T>, ApiError
@@ -242,17 +243,11 @@ routiq/                                             # Koren monorepa
 │   │   │       ├── api-response.type.ts            # ApiResponse<T>, PaginatedResponse<T> tipi
 │   │   │       └── jwt-payload.type.ts             # JwtPayload interface (sub, email, iat, exp)
 │   │   │
-│   │   ├── auth/                                   # JWT avtentikacija + Google OAuth
-│   │   │   ├── auth.module.ts                      # Uvozi JwtModule, PassportModule, UserModule
-│   │   │   ├── auth.controller.ts                  # Endpointi: /auth/register, /login, /refresh, /logout, /me, /google, /google/callback
-│   │   │   ├── auth.service.ts                     # Logika: validateUser, generateTokens, refreshTokens, revokeTokens
-│   │   │   ├── strategies/
-│   │   │   │   ├── jwt.strategy.ts                 # Passport JWT strategy – validira access token
-│   │   │   │   ├── jwt-refresh.strategy.ts         # Passport JWT strategy – validira refresh token iz cookie
-│   │   │   │   └── google.strategy.ts              # Passport Google OAuth2 strategy
-│   │   │   └── dto/
-│   │   │       ├── login.dto.ts                    # { email, password } z class-validator
-│   │   │       └── register.dto.ts                 # { name, email, password } z validacijo
+│   │   ├── auth/                                   # Placeholder modul (brez controllerjev — auth prek Supabase na FE)
+│   │   │   └── auth.module.ts
+│   │   ├── supabase/                               # SupabaseService — supabase.auth.getUser() za JwtAuthGuard
+│   │   │   ├── supabase.module.ts
+│   │   │   └── supabase.service.ts
 │   │   │
 │   │   ├── users/                                  # Upravljanje uporabnikov
 │   │   │   ├── users.module.ts
@@ -312,7 +307,10 @@ routiq/                                             # Koren monorepa
 │   │       └── mail.service.ts                     # sendInvitation() prek Resend SDK
 │   │
 │   ├── test/
-│   │   ├── app.e2e-spec.ts                         # E2E test: auth flow, generiranje itinerarja
+│   │   ├── integration/                            # Integration testi (prava PostgreSQL)
+│   │   ├── auth.e2e-spec.ts                        # E2E: Supabase JWT + /users/profile
+│   │   ├── groups-social.e2e-spec.ts
+│   │   ├── export.e2e-spec.ts
 │   │   └── jest-e2e.json
 │   │
 │   ├── .env                                        # NIKOLI v git! Realni API ključi.
@@ -352,7 +350,7 @@ routiq/                                             # Koren monorepa
 
 ### Mape ki se ustvarijo sproti
 
-`spotify/` (FE + BE) se ustvari šele v iteraciji 4. Ni treba narediti na začetku. Struktura v tem dokumentu prikazuje **končno stanje** repota.
+**Spotify** ni implementiran (samo env placeholderji v `backend/.env.example`). Struktura v tem dokumentu prikazuje **dejansko stanje** repota z opombami kjer se razlikuje od zgodnjih načrtov.
 
 ### Feature mapa – vedno enaka struktura
 

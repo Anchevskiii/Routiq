@@ -75,6 +75,10 @@ Celoten pregled strukture je v `DIRECTORY.md` v korenu repota.
 | `/groups` | Seznam potovalnih skupin | Da |
 | `/groups/:id` | Detajl skupin + itinerarji + člani | Da |
 | `/profile` | Profil & nastavitve | Da |
+| `/trips` | Seznam vseh potovanj (alternativa dashboardu) | Da |
+| `/notifications` | In-app obvestila | Da |
+| `/help` | Pomoč in FAQ | Da |
+| `/shared/:shareToken` | Javni ogled deljenega itinerarja | Ne |
 | `*` | 404 stran | Ne |
 
 ### Kako deluje routing
@@ -94,6 +98,10 @@ export const ROUTES = {
   GROUPS: '/groups',
   GROUP_DETAIL: (id: string) => `/groups/${id}`,
   PROFILE: '/profile',
+  TRIPS: '/trips',
+  NOTIFICATIONS: '/notifications',
+  HELP: '/help',
+  SHARED_ITINERARY: (shareToken: string) => `/shared/${shareToken}`,
 } as const
 ```
 
@@ -180,15 +188,10 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor – 401 handling
+// Response interceptor – napake se propagirajo; token refresh skrbi Supabase SDK (autoRefreshToken)
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      // Poskusi refresh, ob neuspehu → logout
-    }
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 ```
 
@@ -199,12 +202,13 @@ src/api/
 ├── axios.ts              # Axios instanca + interceptorji
 ├── auth.api.ts           # login(), register(), logout(), refreshToken(), getMe()
 ├── itinerary.api.ts      # generateItinerary(), getItinerary(), updateItinerary(), deleteItinerary(), listItineraries()
-├── attractions.api.ts    # getAttractions(), swapAttraction(), addAttraction(), removeAttraction()
+├── attractions.api.ts    # searchAttractions(), getAttraction(), getAlternatives()
+├── notifications.api.ts  # getNotifications(), getUnreadCount(), markRead(), markAllRead()
 ├── weather.api.ts        # getWeatherForecast() – proxy prek backend
 ├── groups.api.ts         # getGroups(), createGroup(), inviteMember(), vote(), removeVote()
 ├── notifications.api.ts  # getNotifications(), getUnreadCount(), markRead(), markAllRead()
 ├── profile.api.ts        # getProfile(), updateProfile(), uploadAvatar()
-└── export.api.ts         # exportPdf(), exportIcs()
+└── export.api.ts         # exportIcs() — PDF generira itinerary/pdf/ na klientu
 ```
 
 ### Environment spremenljivke
@@ -213,6 +217,10 @@ src/api/
 # frontend/.env.example
 VITE_API_URL=http://localhost:3000/api
 VITE_GOOGLE_MAPS_API_KEY=your_key_here
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_APP_NAME=Routiq
+VITE_APP_DESCRIPTION=Travel planning made simple
 ```
 
 > ⚠️ `VITE_GOOGLE_MAPS_API_KEY` je edini API ključ ki gre na frontend (Maps JS SDK zahteva client-side ključ). Vse ostale ključe (Gemini, Google Weather, Places, Spotify) **nikoli** ne izpostavljamo na klientu – gredo izključno na backend.
@@ -223,16 +231,17 @@ VITE_GOOGLE_MAPS_API_KEY=your_key_here
 
 ### Tok avtentikacije
 
-1. User se prijavi → backend vrne `accessToken` + nastavi `httpOnly` cookie z `refreshToken`
-2. `accessToken` se shrani **izključno v memory** (React context/ref) – **nikoli v localStorage**
-3. Vsak API request dobi token prek Axios interceptorja
-4. Ko `accessToken` poteče (401), interceptor pokliče `/auth/refresh` → dobi nov token
-5. Ob logout se token počisti, kliče se `/auth/logout`, user preusmeri na `/login`
+1. User se prijavi prek **Supabase Auth** (`signInWithPassword`, `signUp`, ali `signInWithOAuth` za Google)
+2. Seja se shrani v **sessionStorage** (Supabase client config) — ne v `localStorage`
+3. `AuthProvider` v `src/app/Providers.tsx` izpostavi `useAuth()` in po prijavi kliče `GET /users/profile`
+4. Axios interceptor doda `Authorization: Bearer <token>` iz Supabase seje; za GET prenose se sinhronizira `sb-access-token` piškotek
+5. Osveževanje tokena skrbi Supabase SDK (`autoRefreshToken: true`), ne backend
+6. Ob logout: `supabase.auth.signOut()`, počisti piškotek, preusmeri na `/login`
 
 ### Auth state
 
 ```typescript
-// Dostopen prek useAuth() v celotni aplikaciji
+// Dostopen prek useAuth() iz src/app/Providers.tsx
 interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
@@ -245,15 +254,15 @@ interface AuthContextValue {
 
 ### Google Sign-In (OAuth)
 
-Backend skrbi za OAuth flow. Frontend samo odpre redirect URL, backend vrne tokene:
+Google OAuth poteka prek Supabase:
 
 ```typescript
 // auth.api.ts
-export const authApi = {
-  loginWithGoogle: () => {
-    window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`
-  }
-}
+export const loginWithGoogle = () =>
+  supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  })
 ```
 
 ---
@@ -343,9 +352,9 @@ FE → POST /api/itinerary/generate (params)
 PDF generiramo na klientu z `@react-pdf/renderer`. Backend ne generira PDF-ov:
 
 ```typescript
-// features/export/components/PdfExportButton.tsx
+// features/itinerary/pdf/pdf-generator.tsx
 import { pdf } from '@react-pdf/renderer'
-import { ItineraryDocument } from './ItineraryDocument'
+import { ItineraryPdfDocument } from './ItineraryPdfDocument'
 
 const handleExport = async () => {
   const blob = await pdf(<ItineraryDocument itinerary={itinerary} />).toBlob()
@@ -446,7 +455,7 @@ Rules:
 
 Project structure (inside frontend/):
 - src/api/               → API functions per feature + axios instance
-- src/app/               → Router, global providers
+- src/app/               → Router, AuthProvider (useAuth), global providers
 - src/components/ui/     → Primitive UI components (Button, Input, Modal...)
 - src/components/layout/ → AppShell, Sidebar, Topbar, ProtectedRoute
 - src/features/          → One folder per feature (auth, planner, itinerary, groups...)
@@ -465,7 +474,7 @@ Project structure (inside frontend/):
 
 ```
 main          ← Produkcija. Merga se samo testirano, delujoče.
-develop       ← Aktivni razvoj. Sem gre vse.
+development   ← Aktivni razvoj. Sem gre vse.
   └── feature/planner-wizard
   └── feature/itinerary-map
   └── feature/auth-google-oauth
@@ -473,7 +482,7 @@ develop       ← Aktivni razvoj. Sem gre vse.
   └── chore/setup-react-query
 ```
 
-- Vsi delamo na feature branchih, ki izhajajo iz `develop`.
+- Vsi delamo na feature branchih, ki izhajajo iz `development`.
 - `main` se merga samo ko je iteracija stabilna in testirana.
 - Branch se briše po mergeu.
 
@@ -510,7 +519,7 @@ chore: pin axios to 1.14.0
 3. PR opis vsebuje: **kaj** je narejeno, **kako preveriti** da deluje, **screenshots** za UI spremembe.
 4. Drugi član ekipe pregleda in **aprovira** pred mergem.
 5. Avtor sam merga po approvu.
-6. Merga se **samo v `develop`** (nikoli direktno v `main`).
+6. Merga se **samo v `development`** (nikoli direktno v `main`).
 
 ### PR predloga
 

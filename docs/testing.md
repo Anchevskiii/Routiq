@@ -143,40 +143,20 @@ backend/src/
 └── supabase/
     └── supabase.service.spec.ts
 
-frontend/src/
+frontend/src/   # 50+ *.test.ts(x) — poženi: npm run test:unit:run
+├── api/                    # itinerary.api.test.ts
+├── components/             # layout/, ui/ (DurationSelect, TimeSelect, SidebarProfile...)
 ├── features/
-│   ├── groups/components/
-│   │   ├── GroupItineraryCard.test.tsx        # Vote widget + mutations
-│   │   ├── VoteWidget.test.tsx
-│   │   └── RailBlock.test.tsx
-│   ├── itinerary/
-│   │   ├── components/
-│   │   │   ├── ItineraryMap.test.tsx          # Mapa z geocoding fallback
-│   │   │   ├── MapActivityBar.test.tsx
-│   │   │   ├── MapDayTabs.test.tsx
-│   │   │   └── ActivityDeleteConfirm.test.tsx
-│   │   └── hooks/
-│   │       ├── usePlacedActivities.test.ts    # Geocoding logika
-│   │       └── usePlaceAutocomplete.test.ts
-│   └── planner/components/
-│       └── PlannerForm.test.tsx
-├── hooks/
-│   ├── useDebounce.test.ts
-│   ├── useLocalStorage.test.ts
-│   ├── useMediaQuery.test.ts
-│   ├── useOnClickOutside.test.ts
-│   ├── usePagination.test.ts
-│   ├── useStream.test.ts
-│   ├── useTheme.test.tsx
-│   └── useToast.test.ts
-└── utils/
-    ├── avatar.utils.test.ts
-    ├── cn.test.ts
-    ├── date.utils.test.ts
-    ├── format.utils.test.ts
-    ├── map.utils.test.ts
-    ├── upload.test.ts
-    └── validation.utils.test.ts
+│   ├── auth/               # LoginForm.test.tsx
+│   ├── groups/             # VoteWidget, GroupItineraryCard, CreateGroupMembersStep...
+│   ├── help/               # HelpPage.test.tsx, faq.utils.test.ts
+│   ├── itinerary/          # ItineraryPage, ItineraryMap, SortableDaysList, AddActivityModal...
+│   ├── landing/            # landing.utils.test.ts
+│   └── planner/            # PlannerForm.test.tsx
+├── hooks/                  # useDebounce, useStream, useTheme, useToast...
+└── utils/                  # date, format, map, validation, cn, upload...
+
+frontend/e2e/               # Playwright: navigation, itinerary.generation, itinerary.drag
 ```
 
 ---

@@ -129,7 +129,11 @@ Swagger API dokumentacija: `http://localhost:3000/api/docs` (samo v development)
 # backend/.env
 DATABASE_URL=postgresql://...           # Supabase connection pooler (pgbouncer)
 DIRECT_URL=postgresql://...             # Direktna konekcija za Prisma migracije
-SUPABASE_JWT_SECRET=...                 # Iz Supabase dashboard → Settings → API
+SUPABASE_URL=https://...supabase.co     # Supabase project URL
+SUPABASE_SERVICE_ROLE_KEY=...           # Service role key (backend JWT verifikacija)
+SUPABASE_JWT_SECRET=...                 # JWT secret iz Supabase dashboard
+CORS_ORIGIN=http://localhost:5173       # Dovoljeni frontend origin(i)
+BACKEND_URL=http://localhost:3000       # Backend URL (OAuth redirecti, share linki)
 GEMINI_API_KEY=...
 GOOGLE_PLACES_API_KEY=...
 GOOGLE_MAPS_DIRECTIONS_API_KEY=...
@@ -171,7 +175,8 @@ routiq/                         # Monorepo koren
 │   ├── prisma/
 │   │   └── schema.prisma       # Celotna podatkovna shema
 │   └── src/
-│       ├── auth/               # Supabase Auth integracija
+│       ├── auth/               # Placeholder modul (auth prek Supabase na FE)
+│       ├── supabase/           # Supabase client za JWT verifikacijo
 │       ├── users/              # Profil, nastavitve, avatar
 │       ├── itinerary/          # AI generiranje + CRUD (jedro)
 │       ├── gemini/             # Gemini SSE streaming service
