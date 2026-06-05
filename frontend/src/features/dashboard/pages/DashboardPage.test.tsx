@@ -49,10 +49,10 @@ describe('DashboardPage', () => {
   })
 
   it('renders stats for itineraries and groups', () => {
-    const mockItin = { id: 'it-1', destination: 'Rome', startDate: '2026-08-01', endDate: '2026-08-05' }
+    const mockItin = { id: 'it-1', destination: 'Rome', startDate: '2026-08-01', endDate: '2026-08-05', createdAt: '2026-06-01T12:00:00Z' }
     const mockGroup = { id: 'gr-1', name: 'Family Trip' }
     setupMockQueries([mockItin], [mockGroup])
     renderComponent()
-    expect(screen.getByText('1')).toBeInTheDocument() // stat total
+    expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2) // stat totals for both itineraries and groups
   })
 })

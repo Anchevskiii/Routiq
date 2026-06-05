@@ -31,13 +31,13 @@ describe('ProfilePage', () => {
       mutate: vi.fn(), isPending: false,
     })
     mockUseQuery.mockImplementation(({ queryKey }) => {
-      if (queryKey[0] === 'itinerariesCount') {
+      if (queryKey[0] === 'itineraries' && queryKey[1] === 'count') {
         return { data: { meta: { total: 5 } } }
       }
-      if (queryKey[0] === 'groupsCount') {
+      if (queryKey[0] === 'groups' && queryKey[1] === 'count') {
         return { data: { data: [{}, {}] } }
       }
-      if (queryKey[0] === 'settings') {
+      if (queryKey[0] === 'user-settings') {
         return { data: {} }
       }
       return { data: undefined }
