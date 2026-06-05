@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { LoginForm }         from '@/features/auth/components/LoginForm'
 import { LoginMapAnimation } from '@/features/auth/components/LoginMapAnimation'
 import { useAuth } from '@/app/Providers'
+import { ROUTES } from '@/constants/routes'
 
 type Stage = 'login' | 'map'
 
@@ -13,8 +15,8 @@ export const LoginPage: React.FC = () => {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f0f9ff] dark:bg-[#0c0b1a]">
-      <header className="relative z-20 mx-auto flex max-w-6xl items-center px-6 py-6">
-        <div className="flex items-center gap-2">
+      <header className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+        <Link to={ROUTES.HOME} className="flex items-center gap-2">
           <div className="grid h-9 w-9 place-items-center rounded-xl gradient-aurora shadow-md">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M12 2C7 2 4 5.5 4 10c0 6 8 12 8 12s8-6 8-12c0-4.5-3-8-8-8z" fill="white"/>
@@ -22,7 +24,18 @@ export const LoginPage: React.FC = () => {
             </svg>
           </div>
           <span className="text-xl font-semibold tracking-tight text-ink">Routiq</span>
-        </div>
+        </Link>
+        <Link
+          to={ROUTES.HOME}
+          className="flex items-center gap-1.5 text-sm font-medium text-ink-dim hover:text-ink transition-colors"
+          title="Back to Home"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Back to Home</span>
+        </Link>
       </header>
 
       <section className="relative mx-auto max-w-6xl px-4 sm:px-6 pb-20">
