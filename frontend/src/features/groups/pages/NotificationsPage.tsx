@@ -34,10 +34,10 @@ export const NotificationsPage: React.FC = () => {
   const busy = acceptMutation.isPending || declineMutation.isPending
 
   return (
-    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] text-gray-900 dark:text-[#f0eeff] px-8 py-6 pb-16">
+    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] text-gray-900 dark:text-[#f0eeff] px-4 py-6 pb-16 sm:px-8">
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="grp-aurora w-10 h-10 rounded-xl grid place-items-center shadow-[0_8px_20px_-6px_rgba(37,99,235,0.6)]">
           <Bell size={18} className="text-white" />
         </div>
@@ -68,7 +68,7 @@ export const NotificationsPage: React.FC = () => {
           </p>
           <div className="flex flex-col gap-2.5">
             {invitations.map(inv => (
-              <div key={inv.id} className="grp-panel rounded-2xl px-5 py-4 flex items-center gap-4 border border-gray-200 dark:border-white/[0.07]">
+              <div key={inv.id} className="grp-panel rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4 border border-gray-200 dark:border-white/[0.07]">
                 <div className={`w-11 h-11 rounded-[14px] bg-gradient-to-br ${avatarGrad(inv.group.createdBy.name)} grid place-items-center text-sm font-bold text-white shrink-0`}>
                   {initials(inv.group.createdBy.name)}
                 </div>
@@ -84,18 +84,18 @@ export const NotificationsPage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
                   <button
                     onClick={() => acceptMutation.mutate(inv.groupId)}
                     disabled={busy}
-                    className="grp-aurora inline-flex items-center gap-1.5 px-4 py-[9px] rounded-[10px] border-none text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60 shadow-[0_6px_16px_-6px_rgba(37,99,235,0.6)]"
+                    className="grp-aurora inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-[9px] rounded-[10px] border-none text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60 shadow-[0_6px_16px_-6px_rgba(37,99,235,0.6)]"
                   >
                     <Check size={13} strokeWidth={2.5} /> Accept
                   </button>
                   <button
                     onClick={() => declineMutation.mutate(inv.groupId)}
                     disabled={busy}
-                    className="inline-flex items-center gap-1.5 px-4 py-[9px] rounded-[10px] border border-white/[0.1] bg-gray-100/50 dark:bg-white/[0.03] text-gray-500 dark:text-[#a3a1c8] text-[13px] font-medium cursor-pointer disabled:opacity-60 hover:bg-gray-200/50 dark:bg-white/[0.06] transition-colors"
+                    className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-[9px] rounded-[10px] border border-white/[0.1] bg-gray-100/50 dark:bg-white/[0.03] text-gray-500 dark:text-[#a3a1c8] text-[13px] font-medium cursor-pointer disabled:opacity-60 hover:bg-gray-200/50 dark:bg-white/[0.06] transition-colors"
                   >
                     <X size={13} /> Decline
                   </button>

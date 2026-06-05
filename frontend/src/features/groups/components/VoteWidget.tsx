@@ -20,6 +20,7 @@ export const VoteWidget: React.FC<Props> = ({ score, userVote, isPending, onVote
     <span className="text-[10px] font-mono text-gray-400 dark:text-[#6e6c93] uppercase tracking-widest">Score</span>
     <div className="flex gap-1.5 mt-1">
       <button
+        type="button"
         className={`grp-vote-btn w-[30px] h-[30px] rounded-lg border border-gray-200 dark:border-white/[0.07] bg-gray-100/50 dark:bg-white/[0.03] text-gray-400 dark:text-[#a3a1c8] grid place-items-center cursor-pointer ${userVote === 'UPVOTE' ? 'grp-vote-up-active' : ''}`}
         disabled={isPending}
         onClick={() => userVote === 'UPVOTE' ? onRemoveVote?.() : onVote('UPVOTE')}
@@ -28,6 +29,7 @@ export const VoteWidget: React.FC<Props> = ({ score, userVote, isPending, onVote
         <ChevronUp size={14} strokeWidth={2.2} />
       </button>
       <button
+        type="button"
         className={`grp-vote-btn w-[30px] h-[30px] rounded-lg border border-gray-200 dark:border-white/[0.07] bg-gray-100/50 dark:bg-white/[0.03] text-gray-400 dark:text-[#a3a1c8] grid place-items-center cursor-pointer ${userVote === 'DOWNVOTE' ? 'grp-vote-down-active' : ''}`}
         disabled={isPending}
         onClick={() => userVote === 'DOWNVOTE' ? onRemoveVote?.() : onVote('DOWNVOTE')}

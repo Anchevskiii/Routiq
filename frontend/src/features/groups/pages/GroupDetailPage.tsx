@@ -78,7 +78,7 @@ export const GroupDetailPage: React.FC = () => {
   )
 
   return (
-    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] text-gray-900 dark:text-[#f0eeff] px-8 py-6 pb-16">
+    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] text-gray-900 dark:text-[#f0eeff] px-4 py-6 pb-16 sm:px-8">
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 mb-[18px] text-[13px] text-gray-400 dark:text-[#6e6c93] font-medium">
@@ -95,7 +95,7 @@ export const GroupDetailPage: React.FC = () => {
       />
 
       {/* Main layout */}
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
 
         {/* Left — content */}
         <div className="flex-1 min-w-0">
@@ -110,7 +110,7 @@ export const GroupDetailPage: React.FC = () => {
         </div>
 
         {/* Right rail */}
-        <div className="w-80 shrink-0 sticky top-6 self-start">
+        <div className="w-full max-w-[480px] xl:w-80 shrink-0 xl:sticky xl:top-6 xl:self-start">
           <GroupDetailSidebar
             groupId={group.id}
             members={group.members}
@@ -146,9 +146,9 @@ export const GroupDetailPage: React.FC = () => {
 
 function GroupDetailSkeleton() {
   return (
-    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] px-8 py-6 pb-16">
+    <div className="min-h-full bg-gray-50 dark:bg-[#0a0c1e] px-4 py-6 pb-16 sm:px-8">
       <div className="h-[220px] rounded-[22px] bg-[rgba(22,24,48,0.4)] mb-[22px] animate-pulse" />
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-6 lg:flex-row">
         <div className="flex-1 h-96 rounded-[18px] bg-[rgba(22,24,48,0.4)] animate-pulse" />
         <div className="w-80 h-96 rounded-[18px] bg-[rgba(22,24,48,0.4)] animate-pulse" />
       </div>

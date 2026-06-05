@@ -181,15 +181,15 @@ export const ItineraryPage: React.FC = () => {
   /* ── group view ── */
   if (groupId && group) return (
     <ItinerarySelectionProvider>
-    <div className="px-8 py-6 pb-16">
-      <nav className="flex items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
+    <div className="px-4 py-6 pb-16 sm:px-8">
+      <nav className="flex flex-col sm:flex-row sm:items-center gap-2 mb-5 text-[13px] text-[#6e6c93] font-medium">
         <Link to={ROUTES.GROUPS} className="hover:text-[#a3a1c8] transition-colors">Groups</Link>
         <span className="opacity-40">/</span>
         <Link to={ROUTES.GROUP_DETAIL(group.id)} className="hover:text-[#a3a1c8] transition-colors">{group.name}</Link>
         <span className="opacity-40">/</span>
         <span className="text-[#f0eeff]">{itinerary.destination}</span>
       </nav>
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
         <div className="flex-1 min-w-0">
           <ItineraryHeader itinerary={itinerary} showActions={false} compact itineraryId={id} />
           <h2 className="text-xl font-semibold text-[#f0eeff] flex items-center gap-2.5 mt-6 mb-4">
@@ -198,7 +198,7 @@ export const ItineraryPage: React.FC = () => {
           </h2>
           <SortableDaysList {...sharedListProps} />
         </div>
-        <div className="w-80 shrink-0 sticky top-6 self-start">
+        <div className="w-full max-w-[480px] xl:w-80 shrink-0 xl:sticky xl:top-6 xl:self-start">
           <GroupDetailSidebar
             groupId={group.id}
             members={group.members}
