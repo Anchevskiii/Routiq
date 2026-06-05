@@ -8,8 +8,8 @@ describe('GoogleMapsProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset global google maps mock
-    delete (globalThis.window as any).google
-    delete (globalThis.window as any).initGoogleMaps
+    delete (globalThis.window as Omit<Window, 'google'> & { google?: unknown; initGoogleMaps?: unknown }).google
+    delete (globalThis.window as Omit<Window, 'google'> & { google?: unknown; initGoogleMaps?: unknown }).initGoogleMaps
     const existingScript = document.getElementById('google-maps-sdk')
     if (existingScript) {
       existingScript.remove()
@@ -50,7 +50,7 @@ describe('GoogleMapsProvider', () => {
 
   it('sets isLoaded to true if google.maps is already present', () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'fake-api-key')
-    globalThis.window.google = { maps: {} } as any
+    globalThis.window.google = { maps: {} } as unknown as typeof google
 
     const Consumer = () => {
       const { isLoaded } = useGoogleMaps()
