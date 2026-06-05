@@ -4,6 +4,13 @@ import { AddActivityModal } from './AddActivityModal'
 import toast from 'react-hot-toast'
 import { ActivityType } from '@/types/itinerary.types'
 
+vi.mock('@/api/itinerary.api', () => ({
+  itineraryApi: {
+    addActivity: vi.fn(() => Promise.resolve({ activity: {} })),
+  },
+}))
+
+
 type CustomGlobal = typeof globalThis & {
   mockHandleLocationChange?: (val: string) => void
 }
@@ -262,4 +269,74 @@ describe('AddActivityModal', () => {
     fireEvent.keyDown(backdrop, { key: 'Enter' })
     expect(onClose).toHaveBeenCalledTimes(3)
   })
+
+  it('detects multiple kinds of conflicts including new_pushed and push_following', () => {
+    const existingActivities = [
+      {
+        id: 'act-1',
+        activityType: ActivityType.ATTRACTION,
+        sortOrder: 1,
+        title: 'Existing 1',
+        startTime: '10:00',
+        durationMinutes: 60,
+      },
+      {
+        id: 'act-2',
+        activityType: ActivityType.ATTRACTION,
+        sortOrder: 2,
+        title: 'Existing 2',
+        startTime: '11:15',
+        durationMinutes: 30,
+      }
+    ]
+
+    render(
+      <AddActivityModal
+        itineraryId="itinerary-1"
+        dayId="day-1"
+        existingActivities={existingActivities}
+        onAdded={vi.fn()}
+        onClose={vi.fn()}
+      />
+    )
+
+    // Set title and exact same startTime to trigger new_pushed
+    fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: 'Conflict Act' } })
+    fireEvent.click(screen.getByText('Optional'))
+    fireEvent.click(screen.getByText('10:00')) // exact same startTime as Existing 1
+
+    // Submit form
+    fireEvent.submit(screen.getByRole('button', { name: 'Add Activity' }).closest('form')!)
+
+    // It should show the Time Conflict screen with new_pushed warning and following warning
+    expect(screen.getByText('Time Conflict')).toBeInTheDocument()
+    expect(screen.getByText(/Your activity will start at 11:00/i)).toBeInTheDocument() // pushed after Existing 1 (ends at 11:00)
+    expect(screen.getByText(/Existing 2/)).toBeInTheDocument() // starts at 11:15 which is between 11:00 and 12:00 (new_pushed starts 11:00 + 60 min = ends 12:00)
+  })
+
+  it('covers the mutationFn of useMutation calling itineraryApi.addActivity', async () => {
+    render(
+      <AddActivityModal
+        itineraryId="itinerary-1"
+        dayId="day-1"
+        existingActivities={[]}
+        onAdded={vi.fn()}
+        onClose={vi.fn()}
+      />
+    )
+    const { itineraryApi } = await import('@/api/itinerary.api')
+    
+    // We call the mutationFn that was passed to useMutation hook options
+    expect(mutationCallbacks.onSuccess).toBeDefined()
+    
+    // Execute useMutation's mutationFn option
+    const optionsPassed = vi.mocked(mockUseMutation).mock.calls[0][0]
+    expect(optionsPassed.mutationFn).toBeDefined()
+    
+    const payload = { title: 'Test' }
+    await optionsPassed.mutationFn(payload)
+    expect(itineraryApi.addActivity).toHaveBeenCalledWith('itinerary-1', 'day-1', payload)
+  })
 })
+
+
