@@ -22,13 +22,13 @@ function infoHtml(a: PlacedActivityExtended, destination?: string) {
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.title)}${a.location ? encodeURIComponent(' ' + a.location) : destination ? encodeURIComponent(' ' + destination) : ''}&query_place_id=${a.placeId}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.title)}${a.location ? encodeURIComponent(' ' + a.location) : destination ? encodeURIComponent(' ' + destination) : ''}`
 
-  return `<div style="font-family:system-ui,sans-serif;padding:0;min-width:210px;max-width:260px;color:#14122b">
-    ${a.photoUrl ? `<div style="width:calc(100% + 24px);margin:-12px -12px 10px -12px;height:120px;overflow:hidden;border-radius:8px 8px 0 0"><img src="${a.photoUrl}" alt="${a.title}" style="width:100%;height:100%;object-fit:cover" /></div>` : ''}
+  return `<div style="font-family:system-ui,sans-serif;padding:0;min-width:180px;max-width:230px;color:#14122b">
+    ${a.photoUrl ? `<div style="width:calc(100% + 24px);margin:-12px -12px 8px -12px;height:85px;overflow:hidden;border-radius:8px 8px 0 0"><img src="${a.photoUrl}" alt="${a.title}" style="width:100%;height:100%;object-fit:cover" /></div>` : ''}
     <div style="${a.photoUrl ? '' : 'padding-top:4px;'}">
-      <div style="font-size:10px;font-weight:700;color:${a.color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Day ${a.dayNumber}</div>
-      <div style="font-size:13px;font-weight:600;line-height:1.4;margin-bottom:2px">${a.title}</div>
-      ${a.startTime ? `<div style="font-size:11px;color:#9b98be">${a.startTime}</div>` : ''}
-      <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:10px;font-size:12px;font-weight:600;color:#2563eb;text-decoration:none">View on Google Maps ↗</a>
+      <div style="font-size:10px;font-weight:700;color:${a.color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Day ${a.dayNumber}</div>
+      <div style="font-size:12px;font-weight:600;line-height:1.35;margin-bottom:2px">${a.title}</div>
+      ${a.startTime ? `<div style="font-size:10px;color:#9b98be">${a.startTime}</div>` : ''}
+      <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:600;color:#2563eb;text-decoration:none">View on Google Maps ↗</a>
     </div>
   </div>`
 }
@@ -110,13 +110,15 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
   // Rebuild a pin element for a marker — selected = larger blue, normal = activity colour
   // Returns PinElement directly to avoid deprecated content/element usage
   const rebuildPin = useCallback((activity: PlacedActivity, isSelected: boolean) => {
+    const idx = placed.findIndex(a => a.id === activity.id)
     return new google.maps.marker.PinElement({
       background: isSelected ? '#2563eb' : activity.color,
       borderColor: isSelected ? '#ffffff' : 'rgba(255,255,255,0.9)',
       glyphColor: 'white',
+      glyphText: idx !== -1 ? String(idx + 1) : undefined,
       scale: isSelected ? 1.4 : 1.1,
     })
-  }, [])
+  }, [placed])
 
   // Centre map and highlight marker when an activity is selected from the list
   useEffect(() => {
