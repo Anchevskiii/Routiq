@@ -149,11 +149,11 @@ export const HelpPage: React.FC = () => {
             <span className="hp-kicker">POGOSTA VPRAŠANJA</span>
             <h2 className="hp-section-title">Vse, kar te zanima</h2>
             <p className="hp-section-desc">
-              {q ? <>Rezultati za »<strong>{query}</strong>«</> : 'Izberi kategorijo ali poišči svoje vprašanje.'}
+              {query ? <>Rezultati za »<strong>{query}</strong>«</> : 'Izberi kategorijo ali poišči svoje vprašanje.'}
             </p>
           </div>
 
-          {!q && (
+          {!query && (
             <div className="hp-faq-tabs">
               {TABS.map(t => (
                 <button
