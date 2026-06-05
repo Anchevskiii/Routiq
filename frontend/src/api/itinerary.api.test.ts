@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { itineraryApi } from './itinerary.api'
 import { apiClient } from './axios'
 import { supabase } from './supabase'
+import type { CreateItineraryDto } from '@/types/itinerary.types'
+
 
 vi.mock('./axios', () => ({
   apiClient: {
@@ -36,10 +38,10 @@ describe('itineraryApi', () => {
     vi.mocked(supabase.auth.getSession).mockResolvedValue({
       data: { session: mockSession },
       error: null,
-    } as any)
+    } as unknown as Awaited<ReturnType<typeof supabase.auth.getSession>>)
 
     const payload = { title: 'Trip', destination: 'Paris', startDate: '2026-06-05', endDate: '2026-06-10' }
-    await itineraryApi.generateItinerary(payload as any)
+    await itineraryApi.generateItinerary(payload as unknown as CreateItineraryDto)
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/itinerary/generate'),

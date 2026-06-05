@@ -5,7 +5,7 @@ import { Day } from '@/types/itinerary.types'
 
 // Mock the nested components if needed, or render them
 vi.mock('./SortableDayCard', () => ({
-  SortableDayCard: ({ day, onAddActivity }: any) => (
+  SortableDayCard: ({ day, onAddActivity }: { day: { id: string; dayNumber: number }; onAddActivity: (id: string) => void }) => (
     <div data-testid={`day-card-${day.id}`}>
       Day {day.dayNumber}
       <button onClick={() => onAddActivity(day.id)}>Add Activity</button>
@@ -14,7 +14,7 @@ vi.mock('./SortableDayCard', () => ({
 }))
 
 vi.mock('./AddActivityModal', () => ({
-  AddActivityModal: ({ dayId, onClose }: any) => (
+  AddActivityModal: ({ dayId, onClose }: { dayId: string; onClose: () => void }) => (
     <div data-testid="add-activity-modal">
       Modal for {dayId}
       <button onClick={onClose}>Close</button>
