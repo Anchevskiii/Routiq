@@ -515,7 +515,7 @@ BE → pošlje { itineraryId } v zadnjem SSE eventu ←── FE redirect na /it
 
 ### SSE (Server-Sent Events)
 
-SSE je enosmerna povezava strežnik → klient, kjer strežnik pošilja podatke postopno. Idealno za AI generiranje kjer hočemo da se besedilo pojavi sproti, ne po 20 sekundah naenkrat.
+SSE je enosmerna povezava strežnik → klient, kjer strežnik pošilja podatke postopno. Pri generiranju itinerarja se ti podatki (npr. prejeti dnevi) na frontend pošiljajo za ažuriranje loading animacije in časovnega napredka, celoten itinerar pa se shrani ob zaključku v bazo in prikaže naenkrat.
 
 ### Prompt
 

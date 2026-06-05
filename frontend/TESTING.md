@@ -85,4 +85,4 @@ To prevent E2E tests from needing real login credentials, the frontend includes 
 * When the application initializes in `src/app/Providers.tsx`, if it detects `VITE_E2E_BYPASS_AUTH === 'true'`, it automatically logs in as a mock `e2e-user` (`e2e@routiq.test`), enabling E2E tests to run instantly without hitting Supabase.
 
 ### SSE Stream Interception
-Playwright uses native network routing (`page.route`) to mock Server-Sent Events (SSE) stream endpoints like `/api/itinerary/generate`, feeding simulated progress and completion events to the calendar view.
+Playwright uses native network routing (`page.route`) to mock Server-Sent Events (SSE) stream endpoints like `/api/itinerary/generate`, feeding simulated progress and completion events to the loading view before transitioning to the loaded itinerary page.

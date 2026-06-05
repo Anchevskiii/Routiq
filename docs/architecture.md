@@ -186,7 +186,7 @@ features/<ime>/
 | Globalni UI state | React Context | Auth user objekt, tema |
 | Lokalni state | `useState` | Modal open/close, wizard korak, form polje |
 | Forme | React Hook Form + Zod | Vsi formularji z validacijo |
-| AI streaming | `useState` + `useStream` hook | Generiran tekst ki prihaja po dnevih (SSE chunki) |
+| AI streaming | `useState` + `useStream` hook | Dogodki o napredku za loading animacijo |
 
 ### 3.4 Routing
 
@@ -228,7 +228,7 @@ graph TD
 
     PlannerPage --> PlannerForm
     PlannerForm --> TravelTypeGrid
-    PlannerPage --> GenerationLoading["GenerationLoading\n(SSE prikaz po dnevih)"]
+    PlannerPage --> GenerationLoading["GenerationLoading\n(SSE progress/loading animacija)"]
 
     ItineraryPage --> ItineraryHeader["ItineraryHeader\n(PDF, ICS, Share)"]
     ItineraryPage --> DayCard
@@ -388,7 +388,7 @@ Vsaka napaka — ne glede na to kje nastane — gre skozi `AllExceptionsFilter`:
 
 ### 5.3 SSE streaming (AI generiranje)
 
-SSE (Server-Sent Events) je enosmerna HTTP konekcija strežnik → klient. Idealna za AI generiranje kjer hočemo da se vsak dan prikaže takoj ko je generiran:
+SSE (Server-Sent Events) je enosmerna HTTP konekcija strežnik → klient. Pri generiranju itinerarja se prejeti podatki o napredku uporabijo za ažuriranje loading animacije, celoten itinerar pa se prikaže ob koncu ko je shranjen v bazi:
 
 ```
 FE odpre SSE konekcijo → POST /api/itinerary/generate

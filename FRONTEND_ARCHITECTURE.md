@@ -36,7 +36,7 @@
 | Server data | TanStack Query (React Query) | Cache, loading, refetch |
 | Datum/čas | date-fns | Tree-shakeable, immutable |
 | Karte | Google Maps JavaScript SDK | Interaktivni zemljevid, Places |
-| AI prikaz | Streaming text (SSE) | Stream odgovor iz backend AI endpointa |
+| AI prikaz | Status & progress (SSE) | Stream napredka iz backend AI endpointa za loading animacijo |
 | Icons | Lucide React | Konsistentna ikona knjižnica |
 | PDF izvoz | @react-pdf/renderer | PDF generiranje na klientu |
 | Animacije | Framer Motion | Itinerar prehodi, loading stanja |
@@ -275,7 +275,7 @@ export const loginWithGoogle = () =>
 | Globalni UI state | React Context | Auth user, tema |
 | Lokalni state | `useState` | Modal open/close, wizard korak |
 | Forme | React Hook Form + Zod | Vsi formularji |
-| AI streaming | `useState` + SSE/fetch stream | Besedilo ki se generira |
+| AI streaming | `useState` + SSE/fetch stream | Statusi in napredek za loading animacijo |
 
 ### React Query – ključi
 
@@ -294,23 +294,21 @@ export const QUERY_KEYS = {
 
 ### AI streaming state
 
-Ker generiranje itinerarja poteka prek SSE streama, upravljamo stanje lokalno:
+Ker generiranje itinerarja poteka prek SSE streama, se na frontend prenašajo statusi, zanimivosti (attractions) in prejeti dnevi, kar posodablja stanje nalaganja:
 
 ```typescript
-// Primer v useGenerateItinerary.ts
-const [streamedText, setStreamedText] = useState('')
-const [isStreaming, setIsStreaming] = useState(false)
-
-const startGeneration = async (params: PlannerParams) => {
-  setIsStreaming(true)
-  const response = await fetch(`${VITE_API_URL}/itinerary/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(params),
-  })
-  const reader = response.body!.getReader()
-  // Procesiranje chunkov...
-}
+// Primer v PlannerPage.tsx pri poslušanju SSE streama
+stream(ITINERARY_ENDPOINTS.GENERATE, { ...values, days }, {
+  onProgress: (data) => {
+    if (data.type === 'status')      setProgress(data.message)
+    if (data.type === 'attractions') setAttractions(data.data)
+    if (data.type === 'day')         setGeneratedDays(prev => [...prev, data.data])
+  },
+  onSuccess: async (data) => {
+    setIsComplete(true)
+    navigate(ROUTES.ITINERARY(data.itineraryId))
+  }
+})
 ```
 
 ---
@@ -338,13 +336,13 @@ Komponente ki uporabljajo karte (`ItineraryMap`, `AttractionMarker`) importajo h
 
 ### AI generiranje – prikaz na FE
 
-Frontend ne kliče Gemini direktno. Backend endpoint `/api/itinerary/generate` streama odgovor. FE bere stream in postopno prikazuje itinerar:
+Frontend ne generira in ne prikazuje posameznih dnevov sproti v končnem pogledu. Namesto tega backend endpoint `/api/itinerary/generate` streama napredek (statusne dogodke, prejete dni), ki jih frontend uporabi za izračun odstotka nalaganja in prikaz v premium loading zaslonu (`GenerationLoading`). Ko se stream uspešno zaključi, se celoten itinerar shrani v bazo, frontend pa prejme `itineraryId` in preusmeri uporabnika na polno stran potovanja:
 
 ```
 FE → POST /api/itinerary/generate (params)
-   ← SSE stream chunkov JSON
+   ← SSE stream statusov, atrakcij in prejetih dni (za progress bar)
    ← Ko stream konča → itinerar je shranjen v DB, FE dobi `itineraryId`
-   ← FE redirect na /itinerary/:id
+   ← FE redirect na /itinerary/:id (kjer se prikaže celotna pot)
 ```
 
 ### PDF izvoz

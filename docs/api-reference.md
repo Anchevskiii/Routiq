@@ -194,7 +194,12 @@ Query parametri: `query` (obvezen), `location` (opcijsko), `radius` (opcijsko, m
 }
 ```
 
-**POST `/attractions/:id/alternatives`** — `:id` je Google `placeId`. Vrne alternativne atrakcije v okolici (body lahko vsebuje dodatne filtre).
+**POST `/attractions/:id/alternatives`** — `:id` je Google `placeId`. Vrne alternativne atrakcije v okolici.
+
+```json
+// Request body
+{ "destination": "Rim, Italija" }
+```
 
 ---
 
@@ -247,9 +252,9 @@ Query parametri: `query` (obvezen), `location` (opcijsko), `radius` (opcijsko, m
 | PATCH | `/groups/:id/members/:memberId/role` | Posodobi vlogo člana |
 | POST | `/groups/:id/itineraries` | Dodaj itinerar v skupino |
 | DELETE | `/groups/:id/itineraries/:groupItineraryId` | Odstrani itinerar iz skupine |
-| GET | `/groups/:gid/itineraries/:giid/votes` | Glasovi za itinerar |
-| POST | `/groups/:gid/itineraries/:giid/vote` | Glasuj za itinerar (UPVOTE/DOWNVOTE) |
-| DELETE | `/groups/:gid/itineraries/:giid/vote` | Odstrani glas |
+| GET | `/groups/:groupId/itineraries/:groupItineraryId/votes` | Glasovi za itinerar |
+| POST | `/groups/:groupId/itineraries/:groupItineraryId/vote` | Glasuj za itinerar (UPVOTE/DOWNVOTE) |
+| DELETE | `/groups/:groupId/itineraries/:groupItineraryId/vote` | Odstrani glas |
 | GET | `/groups/:groupId/comments` | Komentarji skupin |
 | POST | `/groups/:groupId/comments` | Dodaj komentar / odgovor |
 | POST | `/groups/:groupId/comments/:commentId/reactions` | Dodaj emoji reakcijo na komentar |
@@ -280,7 +285,7 @@ Query parametri: `query` (obvezen), `location` (opcijsko), `radius` (opcijsko, m
 // 400 — povabilo že čaka
 ```
 
-### POST `/groups/:gid/itineraries/:giid/vote`
+### POST `/groups/:groupId/itineraries/:groupItineraryId/vote`
 
 ```json
 // Request body
@@ -292,13 +297,13 @@ Query parametri: `query` (obvezen), `location` (opcijsko), `radius` (opcijsko, m
 
 **Score logika:** `score = število UPVOTE glasov` — downvoti se ne odštevajo. Vsak user ima lahko en glas na itinerar (upsert — novi glas zamenja starega).
 
-### DELETE `/groups/:gid/itineraries/:giid/vote`
+### DELETE `/groups/:groupId/itineraries/:groupItineraryId/vote`
 
 Odstrani glas kličočega userja (soft delete). Vrne `{ "success": true }`.
 
 **Kdaj se pošlje obvestilo:** Ko nekdo glasuje za itinerar ki mu ne pripada, lastnik itinerarja prejme in-app obvestilo tipa `VOTE`.
 
-### POST `/groups/:id/comments`
+### POST `/groups/:groupId/comments`
 
 ```json
 // Request body

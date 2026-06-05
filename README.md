@@ -51,7 +51,7 @@ Podroben deployment diagram → [Arhitektura sistema](docs/architecture.md#deplo
 
 | Sklop | Opis |
 |---|---|
-| **AI generiranje** | Google Gemini 2.5 Flash generira itinerar prek SSE streaming — vsak dan se prikaže sproti |
+| **AI generiranje** | Google Gemini 2.5 Flash generira itinerar prek SSE streaming — podatki o napredku se uporabijo za animacijo in časovno oceno nalaganja, končni itinerar pa se ob koncu shrani v bazo in prikaže celostno. |
 | **Interaktivni zemljevid** | Google Maps z atrakcijami, optimizirano potjo in vremensko napovedjo |
 | **Urejanje itinerarja** | Drag & drop razporejanje aktivnosti, dodajanje in brisanje |
 | **Skupinska potovanja** | Kreiranje skupin, e-mail povabila (Resend), glasovanje za itinerarje (score = upvoti) |

@@ -133,7 +133,7 @@ sequenceDiagram
     loop Vsak dan posebej
         GEMINI-->>BE: JSON chunk (en dan: aktivnosti, restavracije, prevoz)
         BE-->>FE: SSE: { type: 'day', data: DayData }
-        FE->>FE: Prikaže dan v GenerationLoading UI
+        FE->>FE: Posodobi napredek in oceno časa v GenerationLoading UI
     end
 
     GEMINI-->>BE: stream konča
@@ -176,7 +176,7 @@ flowchart TD
     ShowError2 --> End2([Konec])
 
     GeminiOK -->|Da| StreamDays["SSE stream dnevov\n(1 chunk = 1 dan)"]
-    StreamDays --> ShowInUI["FE prikazuje dneve sproti"]
+    StreamDays --> ShowInUI["FE posodobi loading bar in status"]
     ShowInUI --> AllDone{"Vsi dnevi\nprejeti?"}
     AllDone -->|Ne| StreamDays
     AllDone -->|Da| SaveToDB["Prisma transakcija:\nshrani vse v DB"]
@@ -388,7 +388,7 @@ sequenceDiagram
         Note over U,DB: Glasovanje
         U->>FE: Klikne ▲ UPVOTE ali ▼ DOWNVOTE
         FE->>FE: Optimistično posodobi score (pending state)
-        FE->>BE: POST /groups/:gid/itineraries/:giid/vote\n{ voteType: 'UPVOTE' | 'DOWNVOTE' }
+        FE->>BE: POST /groups/:groupId/itineraries/:groupItineraryId/vote\n{ voteType: 'UPVOTE' | 'DOWNVOTE' }
         BE->>DB: Preveri članstvo (status=ACCEPTED)
         BE->>DB: UPSERT Vote\n(en glas na userja — zamenja prejšnji)
         BE->>DB: (fire-and-forget) CREATE Notification\nza lastnika itinerarja
@@ -401,7 +401,7 @@ sequenceDiagram
     rect rgb(240, 255, 240)
         Note over U,DB: Odstranitev glasu
         U->>FE: Klikne aktiven gumb (toggle off)
-        FE->>BE: DELETE /groups/:gid/itineraries/:giid/vote
+        FE->>BE: DELETE /groups/:groupId/itineraries/:groupItineraryId/vote
         BE->>DB: Soft delete Vote (deletedAt = now)
         DB-->>BE: OK
         BE-->>FE: { success: true }
