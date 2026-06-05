@@ -25,13 +25,13 @@ export const LoginPage: React.FC = () => {
         </div>
       </header>
 
-      <section className="relative mx-auto max-w-6xl px-6 pb-20">
-        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[2rem] border border-gray-200 dark:border-transparent shadow-[0_30px_80px_-20px_rgba(0,0,0,0.12)] dark:shadow-none">
+      <section className="relative mx-auto max-w-6xl px-4 sm:px-6 pb-20">
+        <div className="relative w-full overflow-visible sm:overflow-hidden rounded-[1rem] sm:rounded-[2rem] border border-gray-200 dark:border-transparent shadow-[0_30px_80px_-20px_rgba(0,0,0,0.12)] dark:shadow-none min-h-[420px] sm:aspect-[16/10]">
           <AnimatePresence mode="wait">
             {stage === 'login' && (
               <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
-                className="absolute inset-0 grid place-items-center bg-white/60 dark:bg-transparent">
+                className="relative sm:absolute sm:inset-0 grid place-items-center bg-white/60 dark:bg-transparent">
                 <LoginForm onSuccess={(n) => { setName(n); setStage('map') }} />
               </motion.div>
             )}
@@ -43,12 +43,13 @@ export const LoginPage: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        <div className="mt-8 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-            Plan your next trip,{' '}
-            <em className="font-serif italic font-normal gradient-aurora-text">one pin at a time.</em>
+        <div className="mt-6 text-center px-2 sm:px-0">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-ink">
+            Plan your next trip,
+            <br className="sm:hidden" />
+            <em className="font-serif italic font-normal gradient-aurora-text"> one pin at a time.</em>
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-ink-dim">
+          <p className="mx-auto mt-3 max-w-xl text-ink-dim text-sm sm:text-base">
             Sign in to drop pins, draw routes, and watch your itinerary come to life.
           </p>
         </div>

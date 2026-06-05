@@ -16,8 +16,8 @@ export const RegisterPage: React.FC = () => (
       </div>
     </header>
 
-    <section className="relative mx-auto max-w-6xl px-6 pb-20">
-      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[2rem] border border-gray-200 dark:border-transparent shadow-[0_30px_80px_-20px_rgba(0,0,0,0.12)] dark:shadow-none">
+    <section className="relative mx-auto max-w-6xl px-4 sm:px-6 pb-20">
+      <div className="relative w-full overflow-visible sm:overflow-hidden rounded-[1rem] sm:rounded-[2rem] border border-gray-200 dark:border-transparent shadow-[0_30px_80px_-20px_rgba(0,0,0,0.12)] dark:shadow-none min-h-[420px] sm:aspect-[16/10]">
         {/* Background map decoration */}
         <div className="absolute inset-0 bg-gradient-to-br from-sky-50 via-indigo-50/40 to-violet-50/30">
           <svg className="absolute inset-0 w-full h-full opacity-[0.06]" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
@@ -42,18 +42,19 @@ export const RegisterPage: React.FC = () => (
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
-          className="absolute inset-0 grid place-items-center"
+          className="relative sm:absolute sm:inset-0 grid place-items-center"
         >
           <RegisterForm />
         </motion.div>
       </div>
 
-      <div className="mt-8 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          Your next trip starts{' '}
-          <em className="font-serif italic font-normal gradient-aurora-text">right here.</em>
+      <div className="mt-6 text-center px-2 sm:px-0">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-ink">
+          Your next trip starts
+          <br className="sm:hidden" />
+          <em className="font-serif italic font-normal gradient-aurora-text"> right here.</em>
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-ink-dim">
+        <p className="mx-auto mt-3 max-w-xl text-ink-dim text-sm sm:text-base">
           Create an account to build itineraries, drop pins, and explore the world.
         </p>
       </div>

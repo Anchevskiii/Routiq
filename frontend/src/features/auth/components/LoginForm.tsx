@@ -36,10 +36,10 @@ export const LoginForm: React.FC<Props> = ({ onSuccess }) => {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="w-full max-w-sm rounded-2xl bg-white/90 dark:bg-[#1e1b38] backdrop-blur p-8 shadow-xl ring-1 ring-sky-200 dark:ring-[rgba(139,92,246,0.3)]"
+      className="w-full max-w-sm rounded-lg sm:rounded-2xl bg-white/95 dark:bg-[#1e1b38] backdrop-blur p-6 sm:p-8 shadow-xl ring-1 ring-sky-200 dark:ring-[rgba(139,92,246,0.3)] mx-4 sm:mx-0"
     >
       <p className="text-xs font-mono uppercase tracking-[0.14em] text-indigo-400">Routiq</p>
-      <h2 className="mt-1 text-3xl font-semibold text-ink">Welcome</h2>
+      <h2 className="mt-1 text-2xl sm:text-3xl font-semibold text-ink">Welcome</h2>
       <p className="mt-2 text-sm text-ink-dim">Sign in to start planning.</p>
 
       <label className="mt-6 block text-sm font-medium text-ink-dim">Email</label>
