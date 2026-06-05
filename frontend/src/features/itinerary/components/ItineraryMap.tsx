@@ -57,7 +57,7 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
         background: activity.color,
         borderColor: 'rgba(255,255,255,0.9)',
         glyphColor: 'white',
-        glyph: String(idx + 1),
+        glyphText: String(idx + 1),
         scale: 1.1,
       })
       const marker = new google.maps.marker.AdvancedMarkerElement({
@@ -67,7 +67,7 @@ export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = 
         zIndex: idx,
       })
       marker.appendChild(pin)
-      marker.addListener('click', () => {
+      marker.addListener('gmp-click', () => {
         setActive(activity)
         infoWindowRef.current?.setContent(infoHtml(activity))
         infoWindowRef.current?.open(mapInstanceRef.current!, marker)
