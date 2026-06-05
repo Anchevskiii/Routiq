@@ -17,6 +17,8 @@ export default defineConfig({
     env: {
       VITE_E2E_BYPASS_AUTH: 'true',
       VITE_GOOGLE_MAPS_API_KEY: '',
+      VITE_SUPABASE_URL: 'https://example.invalid',
+      VITE_SUPABASE_ANON_KEY: 'fake-supabase-anon-key-not-a-real-jwt',
     },
   },
   projects: [
