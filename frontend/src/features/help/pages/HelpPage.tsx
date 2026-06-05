@@ -63,7 +63,7 @@ export const HelpPage: React.FC = () => {
                 <path d="M12 3v4M12 17v4M5 12H3M21 12h-2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
-            </span>
+            </span>{' '}
             HELP CENTER
           </span>
           <h1 className="hp-hero-title">How can we <span className="hp-em">help you?</span></h1>
@@ -209,9 +209,9 @@ export const HelpPage: React.FC = () => {
               { grad: 'linear-gradient(135deg,#3b82f6,#6366f1)',  title: 'Interactive map',    desc: 'Every stop visible on a live map.',                     icon: <><path d="M9 4l-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></> },
               { grad: 'linear-gradient(135deg,#8b5cf6,#a855f7)', title: 'Group trips',         desc: 'Plan together with travel companions in real time.',    icon: <><circle cx="9" cy="9" r="3.5"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="8" r="2.5"/><path d="M15 19c0-2 2-4 4.5-4"/></> },
               { grad: 'linear-gradient(135deg,#a855f7,#ec4899)', title: 'Voting',               desc: 'Your group votes on the best ideas.',                   icon: <><path d="M7 11v8H4a1 1 0 01-1-1v-6a1 1 0 011-1h3z"/><path d="M7 11l4-7a2 2 0 012 2v3h5a2 2 0 012 2.3l-1.2 6A2 2 0 0118.8 19H7"/></> },
-              { grad: 'linear-gradient(135deg,#ec4899,#f472b6)', title: 'Chat',                 desc: 'Talk to your group directly inside the app.',           icon: <><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/></> },
+              { grad: 'linear-gradient(135deg,#ec4899,#f472b6)', title: 'Chat',                 desc: 'Talk to your group directly inside the app.',           icon: <path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/> },
               { grad: 'linear-gradient(135deg,#f59e0b,#ec4899)', title: 'PDF / ICS export',    desc: 'Take your plan as a PDF or add it to your calendar.',   icon: <><path d="M12 3v12M7 11l5 4 5-4"/><path d="M5 21h14"/></> },
-              { grad: 'linear-gradient(135deg,#6366f1,#8b5cf6)', title: 'Dark mode',            desc: 'Easy on the eyes, day and night.',                     icon: <><path d="M20 14a8 8 0 11-9.5-9.8 6.5 6.5 0 009.5 9.8z"/></> },
+              { grad: 'linear-gradient(135deg,#6366f1,#8b5cf6)', title: 'Dark mode',            desc: 'Easy on the eyes, day and night.',                     icon: <path d="M20 14a8 8 0 11-9.5-9.8 6.5 6.5 0 009.5 9.8z"/> },
               { grad: 'linear-gradient(135deg,#22c55e,#3b82f6)', title: 'Smart timeline',       desc: 'Optimised order of stops and travel distances.',        icon: <><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></> },
             ].map(f => (
               <div key={f.title} className="hp-feature">
