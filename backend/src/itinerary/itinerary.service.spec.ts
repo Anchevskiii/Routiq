@@ -1259,6 +1259,8 @@ describe('ItineraryService', () => {
         complete: () => {
           const dayEvents = events.filter((e) => e.type === 'day');
           expect(dayEvents.length).toBeGreaterThanOrEqual(1);
+          const telemetryEvents = events.filter((e) => e.type === 'telemetry');
+          expect(telemetryEvents.length).toBeGreaterThanOrEqual(2); // Should have at least preparation and day telemetry
           done();
         },
         error: done,
