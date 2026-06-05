@@ -12,8 +12,6 @@ export const useStream = <T = unknown, P = unknown>() => {
   const [error, setError] = useState<string | null>(null)
 
   const stream = useCallback(async (url: string, body: unknown, options?: StreamOptions<T, P>) => {
-    const startTime = Date.now()
-    console.log(`[PERF] useStream started for ${url} at ${new Date(startTime).toISOString()}`)
     setIsLoading(true)
     setError(null)
 
@@ -39,7 +37,6 @@ export const useStream = <T = unknown, P = unknown>() => {
 
       const decoder = new TextDecoder()
       let buffer = ''
-      let eventCount = 0
 
       let chunk = await reader.read()
       while (!chunk.done) {
@@ -49,15 +46,12 @@ export const useStream = <T = unknown, P = unknown>() => {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            eventCount++
             const jsonString = line.replace('data: ', '')
             try {
               const data = JSON.parse(jsonString) as {
                 type?: string
                 error?: string
               }
-              
-              console.log(`[PERF] SSE Event #${eventCount} (type: ${data.type}) received at T+${Date.now() - startTime}ms`)
 
               if (data.type === 'error') {
                 const message = data.error || 'Unknown stream error'
@@ -69,13 +63,14 @@ export const useStream = <T = unknown, P = unknown>() => {
               }
               
               if (data.type === 'complete') {
-                console.log(`[PERF] Stream complete after ${Date.now() - startTime}ms. Received ${eventCount} events.`)
                 options?.onSuccess?.(data as T)
               } else {
                 options?.onProgress?.(data as P)
               }
             } catch (e) {
-              console.error('Error parsing SSE data:', e)
+              if (import.meta.env.DEV) {
+                console.error('Error parsing SSE data:', e)
+              }
             }
           }
         }

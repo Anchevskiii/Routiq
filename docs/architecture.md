@@ -121,9 +121,9 @@ Pregled vseh funkcionalnosti sistema — kaj uporabnik in admin skupin lahko po�
 
 ---
 
-## 3. Frontend arhitektura
+## 4. Frontend arhitektura
 
-### 3.1 Struktura map
+### 4.1 Struktura map
 
 ```
 frontend/src/
@@ -165,7 +165,7 @@ frontend/src/
 └── constants/              # ROUTES, QUERY_KEYS, travelTypes enum
 ```
 
-### 3.2 Feature modul — struktura
+### 4.2 Feature modul — struktura
 
 Vsak feature (planner, itinerary, groups...) ima enako interno strukturo:
 
@@ -178,7 +178,7 @@ features/<ime>/
 
 **Pravilo reusability:** Komponenta ki se pojavi na dveh ali več mestih → v `components/`. Samo en feature → v `features/<feature>/components/`.
 
-### 3.3 State management
+### 4.3 State management
 
 | Vrsta stanja | Orodje | Primer |
 |---|---|---|
@@ -188,7 +188,7 @@ features/<ime>/
 | Forme | React Hook Form + Zod | Vsi formularji z validacijo |
 | AI streaming | `useState` + `useStream` hook | Dogodki o napredku za loading animacijo |
 
-### 3.4 Routing
+### 4.4 Routing
 
 Vse rute so definirane v `src/app/router.tsx`. Poti so konstante v `src/constants/routes.ts` — nikoli ne pišemo path stringov direktno v komponente:
 
@@ -206,7 +206,7 @@ export const ROUTES = {
 
 Zaščitene strani so zavite v `<ProtectedRoute>` ki ob neautenticiranem dostopu preusmeri na `/login?redirect=<original-path>`.
 
-### 3.5 Hierarhija komponent
+### 4.5 Hierarhija komponent
 
 ```mermaid
 graph TD
@@ -245,9 +245,9 @@ graph TD
 
 ---
 
-## 4. Backend arhitektura
+## 5. Backend arhitektura
 
-### 4.1 NestJS koncepti
+### 5.1 NestJS koncepti
 
 NestJS sili v modularno arhitekturo z jasno ločitvijo odgovornosti:
 
@@ -277,7 +277,7 @@ graph LR
 | **Filter** | Ujame vse napake, vrne konzistenten error format | `GlobalExceptionFilter` |
 | **Decorator** | Označuje endpointe ali pridobi podatke | `@Public()`, `@CurrentUser()` |
 
-### 4.2 Struktura modulov
+### 5.2 Struktura modulov
 
 ```
 backend/src/
@@ -310,7 +310,7 @@ backend/src/
 └── health/             # GET /health — Render health check
 ```
 
-### 4.3 Odgovornosti po modulu
+### 5.3 Odgovornosti po modulu
 
 | Modul | Controller skrbi za | Service skrbi za |
 |---|---|---|
@@ -324,7 +324,7 @@ backend/src/
 | `export` | GET `/export/:id/ics` | Generiranje .ics datoteke iz Prisma podatkov |
 | `mail` | — (interno) | `sendInvitation()` prek Resend SDK |
 
-### 4.4 Global setup (main.ts)
+### 5.4 Global setup (main.ts)
 
 ```typescript
 // Varnostni headerji (Helmet)
@@ -352,9 +352,9 @@ app.setGlobalPrefix('api')
 
 ---
 
-## 5. Komunikacija med plastmi
+## 6. Komunikacija med plastmi
 
-### 5.1 Request lifecycle
+### 6.1 Request lifecycle
 
 ```
 Brskalnik
@@ -371,7 +371,7 @@ Brskalnik
   → HTTPS response
 ```
 
-### 5.2 Error handling
+### 6.2 Error handling
 
 Vsaka napaka — ne glede na to kje nastane — gre skozi `AllExceptionsFilter`:
 
@@ -386,7 +386,7 @@ Vsaka napaka — ne glede na to kje nastane — gre skozi `AllExceptionsFilter`:
 }
 ```
 
-### 5.3 SSE streaming (AI generiranje)
+### 6.3 SSE streaming (AI generiranje)
 
 SSE (Server-Sent Events) je enosmerna HTTP konekcija strežnik → klient. Pri generiranju itinerarja se prejeti podatki o napredku uporabijo za ažuriranje loading animacije, celoten itinerar pa se prikaže ob koncu ko je shranjen v bazi:
 

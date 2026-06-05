@@ -25,7 +25,7 @@
 | Hosting | Supabase (managed + pgbouncer) |
 | ORM | Prisma |
 | Shema | `backend/prisma/schema.prisma` |
-| Skupaj tabel | 15 |
+| Skupaj tabel | 14 |
 | Primary key tip | UUID (Supabase kompatibilno) |
 | Soft delete | Večina entitet ima `deletedAt`; izjeme: `itinerary_tips`, `itinerary_weather_snapshots`, `notifications`, `comment_reactions`, `calendar_exports`, `activity_logs` |
 
@@ -109,7 +109,7 @@ erDiagram
         string condition
         float tempMin
         float tempMax
-        float humidity
+        int humidity
         float windSpeed
         float precipitation
         string iconCode

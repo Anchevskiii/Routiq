@@ -45,7 +45,7 @@
 | Izvoz | `ics` npm paket |
 | HTTP client | Axios `1.14.0` (pinana!) |
 | Rate limiting | @nestjs/throttler |
-| Logging | Winston |
+| Logging | NestJS Logger |
 | Testing | Jest + Supertest |
 | Deploy | Render (container) |
 
@@ -177,7 +177,6 @@ backend/
 │   │
 │   ├── auth/                 # Placeholder (Supabase Auth na FE)
 │   ├── supabase/             # SupabaseService — JWT verifikacija
-│   ├── notifications/        # In-app obvestila
 │   ├── health/               # Render health check
 │   ├── users/                # User profil
 │   ├── itinerary/            # AI generiranje + CRUD (core feature)
@@ -468,7 +467,13 @@ async getProfile(@CurrentUser() user: JwtPayload) { ... }
 
 ```typescript
 // main.ts
-app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    forbidNonWhitelisted: true,
+  }),
+)
 ```
 
 `whitelist: true` – vse lastnosti ki niso v DTO-ju se samodejno odstranijo iz requesta.
@@ -476,11 +481,14 @@ app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
 ### CORS
 
 ```typescript
+// Konfiguracija CORS izvira iz AppConfigService prek env spremenljivk
+const allowedOrigins = configService.getAllowedOrigins();
 app.enableCors({
-  origin: process.env.FRONTEND_URL,  // Samo FE domena
-  credentials: true,                  // Potrebno za httpOnly cookie
-})
+  origin: allowedOrigins,
+  credentials: true,
+});
 ```
+
 
 ### Rate limiting
 

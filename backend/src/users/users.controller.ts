@@ -12,6 +12,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -102,6 +103,7 @@ export class UsersController {
     status: 201,
     description: 'Avatar uploaded and updated successfully.',
   })
+  @Throttle({ 'avatar-upload': { limit: 10, ttl: 60000 } })
   @Post('avatar')
   @UseInterceptors(
     FileInterceptor('avatar', {

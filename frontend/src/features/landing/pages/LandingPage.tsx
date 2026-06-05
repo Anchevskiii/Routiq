@@ -654,7 +654,9 @@ export const LandingPage: React.FC = () => {
           <div style={{ display: 'flex', gap: 20 }}>
             <Link to={ROUTES.LOGIN}>Sign in</Link>
             <Link to={ROUTES.REGISTER}>Register</Link>
-            <Link to="/help">Help</Link>
+            <Link to={ROUTES.HELP}>Help</Link>
+            <Link to={ROUTES.PRIVACY}>Privacy</Link>
+            <Link to={ROUTES.TERMS}>Terms</Link>
           </div>
         </footer>
       </section>

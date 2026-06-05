@@ -16,6 +16,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -188,6 +189,7 @@ export class GroupsController {
   @ApiParam({ name: 'id', description: 'Group ID' })
   @ApiBody({ type: InviteMemberDto })
   @ApiResponse({ status: 201, description: 'Invitation sent.' })
+  @Throttle({ 'group-invite': { limit: 10, ttl: 60000 } })
   @Post(':id/invite')
   async inviteMember(
     @Param('id') id: string,

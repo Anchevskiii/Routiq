@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
   MinLength,
@@ -103,6 +104,7 @@ export class CreateItineraryDto {
     required: false,
   })
   @IsString()
+  @IsUUID()
   @IsOptional()
   groupId?: string;
 
