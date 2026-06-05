@@ -17,10 +17,16 @@ interface PlacedActivityExtended extends PlacedActivity {
   photoUrl?: string | null
 }
 
+const getGoogleMapsUrl = (title: string, location?: string | null, destination?: string, placeId?: string | null): string => {
+  const querySuffix = location
+    ? ' ' + location
+    : (destination ? ' ' + destination : '')
+  const base = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + querySuffix)}`
+  return placeId ? `${base}&query_place_id=${placeId}` : base
+}
+
 function infoHtml(a: PlacedActivityExtended, destination?: string) {
-  const mapsUrl = a.placeId
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.title)}${a.location ? encodeURIComponent(' ' + a.location) : destination ? encodeURIComponent(' ' + destination) : ''}&query_place_id=${a.placeId}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.title)}${a.location ? encodeURIComponent(' ' + a.location) : destination ? encodeURIComponent(' ' + destination) : ''}`
+  const mapsUrl = getGoogleMapsUrl(a.title, a.location, destination, a.placeId)
 
   return `<div style="font-family:system-ui,sans-serif;padding:0;min-width:180px;max-width:230px;color:#14122b">
     ${a.photoUrl ? `<div style="width:calc(100% + 24px);margin:-12px -12px 8px -12px;height:85px;overflow:hidden;border-radius:8px 8px 0 0"><img src="${a.photoUrl}" alt="${a.title}" style="width:100%;height:100%;object-fit:cover" /></div>` : ''}
@@ -33,7 +39,7 @@ function infoHtml(a: PlacedActivityExtended, destination?: string) {
   </div>`
 }
 
-export const ItineraryMap: React.FC<Props> = ({ days, destination, fullscreen = false }) => {
+export const ItineraryMap: React.FC<Readonly<Props>> = ({ days, destination, fullscreen = false }) => {
   const { isLoaded, loadError } = useGoogleMaps()
   const { placed, loading } = usePlacedActivities(days, isLoaded, destination)
   const { selectedActivityId } = useItinerarySelection()

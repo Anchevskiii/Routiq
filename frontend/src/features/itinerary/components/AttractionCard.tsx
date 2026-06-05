@@ -64,7 +64,53 @@ const trySearch = async (query: string): Promise<string | null> => {
   return data.thumbnail?.source ?? null
 }
 
-export const AttractionCard: React.FC<AttractionCardProps> = ({
+const getGoogleMapsUrl = (title: string, location?: string | null, destination?: string, placeId?: string | null): string => {
+  const querySuffix = location
+    ? ' ' + location
+    : (destination ? ' ' + destination : '')
+  const base = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + querySuffix)}`
+  return placeId ? `${base}&query_place_id=${placeId}` : base
+}
+
+const useAttractionPhoto = (title: string, destination?: string): string | null => {
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const fetchPhoto = async () => {
+      try {
+        const cleanTitle = cleanWikipediaTitle(title)
+        const queries = [
+          destination ? `${cleanTitle} ${destination}` : cleanTitle,
+          cleanTitle,
+          destination ? `${stripVenueType(cleanTitle)} ${destination}` : stripVenueType(cleanTitle),
+          stripVenueType(cleanTitle),
+          cleanTitle.split(' ').slice(0, 2).join(' '),
+        ].filter((q, i, arr) => q && q.length > 2 && arr.indexOf(q) === i)
+
+        for (const q of queries) {
+          const url = await trySearch(q)
+          if (url && !cancelled) {
+            setPhotoUrl(url)
+            return
+          }
+        }
+      } catch {
+        // keep fallback
+      }
+    }
+
+    fetchPhoto()
+    return () => {
+      cancelled = true
+    }
+  }, [title, destination])
+
+  return photoUrl
+}
+
+export const AttractionCard: React.FC<Readonly<AttractionCardProps>> = ({
   activity,
   itineraryId,
   dragHandleProps,
@@ -78,32 +124,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
   const [editState, setEditState]       = useState<EditState>('idle')
   const [editTime, setEditTime]         = useState(activity.startTime ?? '')
   const [editDuration, setEditDuration] = useState(String(activity.durationMinutes ?? 60))
-  const [photoUrl, setPhotoUrl]         = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const fetchPhoto = async () => {
-      try {
-        const cleanTitle = cleanWikipediaTitle(activity.title)
-        const queries = [
-          destination ? `${cleanTitle} ${destination}` : cleanTitle,
-          cleanTitle,
-          destination ? `${stripVenueType(cleanTitle)} ${destination}` : stripVenueType(cleanTitle),
-          stripVenueType(cleanTitle),
-          cleanTitle.split(' ').slice(0, 2).join(' '),
-        ].filter((q, i, arr) => q && q.length > 2 && arr.indexOf(q) === i) // dedupe
-
-        for (const q of queries) {
-          const url = await trySearch(q)
-          if (url && !cancelled) { setPhotoUrl(url); return }
-        }
-      } catch { /* keep icon fallback */ }
-    }
-
-    fetchPhoto()
-    return () => { cancelled = true }
-  }, [activity.title, destination])
+  const photoUrl = useAttractionPhoto(activity.title, destination)
 
   const deleteMutation = useMutation({
     mutationFn: () => {
@@ -236,10 +257,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
         )}
         {(activity.placeId || activity.title) && (
           <a
-            href={activity.placeId
-              ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : destination ? encodeURIComponent(' ' + destination) : ''}&query_place_id=${activity.placeId}`
-              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : destination ? encodeURIComponent(' ' + destination) : ''}`
-            }
+            href={getGoogleMapsUrl(activity.title, activity.location, destination, activity.placeId)}
             target="_blank"
             rel="noopener noreferrer"
             className="w-7 h-7 rounded-[8px] bg-transparent border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] hover:text-gray-700 dark:hover:text-[#f0eeff] hover:border-gray-400 dark:hover:border-white/[0.14] transition-all"

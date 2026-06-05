@@ -215,10 +215,7 @@ export class ItineraryGenerationService {
                     : undefined,
                   activities: activitiesCreate
                     ? {
-                        create: (Array.isArray(activitiesCreate)
-                          ? activitiesCreate
-                          : [activitiesCreate]
-                        ).map((act) => ({
+                        create: (activitiesCreate as Prisma.ItineraryActivityCreateWithoutDayInput[]).map((act) => ({
                           activityType: act.activityType,
                           sortOrder: act.sortOrder,
                           title: act.title,
@@ -402,8 +399,8 @@ export class ItineraryGenerationService {
       return Math.round(duration * 60);
     }
     if (typeof duration === 'string') {
-      const parsed = parseFloat(duration);
-      if (!isNaN(parsed)) {
+      const parsed = Number.parseFloat(duration);
+      if (!Number.isNaN(parsed)) {
         return Math.round(parsed * 60);
       }
     }

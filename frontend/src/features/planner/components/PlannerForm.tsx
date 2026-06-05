@@ -163,7 +163,7 @@ function CalendarPopup({ value, minDate, rangeOther, onChange, onClose }: Readon
         </div>
 
         {/* Day grid */}
-        <div className="grid grid-cols-7" onMouseLeave={() => setHoverDate(null)}>
+        <div role="grid" tabIndex={-1} className="grid grid-cols-7" onMouseLeave={() => setHoverDate(null)}>
           {cells.map((day, i) => {
             if (!day) return <div key={`empty-${i}`} />
             const date       = new Date(viewDate.getFullYear(), viewDate.getMonth(), day)
@@ -231,6 +231,11 @@ function FieldLabel({ text, req }: Readonly<{ text: string; req?: boolean }>) {
   )
 }
 
+interface AutocompleteInstance {
+  addListener(eventName: string, handler: () => void): google.maps.MapsEventListener
+  getPlace(): google.maps.places.PlaceResult
+}
+
 export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<PlannerFormValues>({
     resolver: zodResolver(plannerSchema),
@@ -238,12 +243,17 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
 
   const { isLoaded } = useGoogleMaps()
   const autocompleteInputRef = useRef<HTMLInputElement | null>(null)
-  const autocompleteInstanceRef = useRef<google.maps.places.Autocomplete | null>(null)
+  const autocompleteInstanceRef = useRef<AutocompleteInstance | null>(null)
 
   useEffect(() => {
     if (!isLoaded || !autocompleteInputRef.current || autocompleteInstanceRef.current) return
 
-    autocompleteInstanceRef.current = new google.maps.places.Autocomplete(
+    const AutocompleteConstructor = google.maps.places['Autocomplete'] as new (
+      input: HTMLInputElement,
+      options?: google.maps.places.AutocompleteOptions
+    ) => AutocompleteInstance;
+
+    const instance = new AutocompleteConstructor(
       autocompleteInputRef.current,
       {
         types: ['(cities)'],
@@ -251,8 +261,10 @@ export const PlannerForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
       }
     )
 
-    autocompleteInstanceRef.current.addListener('place_changed', () => {
-      const place = autocompleteInstanceRef.current?.getPlace()
+    autocompleteInstanceRef.current = instance
+
+    instance.addListener('place_changed', () => {
+      const place = instance.getPlace()
       if (place) {
         const formattedAddress = place.formatted_address || place.name || ''
         setValue('destination', formattedAddress, { shouldValidate: true })

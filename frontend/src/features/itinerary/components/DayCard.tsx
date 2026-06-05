@@ -21,23 +21,37 @@ interface DayCardProps {
   onActivityDeleted?: () => void
 }
 
-function WeatherChip({ condition, tempMax }: { condition: string; tempMax?: number | null }) {
+function WeatherChip({ condition, tempMax }: Readonly<{ condition: string; tempMax?: number | null }>) {
   const lc = condition.toLowerCase()
   const isRain  = lc === 'rain' || lc === 'showers'
   const isSun   = lc === 'clear' || lc === 'sunny'
   const isWindy = lc === 'windy'
-  const Icon = isRain ? CloudRain : isSun ? Sun : isWindy ? Wind : Cloud
-  const colorClass = isRain ? 'text-sky-500 dark:text-sky-400' : isSun ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-[#a3a1c8]'
+  
+  let Icon = Cloud
+  if (isRain) {
+    Icon = CloudRain
+  } else if (isSun) {
+    Icon = Sun
+  } else if (isWindy) {
+    Icon = Wind
+  }
+
+  let colorClass = 'text-gray-400 dark:text-[#a3a1c8]'
+  if (isRain) {
+    colorClass = 'text-sky-500 dark:text-sky-400'
+  } else if (isSun) {
+    colorClass = 'text-amber-500 dark:text-amber-400'
+  }
 
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] text-[13px] font-medium text-gray-700 dark:text-[#f0eeff]">
       <Icon className={`w-3.5 h-3.5 ${colorClass}`} />
-      {tempMax != null ? `${tempMax}°C` : '--°C'}
+      {tempMax == null ? '--°C' : `${tempMax}°C`}
     </span>
   )
 }
 
-export const DayCard: React.FC<DayCardProps> = ({
+export const DayCard: React.FC<Readonly<DayCardProps>> = ({
   day,
   isInitiallyExpanded = false,
   dragHandleProps,
@@ -75,12 +89,26 @@ export const DayCard: React.FC<DayCardProps> = ({
     <div className="relative bg-white dark:bg-[rgba(22,24,48,0.6)] dark:backdrop-blur-xl border border-gray-200/80 dark:border-white/[0.07] rounded-[18px] overflow-hidden shadow-[0_2px_12px_-4px_rgba(0,0,0,0.10),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.05)] dark:hover:border-white/[0.14] dark:hover:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_10px_32px_-12px_rgba(0,0,0,0.6)] transition-all">
 
       {/* header */}
-      <div className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none" onClick={() => setIsExpanded(v => !v)}>
+      <div
+        className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none"
+        onClick={() => setIsExpanded(v => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setIsExpanded(v => !v)
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
         {dragHandleProps && (
           <div
             {...dragHandleProps}
             {...dragHandleAttributes}
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.stopPropagation()}
+            role="button"
+            tabIndex={-1}
             data-testid="day-drag-handle"
             className="p-1.5 rounded-[8px] text-gray-400 dark:text-[#6e6c93] cursor-grab active:cursor-grabbing hover:text-gray-600 dark:hover:text-[#a3a1c8] transition-colors flex-shrink-0"
           >
@@ -116,7 +144,7 @@ export const DayCard: React.FC<DayCardProps> = ({
           {day.weather && (
             <WeatherChip condition={day.weather.condition} tempMax={day.weather.tempMax} />
           )}
-          <div className={`w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] transition-transform duration-200 ${!isExpanded ? '-rotate-90' : ''}`}>
+          <div className={`w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`}>
             <ChevronDown className="w-4 h-4" />
           </div>
         </div>

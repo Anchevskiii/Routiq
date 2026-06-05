@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AppConfigService } from '../config/config.service';
 import { AttractionsService } from './attractions.service';
 import { FormattedPlace } from './types';
+import { withRetry } from '../common';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -23,6 +24,7 @@ describe('AttractionsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (axios.isAxiosError as unknown as jest.Mock).mockReturnValue(false);
     mockConfigService = {
       getGooglePlacesApiKey: jest.fn().mockReturnValue('fake-key'),
     };
@@ -109,6 +111,24 @@ describe('AttractionsService', () => {
       const result = await service['searchLegacy']('Paris');
       expect(result).toEqual([]);
     });
+
+    it('should handle shouldRetry logic on searchLegacy error', async () => {
+      const mockWithRetry = withRetry as unknown as jest.Mock;
+      mockWithRetry.mockClear();
+
+      mockedAxios.get.mockRejectedValueOnce(new Error('Network error'));
+      await service['searchLegacy']('Paris');
+
+      const configObj = mockWithRetry.mock.calls[0][1];
+      expect(configObj.shouldRetry(new Error('Normal error'))).toBe(true);
+
+      const axiosError = { isAxiosError: true, response: { status: 429 } };
+      (axios.isAxiosError as unknown as jest.Mock).mockReturnValue(true);
+      expect(configObj.shouldRetry(axiosError)).toBe(true);
+
+      const nonRetryError = { isAxiosError: true, response: { status: 400 } };
+      expect(configObj.shouldRetry(nonRetryError)).toBe(false);
+    });
   });
 
   describe('getCuratedPlaces', () => {
@@ -164,6 +184,37 @@ describe('AttractionsService', () => {
         'Failed to get attraction details',
       );
     });
+
+    it('should throw ServiceUnavailableException if API status is not OK', async () => {
+      mockedAxios.get.mockResolvedValue({
+        data: {
+          status: 'INVALID_REQUEST',
+        },
+      });
+      await expect(service.getAttractionDetails('id')).rejects.toThrow(
+        'Failed to get attraction details: API status: INVALID_REQUEST',
+      );
+    });
+
+    it('should handle shouldRetry logic on getAttractionDetails error', async () => {
+      const mockWithRetry = withRetry as unknown as jest.Mock;
+      mockWithRetry.mockClear();
+
+      mockedAxios.get.mockRejectedValueOnce(new Error('Network error'));
+      try {
+        await service.getAttractionDetails('id');
+      } catch {}
+
+      const configObj = mockWithRetry.mock.calls[0][1];
+      expect(configObj.shouldRetry(new Error('Normal error'))).toBe(true);
+
+      const axiosError = { isAxiosError: true, response: { status: 429 } };
+      (axios.isAxiosError as unknown as jest.Mock).mockReturnValue(true);
+      expect(configObj.shouldRetry(axiosError)).toBe(true);
+
+      const nonRetryError = { isAxiosError: true, response: { status: 400 } };
+      expect(configObj.shouldRetry(nonRetryError)).toBe(false);
+    });
   });
 
   describe('getAlternatives', () => {
@@ -201,6 +252,13 @@ describe('AttractionsService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('p2');
     });
+
+    it('should throw ServiceUnavailableException if call throws an error', async () => {
+      mockedAxios.get.mockRejectedValue(new Error('Network error'));
+      await expect(service.getAlternatives('p1', 'Paris')).rejects.toThrow(
+        'Failed to get alternatives',
+      );
+    });
   });
 
   describe('geocodeAddress', () => {
@@ -236,11 +294,28 @@ describe('AttractionsService', () => {
       const result = await service.geocodeAddress('Paris');
       expect(result).toBeNull();
     });
-
     it('should return null if geocoding throws an error', async () => {
       mockedAxios.get.mockRejectedValue(new Error('Network error'));
       const result = await service.geocodeAddress('Paris');
       expect(result).toBeNull();
+    });
+
+    it('should handle shouldRetry logic on geocodeAddress error', async () => {
+      const mockWithRetry = withRetry as unknown as jest.Mock;
+      mockWithRetry.mockClear();
+
+      mockedAxios.get.mockRejectedValueOnce(new Error('Network error'));
+      await service.geocodeAddress('Paris');
+
+      const configObj = mockWithRetry.mock.calls[0][1];
+      expect(configObj.shouldRetry(new Error('Normal error'))).toBe(true);
+
+      const axiosError = { isAxiosError: true, response: { status: 429 } };
+      (axios.isAxiosError as unknown as jest.Mock).mockReturnValue(true);
+      expect(configObj.shouldRetry(axiosError)).toBe(true);
+
+      const nonRetryError = { isAxiosError: true, response: { status: 400 } };
+      expect(configObj.shouldRetry(nonRetryError)).toBe(false);
     });
   });
 
@@ -393,6 +468,45 @@ describe('AttractionsService', () => {
       expect(result.some((p) => p.id === 'm3')).toBe(false);
       expect(result.some((p) => p.id === 'm4')).toBe(false);
       expect(result.some((p) => p.id === 'm1')).toBe(true);
+    });
+  });
+
+  describe('getPlaceTypesByTravelType', () => {
+    it('should return correct place types for each travel type', () => {
+      expect(service['getPlaceTypesByTravelType'](TravelType.CULTURAL)).toEqual([
+        'museum',
+        'art_gallery',
+        'place_of_worship',
+        'church',
+        'castle',
+      ]);
+      expect(service['getPlaceTypesByTravelType'](TravelType.GASTRONOMIC)).toEqual([
+        'restaurant',
+        'cafe',
+        'food',
+        'bakery',
+      ]);
+      expect(service['getPlaceTypesByTravelType'](TravelType.ADVENTURE)).toEqual([
+        'amusement_park',
+        'aquarium',
+        'zoo',
+        'park',
+      ]);
+      expect(service['getPlaceTypesByTravelType'](TravelType.NATURE)).toEqual([
+        'park',
+        'aquarium',
+        'zoo',
+        'campground',
+      ]);
+      expect(service['getPlaceTypesByTravelType'](TravelType.RELAX)).toEqual([
+        'spa',
+        'beauty_salon',
+        'hair_care',
+        'park',
+      ]);
+      expect(service['getPlaceTypesByTravelType']('INVALID' as TravelType)).toEqual([
+        'tourist_attraction',
+      ]);
     });
   });
 });
