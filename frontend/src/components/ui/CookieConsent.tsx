@@ -7,7 +7,7 @@ export const CookieConsent: React.FC = () => {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const consent = localStorage.getItem('routiq_cookie_consent')
+    const consent = globalThis.localStorage.getItem('routiq_cookie_consent')
     if (!consent) {
       // Show consent banner after a short delay
       const timer = setTimeout(() => setVisible(true), 1500)
@@ -16,12 +16,12 @@ export const CookieConsent: React.FC = () => {
   }, [])
 
   const handleAccept = () => {
-    localStorage.setItem('routiq_cookie_consent', 'accepted')
+    globalThis.localStorage.setItem('routiq_cookie_consent', 'accepted')
     setVisible(false)
   }
 
   const handleDecline = () => {
-    localStorage.setItem('routiq_cookie_consent', 'declined')
+    globalThis.localStorage.setItem('routiq_cookie_consent', 'declined')
     setVisible(false)
   }
 
