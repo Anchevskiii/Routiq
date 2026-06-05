@@ -59,7 +59,13 @@ npm run test:unit:run
 ```
 
 ### B. End-to-End Tests (Playwright)
-E2E tests run in a real browser. Playwright automatically boots up the Vite development server in the background using `--mode e2e` so it is isolated from your active dev server.
+E2E tests run in a real browser. Playwright automatically boots up the Vite development server in the background using `--mode e2e` so it is isolated from your active dev server. Required E2E environment variables are set in `playwright.config.ts` — you do not need a local `.env.e2e` file to run Playwright.
+
+If you manually start the dev server in e2e mode (`npm run dev -- --mode e2e`), copy the template first:
+
+```bash
+cp .env.e2e.example .env.e2e
+```
 
 ```bash
 # Run E2E tests headlessly
@@ -79,4 +85,4 @@ To prevent E2E tests from needing real login credentials, the frontend includes 
 * When the application initializes in `src/app/Providers.tsx`, if it detects `VITE_E2E_BYPASS_AUTH === 'true'`, it automatically logs in as a mock `e2e-user` (`e2e@routiq.test`), enabling E2E tests to run instantly without hitting Supabase.
 
 ### SSE Stream Interception
-Playwright uses native network routing (`page.route`) to mock Server-Sent Events (SSE) stream endpoints like `/api/itinerary/generate`, feeding simulated progress and completion events to the calendar view.
+Playwright uses native network routing (`page.route`) to mock Server-Sent Events (SSE) stream endpoints like `/api/itinerary/generate`, feeding simulated progress and completion events to the loading view before transitioning to the loaded itinerary page.

@@ -35,7 +35,7 @@ sequenceDiagram
     FE->>SB: signInWithPassword(email, password)
     SB-->>FE: { access_token (15min), refresh_token (7dni), user }
 
-    FE->>BE: GET /auth/me + Authorization: Bearer access_token
+    FE->>BE: GET /users/profile + Authorization: Bearer access_token
     BE->>SB: getUser(access_token)
     Note over BE,SB: Backend NIKOLI ne validira JWT sam\n— vedno prek Supabase Admin SDK
     SB-->>BE: { user: { id, email, ... } }
@@ -136,7 +136,8 @@ Vsa mesta kjer pride do napake vrnejo konzistenten format brez razkrivanja inter
 
 ```
 NIKOLI ne commitamo .env datotek v git!
-.gitignore vsebuje: .env, .env.local, .env.production
+.gitignore vsebuje: .env, .env.* (razen *.env.example / .env.*.example), *.pem, *.key, secrets.*
+Za teste uporabi predloge: backend/.env.test.example, frontend/.env.e2e.example
 ```
 
 ### Backend (.env) — ostane na strežniku
@@ -229,7 +230,7 @@ Implementacija prek `@nestjs/throttler`:
 
 ```typescript
 // Na generate endpointu
-@Throttle({ default: { ttl: 60000, limit: 5 } })
+@Throttle({ 'itinerary-generate': { limit: 5, ttl: 60000 } })
 @Post('generate')
 async generate() { ... }
 ```

@@ -4,7 +4,7 @@
   "description": "Routiq travel planning backend - NestJS + Prisma + PostgreSQL",
   "author": "Routiq Team",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "build": "npx prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

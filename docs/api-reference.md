@@ -23,41 +23,26 @@ Vsi endpointi so dosegljivi na `/api/` prefiksu. Vsi odgovori imajo enotni forma
 
 ## Kazalo
 
-- [Avtentikacija `/auth`](#avtentikacija-auth)
+- [Avtentikacija (Supabase)](#avtentikacija-supabase)
 - [Uporabniki `/users`](#uporabniki-users)
 - [Itinerarji `/itinerary`](#itinerarji-itinerary)
 - [Atrakcije `/attractions`](#atrakcije-attractions)
 - [Vreme `/weather`](#vreme-weather)
 - [Skupinska potovanja `/groups`](#skupinska-potovanja-groups)
+- [Obvestila `/notifications`](#obvestila-notifications)
 - [Izvoz `/export`](#izvoz-export)
 - [Health check `/health`](#health-check-health)
 - [HTTP status kode](#http-status-kode)
 
 ---
 
-## Avtentikacija `/auth`
+## Avtentikacija (Supabase)
 
-> Avtentikacija poteka prek **Supabase Auth** na frontend strani. Backend `/auth` endpointi so pomožni za pridobivanje user podatkov.
+> **Prijava, registracija, Google OAuth in osveževanje tokenov** potekajo na **frontendu** prek Supabase JS SDK (`signInWithPassword`, `signUp`, `signInWithOAuth`, `refreshSession`). Backend **nima** `/auth/register`, `/auth/login` ali `/auth/refresh` endpointov — `auth/` modul je placeholder.
 
-| Metoda | Pot | Opis | Auth |
-|---|---|---|---|
-| GET | `/auth/me` | Vrne podatke prijavljenega userja | Da |
+Po uspešni prijavi frontend kliče **`GET /users/profile`** z `Authorization: Bearer <supabase_access_token>`. Backend preveri token prek `supabase.auth.getUser()` (`JwtAuthGuard`) in sinhronizira uporabnika v lokalno bazo.
 
-**GET `/auth/me`** — vrne user profil iz Supabase JWT + lokalno sinhroniziranega zapisa.
-
-```json
-// Response
-{
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "name": "Ime Priimek",
-    "avatarUrl": "https://...",
-    "lastLoginAt": "2026-06-01T10:00:00Z"
-  }
-}
-```
+**Sprememba gesla:** prek Supabase SDK na klientu (`supabase.auth.updateUser`), ne prek backend API-ja.
 
 ---
 
@@ -68,7 +53,6 @@ Vsi endpointi so dosegljivi na `/api/` prefiksu. Vsi odgovori imajo enotni forma
 | GET | `/users/profile` | Pridobi moj profil |
 | PATCH | `/users/profile` | Posodobi profil (ime, email) |
 | POST | `/users/avatar` | Upload profilne slike |
-| PATCH | `/users/password` | Sprememba gesla |
 | GET | `/users/settings` | Pridobi nastavitve (tema, jezik...) |
 | PATCH | `/users/settings` | Posodobi nastavitve |
 | DELETE | `/users/account` | Brisanje računa (GDPR — soft delete) |
@@ -80,7 +64,7 @@ Vsi endpointi so dosegljivi na `/api/` prefiksu. Vsi odgovori imajo enotni forma
 { "name": "Novo ime", "email": "novi@email.com" }
 ```
 
-**POST `/users/avatar`** — `multipart/form-data` z `file` poljem (JPEG/PNG, max 5MB).
+**POST `/users/avatar`** — `multipart/form-data` z poljem `avatar` (JPEG/PNG, max 5MB).
 
 **PATCH `/users/settings`**
 
@@ -106,9 +90,11 @@ Vsi endpointi so dosegljivi na `/api/` prefiksu. Vsi odgovori imajo enotni forma
 | DELETE | `/itinerary/:id` | Soft delete itinerarja | Da |
 | POST | `/itinerary/:id/share` | Generiraj deljivi link | Da |
 | GET | `/itinerary/shared/:token` | Javni ogled brez prijave | 🔓 Javno |
+| PUT | `/itinerary/:id/days/reorder` | Prerazporedi dneve (drag & drop) | Da |
+| PUT | `/itinerary/:id/days/:dayId/activities/reorder` | Prerazporedi aktivnosti znotraj dneva | Da |
 | POST | `/itinerary/:id/days/:dayId/activities` | Dodaj aktivnost | Da |
-| PATCH | `/itinerary/:id/days/:dayId/activities/:aid` | Uredi aktivnost | Da |
-| DELETE | `/itinerary/:id/days/:dayId/activities/:aid` | Briši aktivnost | Da |
+| PATCH | `/itinerary/:id/activities/:activityId` | Uredi aktivnost | Da |
+| DELETE | `/itinerary/:id/activities/:activityId` | Briši aktivnost | Da |
 
 ### POST `/itinerary/generate` — SSE stream
 
@@ -182,10 +168,13 @@ data: {"type":"complete","itineraryId":"uuid"}
 
 | Metoda | Pot | Opis |
 |---|---|---|
-| GET | `/attractions/search` | Išči atrakcije po destinaciji in tipu |
-| GET | `/attractions/alternatives` | Alternativne atrakcije za zamenjavo |
+| GET | `/attractions/search` | Išči atrakcije (Google Places proxy) |
+| GET | `/attractions/:id` | Podrobnosti posamezne atrakcije |
+| POST | `/attractions/:id/alternatives` | Alternativne atrakcije za zamenjavo |
 
-**GET `/attractions/search?destination=Rim&travelType=CULTURAL`**
+**GET `/attractions/search?query=Kolosej&location=Rim&radius=5000`**
+
+Query parametri: `query` (obvezen), `location` (opcijsko), `radius` (opcijsko, metre).
 
 ```json
 // Response
@@ -205,7 +194,12 @@ data: {"type":"complete","itineraryId":"uuid"}
 }
 ```
 
-**GET `/attractions/alternatives?placeId=ChIJ...&travelType=CULTURAL`** — vrne alternativne atrakcije istega tipa v okolici.
+**POST `/attractions/:id/alternatives`** — `:id` je Google `placeId`. Vrne alternativne atrakcije v okolici.
+
+```json
+// Request body
+{ "destination": "Rim, Italija" }
+```
 
 ---
 
@@ -247,20 +241,24 @@ data: {"type":"complete","itineraryId":"uuid"}
 | GET | `/groups` | Moje skupin (kjer sem ACCEPTED) |
 | POST | `/groups` | Ustvari novo skupino |
 | GET | `/groups/invitations` | Moja čakajoča povabila (status=PENDING) |
-| GET | `/groups/:id` | Detajl skupin (samo za člane) |
+| GET | `/groups/:id` | Detajl skupin (samo za člane; vključuje itinerarje) |
+| PATCH | `/groups/:id` | Posodobi skupino (ime, opis, barva...) |
+| POST | `/groups/:id/image` | Upload slike skupine (`multipart/form-data`) |
 | DELETE | `/groups/:id` | Briši skupino (samo OWNER) |
 | POST | `/groups/:id/invite` | Povabi člana (OWNER ali ADMIN) |
 | POST | `/groups/:id/accept` | Sprejmi povabilo |
 | POST | `/groups/:id/decline` | Zavrni povabilo |
-| DELETE | `/groups/:id/members/:uid` | Odstrani člana |
-| PATCH | `/groups/:id/members/:uid/role` | Posodobi vlogo člana |
-| GET | `/groups/:id/itineraries` | Itinerarji skupin |
+| DELETE | `/groups/:id/members/:memberId` | Odstrani člana |
+| PATCH | `/groups/:id/members/:memberId/role` | Posodobi vlogo člana |
 | POST | `/groups/:id/itineraries` | Dodaj itinerar v skupino |
-| GET | `/groups/:gid/itineraries/:giid/votes` | Glasovi za itinerar |
-| POST | `/groups/:gid/itineraries/:giid/vote` | Glasuj za itinerar |
-| GET | `/groups/:id/comments` | Komentarji skupin |
-| POST | `/groups/:id/comments` | Dodaj komentar / odgovor |
-| GET | `/groups/:id/activity` | Activity log skupin |
+| DELETE | `/groups/:id/itineraries/:groupItineraryId` | Odstrani itinerar iz skupine |
+| GET | `/groups/:groupId/itineraries/:groupItineraryId/votes` | Glasovi za itinerar |
+| POST | `/groups/:groupId/itineraries/:groupItineraryId/vote` | Glasuj za itinerar (UPVOTE/DOWNVOTE) |
+| DELETE | `/groups/:groupId/itineraries/:groupItineraryId/vote` | Odstrani glas |
+| GET | `/groups/:groupId/comments` | Komentarji skupin |
+| POST | `/groups/:groupId/comments` | Dodaj komentar / odgovor |
+| POST | `/groups/:groupId/comments/:commentId/reactions` | Dodaj emoji reakcijo na komentar |
+| GET | `/groups/:id/activity-log` | Activity log skupin |
 
 ### POST `/groups`
 
@@ -287,24 +285,25 @@ data: {"type":"complete","itineraryId":"uuid"}
 // 400 — povabilo že čaka
 ```
 
-### POST `/groups/:gid/itineraries/:giid/vote`
+### POST `/groups/:groupId/itineraries/:groupItineraryId/vote`
 
 ```json
 // Request body
 { "voteType": "UPVOTE" }  // ali "DOWNVOTE"
 
-// Response
-{
-  "success": true,
-  "data": {
-    "upvotes": 3,
-    "downvotes": 1,
-    "userVote": "UPVOTE"
-  }
-}
+// Response — vrne glas objekt
+{ "success": true, "data": { "id": "uuid", "voteType": "UPVOTE", "userId": "...", ... } }
 ```
 
-### POST `/groups/:id/comments`
+**Score logika:** `score = število UPVOTE glasov` — downvoti se ne odštevajo. Vsak user ima lahko en glas na itinerar (upsert — novi glas zamenja starega).
+
+### DELETE `/groups/:groupId/itineraries/:groupItineraryId/vote`
+
+Odstrani glas kličočega userja (soft delete). Vrne `{ "success": true }`.
+
+**Kdaj se pošlje obvestilo:** Ko nekdo glasuje za itinerar ki mu ne pripada, lastnik itinerarja prejme in-app obvestilo tipa `VOTE`.
+
+### POST `/groups/:groupId/comments`
 
 ```json
 // Request body
@@ -314,7 +313,7 @@ data: {"type":"complete","itineraryId":"uuid"}
 }
 ```
 
-### GET `/groups/:id/activity?limit=50`
+### GET `/groups/:id/activity-log?limit=50`
 
 ```json
 // Response
@@ -333,13 +332,50 @@ data: {"type":"complete","itineraryId":"uuid"}
 
 ---
 
-## Izvoz `/export`
+## Obvestila `/notifications`
 
 | Metoda | Pot | Opis |
 |---|---|---|
-| GET | `/export/:id/ics` | Prenesi .ics datoteko za itinerar |
+| GET | `/notifications` | Moja obvestila (paginirano, najnovejša najprej) |
+| GET | `/notifications/unread-count` | Število neprebranih obvestil |
+| PATCH | `/notifications/:id/read` | Označi obvestilo kot prebrano |
+| POST | `/notifications/read-all` | Označi vsa obvestila kot prebrana |
 
-**GET `/export/:id/ics`** — vrne `application/octet-stream` z `.ics` vsebino (iCalendar format). En `VEVENT` na aktivnost.
+**GET `/notifications?page=1&limit=20`**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "type": "VOTE",
+      "title": "Jan je glasoval za tvoj 'Rim, Italija' itinerar",
+      "body": "👍 Upvote v skupini",
+      "data": { "groupId": "...", "itineraryId": "...", "groupItineraryId": "..." },
+      "readAt": null,
+      "createdAt": "2026-06-04T10:00:00Z"
+    }
+  ]
+}
+```
+
+**GET `/notifications/unread-count`**
+
+```json
+{ "success": true, "data": { "count": 3 } }
+```
+
+---
+
+## Izvoz `/export`
+
+| Metoda | Pot | Opis | Auth |
+|---|---|---|---|
+| GET | `/export/:id/ics` | Prenesi .ics datoteko za itinerar | Da |
+| GET | `/export/shared/:id/ics` | Prenesi .ics za javno deljen itinerar | 🔓 Javno |
+
+**GET `/export/:id/ics`** — vrne `application/octet-stream` z `.ics` vsebino (iCalendar format). En `VEVENT` na aktivnost. Za prenos brez ročnega Bearer headerja frontend sinhronizira `sb-access-token` piškotek (glej [Varnost](security.md)).
 
 > PDF generira **frontend** z `@react-pdf/renderer` — backend ne generira PDF.
 
@@ -353,7 +389,15 @@ data: {"type":"complete","itineraryId":"uuid"}
 
 ```json
 // Response
-{ "status": "ok", "timestamp": "2026-06-01T10:00:00Z" }
+{
+  "success": true,
+  "data": {
+    "status": "healthy",
+    "timestamp": "2026-06-01T10:00:00Z",
+    "service": "routiq-backend",
+    "version": "1.0.0"
+  }
+}
 ```
 
 ---

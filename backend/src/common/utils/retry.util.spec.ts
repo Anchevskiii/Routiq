@@ -46,4 +46,3 @@ describe('withRetry', () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 });
-

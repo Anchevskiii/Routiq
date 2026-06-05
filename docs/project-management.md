@@ -18,7 +18,7 @@
 
 ```
 main          ← Produkcija. Samo stabilen, testiran kod.
-develop       ← Aktivni razvoj. Sem gre vse.
+development   ← Aktivni razvoj. Sem gre vse.
   └── feature/auth-jwt
   └── feature/itinerary-generate
   └── feature/groups
@@ -31,10 +31,10 @@ develop       ← Aktivni razvoj. Sem gre vse.
 ```
 
 **Pravila:**
-- Vsi delamo na **feature branchih** ki izhajajo iz `develop`
+- Vsi delamo na **feature branchih** ki izhajajo iz `development`
 - `main` se merga samo ko je iteracija **stabilna in testirana**
 - Branch se briše po mergeu
-- Direkten push na `main` ali `develop` ni dovoljen (samo prek PR)
+- Direkten push na `main` ali `development` ni dovoljen (samo prek PR)
 
 **Poimenovanje branchov:**
 ```
@@ -51,22 +51,22 @@ test/<kratki-opis>      → test/itinerary-service-unit-tests
 ```mermaid
 gitGraph
     commit id: "init: projekt setup"
-    branch develop
-    checkout develop
+    branch development
+    checkout developmentment
     commit id: "chore: monorepo setup"
 
-    branch feature/auth-jwt
-    checkout feature/auth-jwt
-    commit id: "feat: auth modul"
-    commit id: "feat: JWT guard"
-    checkout develop
-    merge feature/auth-jwt
+    branch feature/auth-supabase
+    checkout feature/auth-supabase
+    commit id: "feat: Supabase Auth FE"
+    commit id: "feat: JwtAuthGuard"
+    checkout development
+    merge feature/auth-supabase
 
     branch feature/itinerary-generate
     checkout feature/itinerary-generate
     commit id: "feat: Gemini SSE"
     commit id: "feat: prompt engineering"
-    checkout develop
+    checkout development
     merge feature/itinerary-generate
 
     branch feature/groups
@@ -74,17 +74,17 @@ gitGraph
     commit id: "feat: groups CRUD"
     commit id: "feat: invite emails"
     commit id: "feat: voting system"
-    checkout develop
+    checkout development
     merge feature/groups
 
     branch style/light-mode
     checkout style/light-mode
     commit id: "style: light mode FE"
-    checkout develop
+    checkout development
     merge style/light-mode
 
     checkout main
-    merge develop tag: "v1.0"
+    merge development tag: "v1.0"
 ```
 
 ---
@@ -125,7 +125,7 @@ chore: modernize unit tests, align with active service design
 2. PR naslov sledi commit konvenciji
 3. PR opis vsebuje: kaj je narejeno + kako preveriti
 4. Drugi član ekipe **pregleda in aprovira** pred mergem
-5. Avtor sam merga po approvu, samo v `develop`
+5. Avtor sam merga po approvu, samo v `development`
 6. Branch se briše takoj po mergeu
 
 ### PR predloga — Frontend
@@ -188,7 +188,7 @@ Kratki opis feature-a.
 | Član | Frontend | Backend |
 |---|---|---|
 | **Jan** | Vite setup, Tailwind, ESLint/Prettier, axios instanca, router | NestJS setup, Prisma/Supabase konfiguracija, seed |
-| **Klemen** | UI primitivi: Button, Input, Modal, Spinner, Badge, Card, Skeleton. Layout: AppShell, Sidebar, Topbar | Auth: JWT guard, Supabase integracija, `/auth/me` endpoint |
+| **Klemen** | UI primitivi: Button, Input, Modal, Spinner, Badge, Card, Skeleton. Layout: AppShell, Sidebar, Topbar | Auth: Supabase Auth na FE, JwtAuthGuard, `/users/profile` sinhronizacija |
 | **Mojca** | Auth feature: LoginPage, RegisterPage, Google OAuth gumb, AuthContext, ProtectedRoute, Zod forme | Itinerary modul osnova: DTO, Prisma model, basic CRUD. Gemini service setup. |
 
 ### Iteracija 2 — AI generiranje, Maps, Weather

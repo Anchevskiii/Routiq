@@ -21,6 +21,7 @@ type ItineraryStreamEvent =
   | { type: 'day'; data: StreamingDay }
   | { type: 'complete'; itineraryId: string }
   | { type: 'error'; error: string }
+  | { type: 'telemetry'; data: Record<string, unknown> }
 
 const ORB_STYLE: React.CSSProperties = {
   position: 'absolute',
@@ -43,15 +44,18 @@ export const PlannerPage: React.FC = () => {
   const [generatedDays, setGeneratedDays]   = useState<StreamingDay[]>([])
   const [elapsedTime, setElapsedTime]       = useState(0)
   const [destination, setDestination]       = useState('')
+  const [totalDays, setTotalDays]           = useState(0)
+  const [isComplete, setIsComplete]         = useState(false)
+  const [showLoading, setShowLoading]       = useState(false)
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
-    if (isLoading) {
-      setElapsedTime(0)
+    if (isLoading || showLoading) {
+      if (isLoading) setElapsedTime(0)
       interval = setInterval(() => setElapsedTime(t => t + 1), 1000)
     }
     return () => clearInterval(interval)
-  }, [isLoading])
+  }, [isLoading, showLoading])
 
   const handleGenerate = async (values: PlannerFormValues) => {
     const days = differenceInDays(parseISO(values.endDate), parseISO(values.startDate)) + 1
@@ -59,6 +63,7 @@ export const PlannerPage: React.FC = () => {
     if (days > 14) { toast.error('Trip duration cannot exceed 14 days'); return }
 
     setProgress(''); setAttractions([]); setGeneratedDays([]); setDestination(values.destination)
+    setTotalDays(days); setIsComplete(false); setShowLoading(true)
 
     stream(ITINERARY_ENDPOINTS.GENERATE, { ...values, days }, {
       onProgress: (data) => {
@@ -67,6 +72,9 @@ export const PlannerPage: React.FC = () => {
         if (data.type === 'day')         setGeneratedDays(prev => [...prev, data.data])
       },
       onSuccess: async (data) => {
+        setIsComplete(true)
+        await new Promise(r => setTimeout(r, 1100))
+        setShowLoading(false)
         if (groupId) {
           await groupsApi.addItineraryToGroup(groupId, data.itineraryId).catch(() => {})
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId) })
@@ -79,7 +87,7 @@ export const PlannerPage: React.FC = () => {
       },
       onError: (err) => {
         toast.error(`Generation failed: ${err}`)
-        setProgress('')
+        setProgress(''); setIsComplete(false); setShowLoading(false)
       },
     })
   }
@@ -92,19 +100,19 @@ export const PlannerPage: React.FC = () => {
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <motion.div
           style={{ ...ORB_STYLE, right: 60, top: -80,
-            background: 'radial-gradient(circle, rgba(37,99,235,0.65) 0%, rgba(59,130,246,0.35) 50%, transparent 100%)' }}
+            background: 'radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 70%)' }}
           animate={{ x: [0, -80, 0], y: [0, 120, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           style={{ ...ORB_STYLE, left: -60, top: '30%',
-            background: 'radial-gradient(circle, rgba(59,130,246,0.55) 0%, rgba(96,165,250,0.30) 50%, transparent 100%)' }}
+            background: 'radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 70%)' }}
           animate={{ x: [0, 100, 0], y: [0, -80, 0] }}
           transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           style={{ ...ORB_STYLE, right: -40, top: '65%',
-            background: 'radial-gradient(circle, rgba(37,99,235,0.55) 0%, rgba(129,140,248,0.30) 50%, transparent 100%)' }}
+            background: 'radial-gradient(circle, rgba(59,130,246,0.10) 0%, transparent 70%)' }}
           animate={{ x: [0, -60, 0], y: [0, -100, 0] }}
           transition={{ duration: 34, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
         />
@@ -121,13 +129,15 @@ export const PlannerPage: React.FC = () => {
     </div>
 
     {/* Loading overlay — outside all transforms for correct fixed positioning */}
-    {isLoading && (
+    {(isLoading || showLoading) && (
       <GenerationLoading
         progress={progress}
         attractions={attractions}
         generatedDays={generatedDays}
         elapsedTime={elapsedTime}
         destination={destination}
+        totalDays={totalDays}
+        isComplete={isComplete}
       />
     )}
     </>

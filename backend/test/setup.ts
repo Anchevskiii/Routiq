@@ -1,24 +1,29 @@
 import { config } from 'dotenv';
 import * as path from 'path';
 
-// Load test environment variables
+// Load test environment variables from .env.test (copy from .env.test.example)
 config({ path: path.resolve(__dirname, '../.env.test') });
 
-// Set default test environment
 process.env.NODE_ENV = 'test';
+
+// Local Docker test DB defaults — CI overrides via workflow env vars
 process.env.DATABASE_URL =
   process.env.DATABASE_URL ||
   'postgresql://postgres:postgres@localhost:5433/routiq_test';
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
-process.env.JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || 'test-refresh-secret';
+process.env.DIRECT_URL =
+  process.env.DIRECT_URL ||
+  'postgresql://postgres:postgres@localhost:5433/routiq_test';
 
-// Fallback Supabase credentials to prevent missing variables error in test environments
+// Test-only fallbacks; copy backend/.env.test.example to .env.test for local runs
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-local-only';
+process.env.JWT_REFRESH_SECRET =
+  process.env.JWT_REFRESH_SECRET || 'test-refresh-secret-local-only';
 process.env.SUPABASE_URL =
-  process.env.SUPABASE_URL || 'https://placeholder.supabase.co';
+  process.env.SUPABASE_URL || 'https://example.invalid';
 process.env.SUPABASE_SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSJ9.placeholder-signature';
+  'fake-supabase-service-role-key-not-a-real-jwt';
+process.env.SUPABASE_JWT_SECRET =
+  process.env.SUPABASE_JWT_SECRET || 'fake-supabase-jwt-secret-local-only';
 
-// Increase test timeout
 jest.setTimeout(30000);

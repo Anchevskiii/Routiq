@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  // Create test users
+  // Dev-only seed users — never run against production databases
   const hashedPassword = await bcrypt.hash('password123', 10);
 
   const user1 = await prisma.user.upsert({

@@ -32,12 +32,26 @@ describe('NotificationsController', () => {
   describe('getUserNotifications', () => {
     it('should call getUserNotifications with user sub and pagination params', async () => {
       mockService.getUserNotifications.mockResolvedValue({ notifications: [] });
-      const res = await controller.getUserNotifications(mockUser, 2, 15);
+      const res = await controller.getUserNotifications(mockUser, {
+        page: 2,
+        limit: 15,
+      });
       expect(res).toEqual({ notifications: [] });
       expect(mockService.getUserNotifications).toHaveBeenCalledWith(
         'user-123',
         2,
         15,
+      );
+    });
+
+    it('should fall back to defaults when query params are not provided', async () => {
+      mockService.getUserNotifications.mockResolvedValue({ notifications: [] });
+      const res = await controller.getUserNotifications(mockUser, {});
+      expect(res).toEqual({ notifications: [] });
+      expect(mockService.getUserNotifications).toHaveBeenCalledWith(
+        'user-123',
+        1,
+        20,
       );
     });
   });

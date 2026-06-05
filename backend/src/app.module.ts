@@ -40,12 +40,22 @@ import { NotificationsModule } from './notifications/notifications.module';
       {
         name: 'default',
         ttl: 60000, // 1 minute
-        limit: 100, // 100 requests per minute per IP
+        limit: 10000, // 10000 requests per minute per IP
       },
       {
         name: 'itinerary-generate',
         ttl: 60000, // 1 minute
         limit: 5, // 5 requests per minute per user
+      },
+      {
+        name: 'avatar-upload',
+        ttl: 60000,
+        limit: 10,
+      },
+      {
+        name: 'group-invite',
+        ttl: 60000,
+        limit: 10,
       },
     ]),
 

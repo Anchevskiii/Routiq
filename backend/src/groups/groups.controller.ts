@@ -16,6 +16,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -91,7 +92,7 @@ export class GroupsController {
     @CurrentUser() user: JwtPayload,
     @Query('limit') limit?: string,
   ) {
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const limitNum = limit ? Number.parseInt(limit, 10) : 50;
     return this.groupsService.getGroupActivityLog(id, user.sub, limitNum);
   }
 
@@ -99,25 +100,35 @@ export class GroupsController {
   @ApiBody({ type: CreateGroupDto })
   @ApiResponse({ status: 201, description: 'Group created successfully.' })
   @Post()
-@UseInterceptors(
-  FileInterceptor('image', { limits: { fileSize: 5 * 1024 * 1024 } }),
-)
-async createGroup(
-  @CurrentUser() user: JwtPayload,
-  @Body() createGroupDto: CreateGroupDto,
-  @UploadedFile(
-    new ParseFilePipe({
-      validators: [
-        new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024, message: 'Max 5MB' }),
-        new FileTypeValidator({ fileType: /image\/(jpeg|png|webp|gif|heic|heif)/ }),
-      ],
-      fileIsRequired: false, // image is optional during creation
-    }),
+  @UseInterceptors(
+    FileInterceptor('image', { limits: { fileSize: 5 * 1024 * 1024 } }),
   )
-  file?: MulterFile,
-) {
-  return this.groupsService.createGroup(user.sub, createGroupDto, file?.buffer, file?.mimetype);
-}
+  async createGroup(
+    @CurrentUser() user: JwtPayload,
+    @Body() createGroupDto: CreateGroupDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({
+            maxSize: 5 * 1024 * 1024,
+            message: 'Max 5MB',
+          }),
+          new FileTypeValidator({
+            fileType: /image\/(jpeg|png|webp|gif|heic|heif)/,
+          }),
+        ],
+        fileIsRequired: false, // image is optional during creation
+      }),
+    )
+    file?: MulterFile,
+  ) {
+    return this.groupsService.createGroup(
+      user.sub,
+      createGroupDto,
+      file?.buffer,
+      file?.mimetype,
+    );
+  }
 
   @ApiOperation({ summary: 'Update group details' })
   @ApiParam({ name: 'id', description: 'Group ID' })
@@ -178,6 +189,7 @@ async createGroup(
   @ApiParam({ name: 'id', description: 'Group ID' })
   @ApiBody({ type: InviteMemberDto })
   @ApiResponse({ status: 201, description: 'Invitation sent.' })
+  @Throttle({ 'group-invite': { limit: 10, ttl: 60000 } })
   @Post(':id/invite')
   async inviteMember(
     @Param('id') id: string,

@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
   MinLength,
@@ -103,6 +104,29 @@ export class CreateItineraryDto {
     required: false,
   })
   @IsString()
+  @IsUUID()
   @IsOptional()
   groupId?: string;
+
+  @ApiProperty({
+    description: 'Optional latitude of the destination',
+    required: false,
+  })
+  @IsOptional()
+  latitude?: number;
+
+  @ApiProperty({
+    description: 'Optional longitude of the destination',
+    required: false,
+  })
+  @IsOptional()
+  longitude?: number;
+
+  @ApiProperty({
+    description: 'Optional Google Place ID of the destination',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  placeId?: string;
 }

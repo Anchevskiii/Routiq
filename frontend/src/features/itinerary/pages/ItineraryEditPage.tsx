@@ -82,10 +82,11 @@ export const ItineraryEditPage: React.FC = () => {
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Destination</label>
+            <label htmlFor="destination-input" className="block text-sm font-bold text-gray-700 mb-2">Destination</label>
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
+                id="destination-input"
                 type="text"
                 {...register('destination')}
                 className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all ${
@@ -98,33 +99,37 @@ export const ItineraryEditPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
-              <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <label htmlFor="startDate-input" className="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
+              <div className="relative group">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none z-10" />
                 <input
+                  id="startDate-input"
                   type="date"
                   {...register('startDate')}
-                  className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all ${
-                    errors.startDate ? 'border-red-500 bg-red-50' : 'border-gray-100 bg-gray-50/50'
-                  }`}
+                  className={`w-full pl-12 pr-4 py-3 border rounded-xl outline-none transition-all cursor-pointer
+                    focus:ring-2 focus:ring-primary/20 focus:border-primary
+                    [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer
+                    ${errors.startDate ? 'border-red-400 bg-red-50 text-red-700' : 'border-gray-200 bg-gray-50/50 text-gray-900 hover:border-primary/50'}`}
                 />
               </div>
-              {errors.startDate && <p className="mt-1 text-xs text-red-600 font-bold">{errors.startDate.message}</p>}
+              {errors.startDate && <p className="mt-1.5 text-xs text-red-600 font-semibold">{errors.startDate.message}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">End Date</label>
-              <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <label htmlFor="endDate-input" className="block text-sm font-bold text-gray-700 mb-2">End Date</label>
+              <div className="relative group">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none z-10" />
                 <input
+                  id="endDate-input"
                   type="date"
                   {...register('endDate')}
-                  className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all ${
-                    errors.endDate ? 'border-red-500 bg-red-50' : 'border-gray-100 bg-gray-50/50'
-                  }`}
+                  className={`w-full pl-12 pr-4 py-3 border rounded-xl outline-none transition-all cursor-pointer
+                    focus:ring-2 focus:ring-primary/20 focus:border-primary
+                    [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer
+                    ${errors.endDate ? 'border-red-400 bg-red-50 text-red-700' : 'border-gray-200 bg-gray-50/50 text-gray-900 hover:border-primary/50'}`}
                 />
               </div>
-              {errors.endDate && <p className="mt-1 text-xs text-red-600 font-bold">{errors.endDate.message}</p>}
+              {errors.endDate && <p className="mt-1.5 text-xs text-red-600 font-semibold">{errors.endDate.message}</p>}
             </div>
           </div>
 

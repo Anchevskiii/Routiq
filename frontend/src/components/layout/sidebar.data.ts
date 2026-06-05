@@ -1,4 +1,4 @@
-import { Home, Map, Users, Sparkles } from 'lucide-react'
+import { Home, Map, Users, Sparkles, HelpCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 
@@ -16,6 +16,6 @@ export const NAV_MAIN_STATIC = [
   { id: 'home',   label: 'Home',        icon: Home,     href: ROUTES.DASHBOARD },
   { id: 'trips',  label: 'Trips',       icon: Map,      href: ROUTES.TRIPS     },
   { id: 'groups', label: 'Groups',      icon: Users,    href: ROUTES.GROUPS    },
-  { id: 'ai',     label: 'AI Planner',  icon: Sparkles, href: ROUTES.PLANNER   },
-  // { id: 'saved',  label: 'Saved',       icon: Bookmark, href: ROUTES.TRIPS     },
+  { id: 'ai',     label: 'AI Planner',  icon: Sparkles,    href: ROUTES.PLANNER },
+  { id: 'help',   label: 'Help',        icon: HelpCircle,  href: ROUTES.HELP    },
 ] as const

@@ -15,6 +15,7 @@ export const DashboardTopbar: React.FC = () => {
       <div className="flex items-center gap-2 ml-auto">
         <button
           onClick={toggle}
+          aria-label="Toggle theme"
           className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-blue-900/30 transition-colors"
         >
           {isDark ? <Sun className="w-[17px] h-[17px]" /> : <Moon className="w-[17px] h-[17px]" />}
@@ -22,7 +23,11 @@ export const DashboardTopbar: React.FC = () => {
 
         <NotificationsDropdown />
 
-        <Link to={ROUTES.PROFILE} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-blue-900/30 transition-colors">
+        <Link
+          to={ROUTES.PROFILE}
+          aria-label="Settings"
+          className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-blue-900/30 transition-colors"
+        >
           <Settings className="w-[17px] h-[17px]" />
         </Link>
       </div>

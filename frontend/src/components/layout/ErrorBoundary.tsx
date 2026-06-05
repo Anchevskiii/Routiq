@@ -19,7 +19,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo)
+    if (import.meta.env.DEV) {
+      console.error('Uncaught error:', error, errorInfo)
+    }
   }
 
   public render() {
@@ -50,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </p>
             <div className="flex justify-center">
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => globalThis.location.reload()}
                 className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
               >
                 Refresh Page

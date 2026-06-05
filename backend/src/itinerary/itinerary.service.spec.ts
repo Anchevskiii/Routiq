@@ -131,15 +131,16 @@ const savedItineraryRecord = {
 // Helper — build service
 // ---------------------------------------------------------------------------
 
+const mockWeatherGetForecast = jest.fn();
+
 function buildService(): ItineraryService {
-  const mockWeatherService = {
-    getForecast: jest.fn().mockResolvedValue({ forecast: [] }),
-  };
   return new ItineraryService(
     mockPrisma as unknown as PrismaService,
     mockGeminiService as unknown as GeminiService,
     mockItineraryGenerationService as unknown as ItineraryGenerationService,
-    mockWeatherService as unknown as import('../weather/weather.service').WeatherService,
+    {
+      getForecast: mockWeatherGetForecast,
+    } as unknown as import('../weather/weather.service').WeatherService,
   );
 }
 
@@ -152,6 +153,27 @@ describe('ItineraryService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockWeatherGetForecast.mockReset();
+    mockWeatherGetForecast.mockResolvedValue({
+      forecast: [
+        {
+          date: '2026-06-05',
+          condition: 'Sunny',
+          temperature: { min: 15, max: 25 },
+          humidity: 60,
+          windSpeed: 10,
+          precipitation: 0,
+        },
+        {
+          date: '2026-06-06',
+          condition: 'Rainy',
+          temperature: { min: 12, max: 18 },
+          humidity: 80,
+          windSpeed: 15,
+          precipitation: 5,
+        },
+      ],
+    });
     service = buildService();
   });
 
@@ -424,7 +446,11 @@ describe('ItineraryService', () => {
         weather: { create: {} },
       });
       mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
-        savedItineraryRecord,
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
       );
 
       // Simulate two observable events: progress then complete
@@ -629,6 +655,26 @@ describe('ItineraryService', () => {
         service.reorderDays(itineraryId, userId, { dayIds: ['day-1'] }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('should catch and log a warning if weather refresh throws an error during reorderDays', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryDay.update.mockResolvedValue({
+        id: 'day-1',
+        dayNumber: 1,
+      });
+      mockPrisma.$transaction.mockResolvedValue([
+        { id: 'day-1', dayNumber: 1 },
+      ]);
+      mockWeatherGetForecast.mockRejectedValue(
+        new Error('Weather service failure'),
+      );
+
+      const result = await service.reorderDays(itineraryId, userId, {
+        dayIds: ['day-1', 'day-2'],
+      });
+
+      expect(result).toBeDefined();
+    });
   });
 
   // =========================================================================
@@ -721,7 +767,7 @@ describe('ItineraryService', () => {
       });
 
       expect(mockPrisma.itineraryActivity.create).toHaveBeenCalled();
-      expect(result.title).toBe('New Act');
+      expect(result.activity.title).toBe('New Act');
     });
   });
 
@@ -762,7 +808,11 @@ describe('ItineraryService', () => {
       });
       mockGeminiService.streamGenerate.mockResolvedValue(generatedItinerary);
       mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
-        savedItineraryRecord,
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
       );
       mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
 
@@ -835,7 +885,7 @@ describe('ItineraryService', () => {
       });
 
       expect(mockPrisma.itineraryActivity.create).toHaveBeenCalled();
-      expect(result.title).toBe('New Act');
+      expect(result.activity.title).toBe('New Act');
     });
 
     it('inserts at start when new activity starts before all existing', async () => {
@@ -854,7 +904,180 @@ describe('ItineraryService', () => {
         startTime: '08:00',
       });
 
-      expect(result.title).toBe('Early Act');
+      expect(result.activity.title).toBe('Early Act');
+    });
+
+    it('trims the preceding activity duration if new activity overlap exists', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        {
+          id: 'act-preceding',
+          sortOrder: 1,
+          startTime: '10:00',
+          durationMinutes: 120,
+          title: 'Preceding',
+        },
+      ]);
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-new',
+        title: 'New Act',
+        startTime: '11:30',
+        sortOrder: 2,
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-preceding',
+        durationMinutes: 90,
+      });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'New Act',
+        startTime: '11:30',
+      });
+
+      expect(mockPrisma.itineraryActivity.update).toHaveBeenCalledWith({
+        where: { id: 'act-preceding' },
+        data: { durationMinutes: 90 },
+      });
+      expect(result.trimmedActivity).toEqual({
+        id: 'act-preceding',
+        title: 'Preceding',
+        newDurationMinutes: 90,
+      });
+    });
+
+    it('cascades subsequent activity times from insertion point', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'act-preceding',
+            sortOrder: 1,
+            startTime: '10:00',
+            durationMinutes: 60,
+            title: 'Preceding',
+          },
+          {
+            id: 'act-subsequent',
+            sortOrder: 2,
+            startTime: '11:15',
+            durationMinutes: 60,
+            title: 'Subsequent',
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'act-new',
+            sortOrder: 2,
+            startTime: '11:00',
+            durationMinutes: 60,
+            title: 'New Act',
+          },
+          {
+            id: 'act-subsequent',
+            sortOrder: 3,
+            startTime: '11:15',
+            durationMinutes: 60,
+            title: 'Subsequent',
+          },
+        ]);
+
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-new',
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 60,
+        sortOrder: 2,
+      });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 60,
+      });
+
+      expect(result.pushedActivities).toEqual([
+        {
+          id: 'act-subsequent',
+          title: 'Subsequent',
+          newStartTime: '12:00',
+        },
+      ]);
+    });
+
+    it('handles subsequent activity without startTime in cascadeActivityTimesFrom', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'act-preceding',
+            sortOrder: 1,
+            startTime: '10:00',
+            durationMinutes: 60,
+            title: 'Preceding',
+          },
+          {
+            id: 'act-subsequent',
+            sortOrder: 2,
+            startTime: '11:15',
+            durationMinutes: 60,
+            title: 'Subsequent',
+          },
+          {
+            id: 'act-no-time',
+            sortOrder: 3,
+            startTime: null,
+            durationMinutes: 60,
+            title: 'No Time',
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'act-new',
+            sortOrder: 2,
+            startTime: '11:00',
+            durationMinutes: 60,
+            title: 'New Act',
+          },
+          {
+            id: 'act-subsequent',
+            sortOrder: 3,
+            startTime: '11:15',
+            durationMinutes: 60,
+            title: 'Subsequent',
+          },
+          {
+            id: 'act-no-time',
+            sortOrder: 4,
+            startTime: null,
+            durationMinutes: 60,
+            title: 'No Time',
+          },
+        ]);
+
+      mockPrisma.itineraryActivity.create.mockResolvedValue({
+        id: 'act-new',
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 60,
+        sortOrder: 2,
+      });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.addActivity(itineraryId, 'day-1', userId, {
+        title: 'New Act',
+        startTime: '11:00',
+        durationMinutes: 60,
+      });
+
+      expect(result.pushedActivities).toEqual([
+        {
+          id: 'act-subsequent',
+          title: 'Subsequent',
+          newStartTime: '12:00',
+        },
+      ]);
     });
   });
 
@@ -864,6 +1087,13 @@ describe('ItineraryService', () => {
       mockPrisma.itineraryActivity.findFirst.mockResolvedValue(null);
       await expect(
         service.deleteActivity(itineraryId, 'act-missing', userId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException if itinerary not found', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(null);
+      await expect(
+        service.deleteActivity('itin-missing', 'act-1', userId),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1004,6 +1234,47 @@ describe('ItineraryService', () => {
       mockPrisma.$transaction.mockResolvedValue([]);
 
       await service.updateActivity(itineraryId, 'act-1', userId, {
+        durationMinutes: 60,
+      });
+
+      expect(mockPrisma.itineraryActivity.findMany).toHaveBeenCalled();
+    });
+
+    it('uses priorityId tie-break when sorting activities with identical startTime', async () => {
+      mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
+      mockPrisma.itineraryActivity.findFirst.mockResolvedValue({
+        id: 'act-priority',
+        dayId: 'day-1',
+      });
+      mockPrisma.itineraryActivity.update.mockResolvedValue({
+        id: 'act-priority',
+        title: 'Priority Activity',
+      });
+      // Return activities with identical start times
+      mockPrisma.itineraryActivity.findMany.mockResolvedValue([
+        {
+          id: 'act-other-1',
+          sortOrder: 1,
+          startTime: '10:00',
+          durationMinutes: 60,
+        },
+        {
+          id: 'act-priority',
+          sortOrder: 2,
+          startTime: '10:00',
+          durationMinutes: 60,
+        },
+        {
+          id: 'act-other-2',
+          sortOrder: 3,
+          startTime: '10:00',
+          durationMinutes: 60,
+        },
+      ]);
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      await service.updateActivity(itineraryId, 'act-priority', userId, {
+        startTime: '10:00',
         durationMinutes: 60,
       });
 
@@ -1238,7 +1509,11 @@ describe('ItineraryService', () => {
         }),
       );
       mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
-        savedItineraryRecord,
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
       );
 
       const events: ItineraryGenerateStreamEvent[] = [];
@@ -1247,6 +1522,8 @@ describe('ItineraryService', () => {
         complete: () => {
           const dayEvents = events.filter((e) => e.type === 'day');
           expect(dayEvents.length).toBeGreaterThanOrEqual(1);
+          const telemetryEvents = events.filter((e) => e.type === 'telemetry');
+          expect(telemetryEvents.length).toBeGreaterThanOrEqual(2); // Should have at least preparation and day telemetry
           done();
         },
         error: done,

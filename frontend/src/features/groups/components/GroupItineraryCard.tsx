@@ -57,8 +57,8 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
       groupsApi.vote(groupId!, groupItinerary.id, voteType),
     onMutate: (newVoteType) => { setPendingVote(newVoteType) },
     onError: () => { setPendingVote(null); toast.error('Failed to register vote') },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
       setPendingVote(null)
     },
   })
@@ -67,8 +67,8 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
     mutationFn: () => groupsApi.removeVote(groupId!, groupItinerary.id),
     onMutate: () => { setPendingVote('REMOVE' as never) },
     onError: () => { setPendingVote(null); toast.error('Failed to remove vote') },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.group(groupId!) })
       setPendingVote(null)
     },
   })
@@ -123,7 +123,7 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
 
   return (
     <div
-      className="grp-panel grp-it-card relative grid grid-cols-[96px_1fr_auto] gap-[18px] items-center rounded-[18px] p-[18px] border border-gray-200 dark:border-white/[0.07] group/card cursor-pointer"
+      className="grp-panel grp-it-card relative grid gap-[18px] grid-cols-[1fr] sm:grid-cols-[96px_1fr_auto] items-center rounded-[18px] p-[18px] border border-gray-200 dark:border-white/[0.07] group/card cursor-pointer"
       role="button"
       tabIndex={0}
       onClick={handleCardClick}
@@ -189,7 +189,7 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-2 sm:items-end">
         <VoteWidget
           score={displayScore}
           userVote={displayVote}
@@ -198,6 +198,7 @@ export const GroupItineraryCard: React.FC<Props> = ({ groupItinerary, index, cur
           onRemoveVote={() => removeVoteMutation.mutate()}
         />
         <button
+          type="button"
           onClick={e => {
             e.stopPropagation()
             if (confirmRemove) {

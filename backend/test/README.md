@@ -23,12 +23,13 @@ docker start routiq-test-db
 docker stop routiq-test-db
 ```
 
-The tests use the connection in `.env.test`:
+Copy the test environment template before your first local run:
 
-```text
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/routiq_test
-DIRECT_URL=postgresql://postgres:postgres@localhost:5433/routiq_test
+```bash
+cp .env.test.example .env.test
 ```
+
+The tests use the connection in `.env.test` (see `.env.test.example` for all test-only variables).
 
 ## Migrations for the test DB
 
@@ -54,6 +55,5 @@ npm run test:e2e
 
 ## Supabase warnings during tests
 
-If you see warnings about missing `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY`,
-add dummy values to `.env.test` to silence them. The e2e tests do not use
-Supabase during test runs.
+Dummy Supabase values are included in `.env.test.example`. Backend tests do not
+call Supabase during test runs.

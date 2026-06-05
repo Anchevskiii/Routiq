@@ -1,16 +1,46 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { PlannerForm } from './PlannerForm'
 
+vi.mock('@/components/providers/GoogleMapsProvider', () => ({
+  useGoogleMaps: () => ({ isLoaded: true }),
+}))
+
+class MockAutocomplete {
+  addListener = vi.fn()
+  getPlace = vi.fn(() => ({
+    formatted_address: 'Rome, Italy',
+    name: 'Rome',
+    place_id: 'rome_id',
+    geometry: {
+      location: {
+        lat: () => 41.9,
+        lng: () => 12.5,
+      },
+    },
+  }))
+}
+
 beforeEach(() => {
+  vi.stubGlobal('google', {
+    maps: {
+      places: {
+        Autocomplete: MockAutocomplete,
+      },
+    },
+  })
   global.fetch = vi.fn().mockImplementation(() =>
     Promise.resolve({
       ok: true,
       json: () => Promise.resolve({ originalimage: null, description: null }),
     })
   )
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('PlannerForm', () => {

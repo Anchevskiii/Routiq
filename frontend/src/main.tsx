@@ -7,6 +7,29 @@ import { ThemeProvider } from '@/hooks/useTheme'
 import './index.css'
 import './styles/planner.css'
 
+// Intercept console warnings and errors to filter out third-party/external platform noises
+const originalWarn = console.warn
+const originalError = console.error
+
+console.warn = (...args: unknown[]) => {
+  const message = args.map(String).join(' ')
+  if (message.includes('google.maps.places.Autocomplete') || message.includes('PlaceAutocompleteElement')) {
+    return
+  }
+  if (message.includes('React Router Future Flag Warning')) {
+    return
+  }
+  originalWarn.apply(console, args)
+}
+
+console.error = (...args: unknown[]) => {
+  const message = args.map(String).join(' ')
+  if (message.includes('gen_204') || message.includes('csp_test') || message.includes('ERR_BLOCKED_BY_CLIENT')) {
+    return
+  }
+  originalError.apply(console, args)
+}
+
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {

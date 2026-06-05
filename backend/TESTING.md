@@ -27,8 +27,8 @@ npx jest --watch
 npx jest --coverage
 ```
 
-> Tests are **not wired to git push**. They only run when you invoke them manually.
-> If you later add CI (GitHub Actions, etc.), add `npx jest` to the workflow file at that point.
+> Tests run automatically in **GitHub Actions** on every push/PR to `main` and `development`
+> (`.github/workflows/ci.yml`: unit, integration, and E2E). Locally, invoke them with the commands above.
 
 ---## Test files
 

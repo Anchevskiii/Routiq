@@ -92,7 +92,7 @@ Pregled vseh funkcionalnosti sistema — kaj uporabnik in admin skupin lahko po�
 | Build tool | Vite | HMR < 1s, `strictPort: true` za predvidljive porte |
 | Routing | React Router v6 | Standard za React SPA, nested routes |
 | Styling | Tailwind CSS | Utility-first, konsistentna barvna paleta v `tailwind.config.ts` |
-| HTTP client | **Axios 1.14.0 (pinana!)** | Interceptorji za avtomatski token refresh |
+| HTTP client | **Axios 1.14.0 (pinana!)** | Interceptorji za Bearer token; refresh skrbi Supabase SDK |
 | Forme | React Hook Form + Zod | Type-safe validacija, minimalni re-renders |
 | Server data | TanStack Query v5 | Cache, loading stanja, background refetch |
 | Datum/čas | date-fns | Tree-shakeable, immutable operacije |
@@ -121,9 +121,9 @@ Pregled vseh funkcionalnosti sistema — kaj uporabnik in admin skupin lahko po�
 
 ---
 
-## 3. Frontend arhitektura
+## 4. Frontend arhitektura
 
-### 3.1 Struktura map
+### 4.1 Struktura map
 
 ```
 frontend/src/
@@ -139,7 +139,9 @@ frontend/src/
 │   ├── attractions.api.ts
 │   ├── weather.api.ts
 │   ├── groups.api.ts
+│   ├── notifications.api.ts
 │   ├── profile.api.ts
+│   ├── supabase.ts
 │   └── export.api.ts
 │
 ├── components/
@@ -148,21 +150,22 @@ frontend/src/
 │   └── layout/             # AppShell, Sidebar, Topbar, ProtectedRoute, ErrorBoundary
 │
 ├── features/               # Feature-based organizacija
-│   ├── auth/               # Login, Register, Google OAuth gumb, AuthContext hook
+│   ├── auth/               # Login, Register, Google OAuth gumb (useAuth v app/Providers.tsx)
 │   ├── planner/            # Večstopenjski form, TravelTypeGrid, SSE streaming prikaz
 │   ├── itinerary/          # Prikaz, urejanje (drag&drop), ItineraryMap, WeatherBadge
-│   ├── dashboard/          # Seznam shranjenih potovanj + TripsPage
-│   ├── groups/             # Skupinska potovanja, VoteWidget, EmojiPickerPanel, komentarji
-│   └── profile/            # Profil, avatar upload, sprememba gesla
+│   ├── dashboard/          # Seznam shranjenih potovanj
+│   ├── groups/             # Skupinska potovanja, NotificationsPage, VoteWidget, komentarji
+│   ├── landing/            # Javna landing stran
+│   ├── help/               # Pomoč in FAQ
+│   └── profile/            # Profil, avatar upload, nastavitve
 │
 ├── hooks/                  # Deljeni custom hooks (useDebounce, useStream, useMediaQuery...)
-├── context/                # AuthContext — user, isAuthenticated, login/logout
 ├── types/                  # TypeScript tipi za vse domenske entitete
 ├── utils/                  # Pure utility funkcije (date, format, map, validation)
 └── constants/              # ROUTES, QUERY_KEYS, travelTypes enum
 ```
 
-### 3.2 Feature modul — struktura
+### 4.2 Feature modul — struktura
 
 Vsak feature (planner, itinerary, groups...) ima enako interno strukturo:
 
@@ -175,7 +178,7 @@ features/<ime>/
 
 **Pravilo reusability:** Komponenta ki se pojavi na dveh ali več mestih → v `components/`. Samo en feature → v `features/<feature>/components/`.
 
-### 3.3 State management
+### 4.3 State management
 
 | Vrsta stanja | Orodje | Primer |
 |---|---|---|
@@ -183,9 +186,9 @@ features/<ime>/
 | Globalni UI state | React Context | Auth user objekt, tema |
 | Lokalni state | `useState` | Modal open/close, wizard korak, form polje |
 | Forme | React Hook Form + Zod | Vsi formularji z validacijo |
-| AI streaming | `useState` + `useStream` hook | Generiran tekst ki prihaja po dnevih (SSE chunki) |
+| AI streaming | `useState` + `useStream` hook | Dogodki o napredku za loading animacijo |
 
-### 3.4 Routing
+### 4.4 Routing
 
 Vse rute so definirane v `src/app/router.tsx`. Poti so konstante v `src/constants/routes.ts` — nikoli ne pišemo path stringov direktno v komponente:
 
@@ -203,7 +206,7 @@ export const ROUTES = {
 
 Zaščitene strani so zavite v `<ProtectedRoute>` ki ob neautenticiranem dostopu preusmeri na `/login?redirect=<original-path>`.
 
-### 3.5 Hierarhija komponent
+### 4.5 Hierarhija komponent
 
 ```mermaid
 graph TD
@@ -225,7 +228,7 @@ graph TD
 
     PlannerPage --> PlannerForm
     PlannerForm --> TravelTypeGrid
-    PlannerPage --> GenerationLoading["GenerationLoading\n(SSE prikaz po dnevih)"]
+    PlannerPage --> GenerationLoading["GenerationLoading\n(SSE progress/loading animacija)"]
 
     ItineraryPage --> ItineraryHeader["ItineraryHeader\n(PDF, ICS, Share)"]
     ItineraryPage --> DayCard
@@ -242,9 +245,9 @@ graph TD
 
 ---
 
-## 4. Backend arhitektura
+## 5. Backend arhitektura
 
-### 4.1 NestJS koncepti
+### 5.1 NestJS koncepti
 
 NestJS sili v modularno arhitekturo z jasno ločitvijo odgovornosti:
 
@@ -274,7 +277,7 @@ graph LR
 | **Filter** | Ujame vse napake, vrne konzistenten error format | `GlobalExceptionFilter` |
 | **Decorator** | Označuje endpointe ali pridobi podatke | `@Public()`, `@CurrentUser()` |
 
-### 4.2 Struktura modulov
+### 5.2 Struktura modulov
 
 ```
 backend/src/
@@ -301,25 +304,27 @@ backend/src/
 ├── attractions/        # GET /search, GET /alternatives (Google Places proxy)
 ├── weather/            # GET /weather — napoved z 1h memory cache
 ├── groups/             # CRUD skupin, invite/accept/decline, glasovanje, komentarji
+├── notifications/      # GET/PATCH obvestila — in-app notifikacije (vote, invite, komentar)
 ├── export/             # GET /export/:id/ics — generiranje .ics datoteke
 ├── mail/               # sendInvitation() — Resend e-pošta
 └── health/             # GET /health — Render health check
 ```
 
-### 4.3 Odgovornosti po modulu
+### 5.3 Odgovornosti po modulu
 
 | Modul | Controller skrbi za | Service skrbi za |
 |---|---|---|
-| `users` | GET/PATCH `/users/profile`, POST `/avatar`, PATCH `/password`, GET/PATCH `/settings`, DELETE `/account` | findById, updateProfile, uploadAvatarFile, updateSettings, deleteAccount |
+| `users` | GET/PATCH `/users/profile`, POST `/avatar`, GET/PATCH `/settings`, DELETE `/account` | findById, updateProfile, uploadAvatarFile, updateSettings, deleteAccount |
 | `itinerary` | POST `/generate` (SSE), GET/PATCH/DELETE `/:id`, POST `/:id/share`, GET `/shared/:token`, CRUD aktivnosti | AI orchestracija, CRUD, share token, ownership preverjanje |
 | `gemini` | — (interno) | `streamGenerate()` — pošlje prompt, vrne Observable SSE chunkov |
-| `attractions` | GET `/search`, GET `/alternatives` | Google Places API proxy, filtriranje po TravelType |
+| `attractions` | GET `/search`, GET `/:id`, POST `/:id/alternatives` | Google Places API proxy |
 | `weather` | GET `/weather?destination&startDate&days` | `getForecast()` + 1h memory cache |
-| `groups` | CRUD skupin, invite, accept/decline, remove, roles, itinerarji, vote, comments, activity log | Permission hierarhija (OWNER>ADMIN>MODERATOR>MEMBER), transakcije, ActivityLog |
+| `groups` | CRUD skupin, invite, accept/decline, remove, roles, itinerarji, vote (+ remove vote), comments, activity log | Permission hierarhija (OWNER>ADMIN>MODERATOR>MEMBER), transakcije, ActivityLog |
+| `notifications` | GET `/notifications`, unread-count, read, read-all | In-app obvestila; fire-and-forget iz groups service (vote, invite) |
 | `export` | GET `/export/:id/ics` | Generiranje .ics datoteke iz Prisma podatkov |
 | `mail` | — (interno) | `sendInvitation()` prek Resend SDK |
 
-### 4.4 Global setup (main.ts)
+### 5.4 Global setup (main.ts)
 
 ```typescript
 // Varnostni headerji (Helmet)
@@ -347,9 +352,9 @@ app.setGlobalPrefix('api')
 
 ---
 
-## 5. Komunikacija med plastmi
+## 6. Komunikacija med plastmi
 
-### 5.1 Request lifecycle
+### 6.1 Request lifecycle
 
 ```
 Brskalnik
@@ -366,7 +371,7 @@ Brskalnik
   → HTTPS response
 ```
 
-### 5.2 Error handling
+### 6.2 Error handling
 
 Vsaka napaka — ne glede na to kje nastane — gre skozi `AllExceptionsFilter`:
 
@@ -381,9 +386,9 @@ Vsaka napaka — ne glede na to kje nastane — gre skozi `AllExceptionsFilter`:
 }
 ```
 
-### 5.3 SSE streaming (AI generiranje)
+### 6.3 SSE streaming (AI generiranje)
 
-SSE (Server-Sent Events) je enosmerna HTTP konekcija strežnik → klient. Idealna za AI generiranje kjer hočemo da se vsak dan prikaže takoj ko je generiran:
+SSE (Server-Sent Events) je enosmerna HTTP konekcija strežnik → klient. Pri generiranju itinerarja se prejeti podatki o napredku uporabijo za ažuriranje loading animacije, celoten itinerar pa se prikaže ob koncu ko je shranjen v bazi:
 
 ```
 FE odpre SSE konekcijo → POST /api/itinerary/generate

@@ -2,15 +2,12 @@ import React, { useState, useRef, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Calendar, Clock, Wallet, Pencil, Check, X, Compass, Printer } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { pdf } from '@react-pdf/renderer'
-import { saveAs } from 'file-saver'
 import toast from 'react-hot-toast'
 
 import { itineraryApi } from '@/api/itinerary.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
 import { Itinerary } from '@/types/itinerary.types'
 import { getTravelTypeByValue } from '@/constants/travelTypes'
-import { ItineraryPdfDocument } from '../pdf/ItineraryPdfDocument'
 
 interface ItineraryHeaderProps {
   itinerary: Itinerary
@@ -27,8 +24,8 @@ export const ItineraryHeader: React.FC<ItineraryHeaderProps> = ({
   const handleDownloadPdf = async () => {
     setPdfLoading(true)
     try {
-      const blob = await pdf(<ItineraryPdfDocument itinerary={itinerary} />).toBlob()
-      saveAs(blob, `routiq-${itinerary.destination.replace(/\s+/g, '-').toLowerCase()}.pdf`)
+      const { downloadItineraryPdf } = await import('../pdf/pdf-generator')
+      await downloadItineraryPdf(itinerary)
     } catch {
       toast.error('Failed to generate PDF')
     } finally {

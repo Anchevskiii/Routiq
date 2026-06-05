@@ -23,56 +23,69 @@
 
 ## 1. Testna strategija
 
-Vsi testi so **unit testi** — nobena zunanja odvisnost (baza, API, omrežje) ni dejanska. Vsaka zunanja storitev je zamenjana z Jest mock objektom.
+Projekt pokriva tri ravni testiranja — **unit**, **integration** in **E2E** — tako na backendu (Jest) kot na frontendu (Vitest + Playwright).
 
 ```mermaid
-graph LR
-    Unit["Unit testi\n(Jest)"] -->|"mock"| Prisma["PrismaService\n(baza)"]
-    Unit -->|"mock"| Supabase["SupabaseService\n(JWT)"]
-    Unit -->|"mock"| Gemini["GeminiService\n(AI)"]
-    Unit -->|"mock"| Mail["MailService\n(e-pošta)"]
+graph TB
+    subgraph Backend["Backend (Jest)"]
+        Unit["Unit testi\n(mock vse odvisnosti)"]
+        Integration["Integration testi\n(prava PostgreSQL baza)"]
+        E2E_BE["E2E / regresija\n(HTTP scenariji)"]
+    end
+
+    subgraph Frontend["Frontend (Vitest + Playwright)"]
+        VTest["Vitest unit testi\n(komponente, hooks, utils)"]
+        Playwright["Playwright E2E\n(brskalnik)"]
+    end
+
+    subgraph Mocks["Mock odvisnosti (unit testi)"]
+        Prisma["PrismaService"]
+        Supabase["SupabaseService"]
+        Gemini["GeminiService"]
+        Mail["MailService"]
+        GMaps["Google Maps API"]
+    end
+
+    Unit -->|"mock"| Mocks
+    VTest -->|"mock"| GMaps
 
     style Unit fill:#22c55e,color:#fff
-    style Prisma fill:#94a3b8,color:#fff
-    style Supabase fill:#94a3b8,color:#fff
-    style Gemini fill:#94a3b8,color:#fff
-    style Mail fill:#94a3b8,color:#fff
+    style Integration fill:#3b82f6,color:#fff
+    style E2E_BE fill:#8b5cf6,color:#fff
+    style VTest fill:#f59e0b,color:#fff
+    style Playwright fill:#ef4444,color:#fff
 ```
 
-**Zakaj samo unit testi (brez integration/E2E)?**
-- Hitri: tečejo v sekundah, ne minutah
-- Determinizmi: niso odvisni od zunanjih storitev ali stanja baze
-- Odkrijejo regresije takoj ob save-u (`--watch` mode)
-- Manjša kompleksnost vzpostavitve (ni potrebna testna baza)
-
-**Omejitev:** Unit testi ne odkrijejo napak na mejah med sistemi (npr. SQL query napake, API format spremembe). Za to bi bili potrebni integration testi.
+**Pokritost kode:** SonarCloud meri pokritost nove kode ob vsakem PR-ju (prag ≥ 80 %). Poročilo temelji na LCOV datotekah ki jih generirajo `jest --coverage` in `vitest run --coverage`.
 
 ---
 
 ## 2. Kako zagnati teste
 
 ```bash
+# ── Backend (Jest) ──────────────────────────────────────────────
 cd backend
 
-# Zaženi vse teste enkrat
-npx jest
+npx jest                    # Vsi unit testi
+npx jest --watch            # Watch mode
+npx jest itinerary.service  # Samo ena spec datoteka
+npx jest --coverage         # Z LCOV poročilom pokritosti
+npx jest --verbose          # Verbose output
 
-# Watch mode — retestira ob vsaki spremembi datoteke
-npx jest --watch
+npm run test:integration    # Integration testi (zahteva PostgreSQL)
+npm run test:e2e            # E2E / regresijski testi
 
-# Samo ena spec datoteka
-npx jest itinerary.service
-npx jest jwt-auth.guard
-npx jest groups.service
+# ── Frontend (Vitest) ───────────────────────────────────────────
+cd frontend
 
-# Poroča o pokritosti kode
-npx jest --coverage
+npm run test:unit:run       # Enkratni tek vseh Vitest testov
+npm run test:unit           # Watch mode
+npx vitest run --coverage   # Z LCOV pokritostjo (za SonarCloud)
 
-# Verbose output (pokaže vsak test)
-npx jest --verbose
+npm run test:e2e            # Playwright E2E testi
 ```
 
-> Testi niso vezani na git push — tečejo samo ročno ali v CI pipeline-u.
+> Unit testi tečejo brez baze. Integration testi zahtevajo lokalno PostgreSQL instanco z `DATABASE_URL` v `.env`.
 
 ---
 
@@ -82,18 +95,68 @@ npx jest --verbose
 backend/src/
 ├── common/
 │   ├── guards/
-│   │   └── jwt-auth.guard.spec.ts           # JwtAuthGuard — 8 skupin testov
-│   └── decorators/
-│       └── auth-decorators.spec.ts          # @Public() in @CurrentUser()
+│   │   ├── jwt-auth.guard.spec.ts             # JwtAuthGuard — 8 skupin testov
+│   │   └── roles.guard.spec.ts                # RolesGuard
+│   ├── decorators/
+│   │   └── auth-decorators.spec.ts            # @Public() in @CurrentUser()
+│   ├── filters/
+│   │   └── all-exceptions.filter.spec.ts      # GlobalExceptionFilter
+│   ├── interceptors/
+│   │   ├── logging.interceptor.spec.ts
+│   │   └── transform.interceptor.spec.ts
+│   ├── utils/
+│   │   └── retry.util.spec.ts                 # withRetry() exponential backoff
+│   └── validators/
+│       └── file.validator.spec.ts
 ├── itinerary/
-│   ├── itinerary.controller.spec.ts         # HTTP routing layer — 7 endpointov
-│   ├── itinerary.service.spec.ts            # Business logika — 9 skupin testov
-│   └── itinerary-generation.service.spec.ts # AI mapiranje in persistenca
+│   ├── itinerary.controller.spec.ts           # HTTP routing — 7 endpointov
+│   ├── itinerary.service.spec.ts              # Business logika — 9 skupin testov
+│   ├── itinerary-generation.service.spec.ts   # AI mapiranje in persistenca
+│   ├── guards/
+│   │   └── itinerary-throttler.guard.spec.ts
+│   └── prompts/
+│       └── generate-itinerary.prompt.spec.ts
+├── attractions/
+│   ├── attractions.controller.spec.ts
+│   └── attractions.service.spec.ts
 ├── groups/
-│   ├── groups.controller.spec.ts            # Groups routing — 14 endpointov
-│   └── groups.service.spec.ts               # Permission hierarhija + transakcije
-└── users/
-    └── users.service.spec.ts                # Profil, nastavitve, avatar, brisanje
+│   ├── groups.controller.spec.ts              # 14 endpointov
+│   └── groups.service.spec.ts                 # Permission hierarhija + transakcije
+├── notifications/
+│   ├── notifications.controller.spec.ts
+│   └── notifications.service.spec.ts
+├── users/
+│   ├── users.controller.spec.ts
+│   └── users.service.spec.ts                  # Profil, nastavitve, avatar, brisanje
+├── weather/
+│   ├── weather.controller.spec.ts
+│   └── weather.service.spec.ts
+├── gemini/
+│   └── gemini.service.spec.ts
+├── export/
+│   ├── export.controller.spec.ts
+│   └── export.service.spec.ts
+├── mail/
+│   └── mail.service.spec.ts
+├── prisma/
+│   └── prisma.service.spec.ts
+└── supabase/
+    └── supabase.service.spec.ts
+
+frontend/src/   # 50+ *.test.ts(x) — poženi: npm run test:unit:run
+├── api/                    # itinerary.api.test.ts
+├── components/             # layout/, ui/ (DurationSelect, TimeSelect, SidebarProfile...)
+├── features/
+│   ├── auth/               # LoginForm.test.tsx
+│   ├── groups/             # VoteWidget, GroupItineraryCard, CreateGroupMembersStep...
+│   ├── help/               # HelpPage.test.tsx, faq.utils.test.ts
+│   ├── itinerary/          # ItineraryPage, ItineraryMap, SortableDaysList, AddActivityModal...
+│   ├── landing/            # landing.utils.test.ts
+│   └── planner/            # PlannerForm.test.tsx
+├── hooks/                  # useDebounce, useStream, useTheme, useToast...
+└── utils/                  # date, format, map, validation, cn, upload...
+
+frontend/e2e/               # Playwright: navigation, itinerary.generation, itinerary.drag
 ```
 
 ---
