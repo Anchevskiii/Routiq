@@ -205,7 +205,7 @@ Before opening a PR:
 1. Set environment variables on hosting platform.
 2. Run migrations: `npx prisma migrate deploy`
 3. Start production server: `npm run start:prod`
-*(Recommended platforms: Render)*
+*(Recommended platforms: Railway)*
 
 **Troubleshooting**:
 - **Prisma client errors**: Run `npx prisma generate`

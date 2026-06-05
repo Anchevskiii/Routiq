@@ -4,10 +4,8 @@
 > Frontend + Backend sta v istem repotu (monorepo).  
 > Vsaka datoteka ima kratek opis kaj vsebuje.
 
-> **Opomba (junij 2026):** Ta dokument opisuje **dejansko stanje** repota. Ključne točke:
-> - **Auth:** Supabase Auth na frontendu (`src/api/supabase.ts`, `AuthProvider` v `src/app/Providers.tsx`). Backend `auth/` je placeholder brez HTTP route-ov.
+> - **Auth:** Supabase Auth na frontendu (`src/api/supabase.ts`, `AuthProvider` v `src/app/Providers.tsx`). Backend `auth/` is placeholder brez HTTP route-ov.
 > - **PDF izvoz:** `features/itinerary/pdf/` (ne ločen `features/export/`).
-> - **Spotify:** ni implementiran (samo env placeholderji).
 > - **Dodatne strani:** `landing/`, `help/`, `TripsPage`, `NotificationsPage` (`/trips`, `/help`, `/notifications`).
 > - **Git branch za razvoj:** `development` (ne `develop`).
 
@@ -165,7 +163,6 @@ routiq/                                             # Koren monorepa
 │   │   │   │   └── pages/LandingPage.tsx
 │   │   │   └── help/                               # Pomoč in FAQ (/help)
 │   │   │       └── pages/HelpPage.tsx
-│   │   │   # Spotify — NI implementiran (samo backend env placeholderji)
 │   │   │
 │   │   ├── hooks/                                  # Shared custom hooks (več featurov jih uporablja)
 │   │   │   ├── useDebounce.ts                      # Zakasnitev vrednosti za search input
@@ -345,12 +342,10 @@ routiq/                                             # Koren monorepa
 | **1** | Setup, auth feature, UI primitivi, layout | NestJS setup, Prisma/Supabase, auth modul |
 | **2** | Planner wizard, AI streaming prikaz, Google Maps | Gemini generiranje, Places API, Weather API |
 | **3** | Itinerary prikaz/urejanje, PDF export | ICS generiranje, urejanje atrakcij, groups modul |
-| **4** | Groups feature, dashboard, profil | Glasovanje, komentarji, Spotify (opcijsko) |
-| **5** | E2E testi, polish, deploy Vercel | Integration testi, deploy Render, varnost |
+| **4** | Groups feature, dashboard, profil | Glasovanje, komentarji |
+| **5** | E2E testi, polish, deploy Vercel | Integration testi, deploy Railway, varnost |
 
 ### Mape ki se ustvarijo sproti
-
-**Spotify** ni implementiran (samo env placeholderji v `backend/.env.example`). Struktura v tem dokumentu prikazuje **dejansko stanje** repota z opombami kjer se razlikuje od zgodnjih načrtov.
 
 ### Feature mapa – vedno enaka struktura
 

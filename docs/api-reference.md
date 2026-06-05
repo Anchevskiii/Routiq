@@ -385,7 +385,7 @@ Odstrani glas kličočega userja (soft delete). Vrne `{ "success": true }`.
 
 | Metoda | Pot | Opis | Auth |
 |---|---|---|---|
-| GET | `/health` | Status aplikacije za Render monitoring | 🔓 Javno |
+| GET | `/health` | Status aplikacije za Railway monitoring | 🔓 Javno |
 
 ```json
 // Response

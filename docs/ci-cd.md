@@ -12,7 +12,7 @@
 4. [Frontend validacija in testiranje](#4-frontend-validacija-in-testiranje)
 5. [SonarCloud analiza kode](#5-sonarcloud-analiza-kode)
 6. [Deploy — Vercel (frontend)](#6-deploy--vercel-frontend)
-7. [Deploy — Render (backend)](#7-deploy--render-backend)
+7. [Deploy — Railway (backend)](#7-deploy--railway-backend)
 8. [Okolja (environments)](#8-okolja-environments)
 
 ---
@@ -55,7 +55,7 @@ graph LR
     Push --> SC
 
     Deploy --> Vercel["☁️ Vercel\n(frontend auto-deploy)"]
-    Deploy --> Render["☁️ Render.com\n(backend auto-deploy)"]
+    Deploy --> Railway["☁️ Railway.app\n(backend auto-deploy)"]
 ```
 
 Pipeline se sproži ob:
@@ -221,9 +221,9 @@ React Router deluje na klientski strani. Ko uporabnik direktno odpre `https://ro
 
 ---
 
-## 7. Deploy — Render (backend)
+## 7. Deploy — Railway (backend)
 
-Render je konfiguriran za **auto-deploy** ob vsakem push na `main`.
+Railway je konfiguriran za **auto-deploy** ob vsakem push na `main`.
 
 **Tip servisa:** Web Service (container)
 
@@ -237,11 +237,11 @@ cd backend && npm ci && npx prisma generate && npm run build
 cd backend && npm run start:prod
 ```
 
-**Environment variables na Render:**
+**Environment variables na Railway:**
 Vse iz `backend/.env.example` z dejanskimi vrednostmi (Supabase, Google APIs, Gemini, Resend...).
 
 **Health check:**
-Render periodično kliče `GET /api/health` — če endpoint ne odgovori, Render restart-a servis.
+Railway periodično kliče `GET /api/health` — če endpoint ne odgovori, Railway restart-a servis.
 
 ---
 
@@ -250,10 +250,10 @@ Render periodično kliče `GET /api/health` — če endpoint ne odgovori, Render
 | Okolje | Frontend | Backend | Baza |
 |---|---|---|---|
 | **Development** | `http://localhost:5173` | `http://localhost:3000` | Supabase dev projekt |
-| **Production** | `https://routiq.vercel.app` | `https://routiq.onrender.com` | Supabase prod projekt |
+| **Production** | `https://routiq.vercel.app` | `https://routiq.up.railway.app` | Supabase prod projekt |
 
 **Branch strategija:**
 - `development` → aktivni razvoj (CI teki, PR-ji)
-- `main` → produkcija (Vercel + Render auto-deploy)
+- `main` → produkcija (Vercel + Railway auto-deploy)
 
 Merge v `main` se naredi samo ob stabilni iteraciji — po pregledu in testu na `development`.
