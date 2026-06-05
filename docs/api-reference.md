@@ -215,18 +215,28 @@ Query parametri: `query` (obvezen), `location` (opcijsko), `radius` (opcijsko, m
 // Response
 {
   "success": true,
-  "data": [
-    {
-      "date": "2026-07-15",
-      "condition": "Sunny",
-      "tempMin": 22,
-      "tempMax": 34,
-      "humidity": 45,
-      "windSpeed": 12,
-      "iconCode": "sunny",
-      "recommendation": "Idealno za obisk Vatikana zjutraj pred vročino."
-    }
-  ]
+  "data": {
+    "location": "Rim, Italija",
+    "current": {
+      "temperature": 25,
+      "condition": "Clear",
+      "humidity": 50,
+      "windSpeed": 10
+    },
+    "forecast": [
+      {
+        "date": "2026-07-15",
+        "temperature": {
+          "min": 22,
+          "max": 34
+        },
+        "condition": "Sunny",
+        "humidity": 45,
+        "windSpeed": 12,
+        "precipitation": 0
+      }
+    ]
+  }
 }
 ```
 
@@ -375,7 +385,7 @@ Odstrani glas kličočega userja (soft delete). Vrne `{ "success": true }`.
 | GET | `/export/:id/ics` | Prenesi .ics datoteko za itinerar | Da |
 | GET | `/export/shared/:id/ics` | Prenesi .ics za javno deljen itinerar | 🔓 Javno |
 
-**GET `/export/:id/ics`** — vrne `application/octet-stream` z `.ics` vsebino (iCalendar format). En `VEVENT` na aktivnost. Za prenos brez ročnega Bearer headerja frontend sinhronizira `sb-access-token` piškotek (glej [Varnost](security.md)).
+**GET `/export/:id/ics`** — vrne `text/calendar` z `.ics` vsebino (iCalendar format). En `VEVENT` na aktivnost. Za prenos brez ročnega Bearer headerja frontend sinhronizira `sb-access-token` piškotek (glej [Varnost](security.md)).
 
 > PDF generira **frontend** z `@react-pdf/renderer` — backend ne generira PDF.
 

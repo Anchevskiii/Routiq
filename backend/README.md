@@ -96,12 +96,12 @@ backend/
 The API will be available at `http://localhost:3000/api`
 Swagger documentation: `http://localhost:3000/api/docs`
 
-### Port 3000 on Windows (automatic cleanup)
+### Port 3000 on Windows
 
-Before several npm scripts run, **`prestart` / `prestart:dev` / `prestart:debug` / `preprisma:generate`** execute **`../scripts/free-port.ps1 -Port 3000`**. That script lists processes **listening on TCP 3000** and **force-stops** them so Nest can always bind to the default port.
+The current repository does not include automatic `prestart`/`prestart:dev`/`prestart:debug` hooks. If port `3000` is already in use, stop the occupying process manually before starting the backend.
 
-- Run npm commands from the **`backend/`** directory so `../scripts/` resolves to the repo root.
-- If something else you care about is using 3000, stop it manually or avoid running these hooks.
+- Run npm commands from the **`backend/`** directory.
+- If port `3000` is occupied, terminate the process or choose a different port in your environment.
 
 ## Available Scripts
 
