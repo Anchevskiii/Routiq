@@ -1,5 +1,10 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
-import { ThrottlerGuard, ThrottlerOptions } from '@nestjs/throttler';
+import {
+  ThrottlerGuard,
+  ThrottlerGenerateKeyFunction,
+  ThrottlerGetTrackerFunction,
+  ThrottlerOptions,
+} from '@nestjs/throttler';
 import { Request } from 'express';
 
 interface RequestWithUser extends Request {
@@ -31,8 +36,8 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     limit: number,
     ttl: number,
     throttler: ThrottlerOptions,
-    getTracker: any,
-    generateKey: any,
+    getTracker: ThrottlerGetTrackerFunction,
+    generateKey: ThrottlerGenerateKeyFunction,
   ): Promise<boolean> {
     const handler = context.getHandler();
     const classRef = context.getClass();
@@ -48,10 +53,21 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     );
 
     // If this is not the 'default' throttler, and the endpoint does NOT have explicit override metadata for it, skip it!
-    if (throttler.name !== 'default' && hasLimit === undefined && hasTtl === undefined) {
+    if (
+      throttler.name !== 'default' &&
+      hasLimit === undefined &&
+      hasTtl === undefined
+    ) {
       return true;
     }
 
-    return super.handleRequest(context, limit, ttl, throttler, getTracker, generateKey);
+    return super.handleRequest(
+      context,
+      limit,
+      ttl,
+      throttler,
+      getTracker,
+      generateKey,
+    );
   }
 }

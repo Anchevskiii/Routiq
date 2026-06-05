@@ -1,6 +1,31 @@
 import { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import {
+  ThrottlerGenerateKeyFunction,
+  ThrottlerGetTrackerFunction,
+  ThrottlerModuleOptions,
+  ThrottlerOptions,
+  ThrottlerStorage,
+} from '@nestjs/throttler';
 import { AppThrottlerGuard } from './app-throttler.guard';
+
+interface RequestWithUser {
+  user?: { sub?: string };
+  headers: Record<string, unknown>;
+  ip?: string;
+}
+
+type ProtectedAppThrottlerGuard = {
+  getTracker(req: RequestWithUser): Promise<string>;
+  handleRequest(
+    context: ExecutionContext,
+    limit: number,
+    ttl: number,
+    throttler: ThrottlerOptions,
+    getTracker: ThrottlerGetTrackerFunction,
+    generateKey: ThrottlerGenerateKeyFunction,
+  ): Promise<boolean>;
+};
 
 describe('AppThrottlerGuard', () => {
   let guard: AppThrottlerGuard;
@@ -12,8 +37,8 @@ describe('AppThrottlerGuard', () => {
     } as unknown as Reflector;
 
     guard = new AppThrottlerGuard(
-      {} as any,
-      {} as any,
+      {} as ThrottlerModuleOptions,
+      {} as ThrottlerStorage,
       reflector,
     );
   });
@@ -26,7 +51,8 @@ describe('AppThrottlerGuard', () => {
         ip: '127.0.0.1',
       };
 
-      const result = await (guard as any).getTracker(req);
+      const protectedGuard = guard as unknown as ProtectedAppThrottlerGuard;
+      const result = await protectedGuard.getTracker(req);
       expect(result).toBe('user:user-123');
     });
 
@@ -37,7 +63,8 @@ describe('AppThrottlerGuard', () => {
         ip: '127.0.0.1',
       };
 
-      const result = await (guard as any).getTracker(req);
+      const protectedGuard = guard as unknown as ProtectedAppThrottlerGuard;
+      const result = await protectedGuard.getTracker(req);
       expect(result).toBe('ip:192.168.1.1');
     });
 
@@ -48,7 +75,8 @@ describe('AppThrottlerGuard', () => {
         ip: '10.0.0.1',
       };
 
-      const result = await (guard as any).getTracker(req);
+      const protectedGuard = guard as unknown as ProtectedAppThrottlerGuard;
+      const result = await protectedGuard.getTracker(req);
       expect(result).toBe('ip:10.0.0.1');
     });
 
@@ -59,7 +87,8 @@ describe('AppThrottlerGuard', () => {
         ip: undefined,
       };
 
-      const result = await (guard as any).getTracker(req);
+      const protectedGuard = guard as unknown as ProtectedAppThrottlerGuard;
+      const result = await protectedGuard.getTracker(req);
       expect(result).toBe('ip:unknown');
     });
   });
@@ -75,7 +104,10 @@ describe('AppThrottlerGuard', () => {
       } as unknown as ExecutionContext;
 
       mockSuperHandleRequest = jest
-        .spyOn(Object.getPrototypeOf(AppThrottlerGuard.prototype), 'handleRequest')
+        .spyOn(
+          Object.getPrototypeOf(AppThrottlerGuard.prototype),
+          'handleRequest',
+        )
         .mockResolvedValue(true);
     });
 
@@ -85,14 +117,17 @@ describe('AppThrottlerGuard', () => {
 
     it('should skip rate limiting for non-default throttlers if there is no throttle metadata on the handler/class', async () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
+      const protectedGuard = guard as unknown as ProtectedAppThrottlerGuard;
 
-      const result = await (guard as any).handleRequest(
+      const result = await protectedGuard.handleRequest(
         mockContext,
         5,
         60000,
         { name: 'itinerary-generate' },
-        jest.fn(),
-        jest.fn(),
+        jest.fn<Promise<string>, [Record<string, unknown>]>(
+          async () => 'tracker',
+        ),
+        jest.fn<string, [ExecutionContext, string, string]>(() => 'key'),
       );
 
       expect(result).toBe(true);
@@ -102,13 +137,14 @@ describe('AppThrottlerGuard', () => {
     it('should run rate limiting for default throttler even if there is no throttle metadata', async () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
 
-      const result = await (guard as any).handleRequest(
+      const protectedGuard = guard as unknown as ProtectedAppThrottlerGuard;
+      const result = await protectedGuard.handleRequest(
         mockContext,
         500,
         60000,
         { name: 'default' },
-        jest.fn(),
-        jest.fn(),
+        jest.fn<Promise<string>, [Record<string, unknown>]>(),
+        jest.fn<string, [ExecutionContext, string, string]>(),
       );
 
       expect(result).toBe(true);
@@ -116,20 +152,25 @@ describe('AppThrottlerGuard', () => {
     });
 
     it('should run rate limiting for non-default throttler if there is throttle metadata present', async () => {
-      jest.spyOn(reflector, 'getAllAndOverride').mockImplementation((key: any) => {
-        if (typeof key === 'string' && key.includes('LIMIT')) {
-          return 5;
-        }
-        return undefined;
-      });
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockImplementation((key: unknown) => {
+          if (typeof key === 'string' && key.includes('LIMIT')) {
+            return 5;
+          }
+          return undefined;
+        });
 
-      const result = await (guard as any).handleRequest(
+      const protectedGuard = guard as unknown as ProtectedAppThrottlerGuard;
+      const result = await protectedGuard.handleRequest(
         mockContext,
         5,
         60000,
         { name: 'itinerary-generate' },
-        jest.fn(),
-        jest.fn(),
+        jest.fn<Promise<string>, [Record<string, unknown>]>(
+          async () => 'tracker',
+        ),
+        jest.fn<string, [ExecutionContext, string, string]>(() => 'key'),
       );
 
       expect(result).toBe(true);
