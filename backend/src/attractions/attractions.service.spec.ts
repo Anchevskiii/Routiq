@@ -243,4 +243,143 @@ describe('AttractionsService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('Helper private methods', () => {
+    it('calculateDistanceMeters should calculate correct distance', () => {
+      const dist = service['calculateDistanceMeters'](
+        48.8566,
+        2.3522,
+        48.8584,
+        2.2945,
+      ); // Paris center to Eiffel Tower
+      expect(dist).toBeGreaterThan(4000);
+      expect(dist).toBeLessThan(5000);
+    });
+
+    it('getPlaceCategory should categorize correctly based on type or name', () => {
+      const p1 = {
+        name: 'Eiffel Tower',
+        type: 'museum',
+        sourceType: 'mainstream',
+      } as any;
+      expect(service['getPlaceCategory'](p1)).toBe('sightseeing');
+
+      const p2 = {
+        name: 'Nice Bistro',
+        type: 'restaurant',
+        sourceType: 'dining',
+      } as any;
+      expect(service['getPlaceCategory'](p2)).toBe('dining');
+
+      const p2b = {
+        name: 'Nice Food',
+        type: 'restaurant',
+        sourceType: 'mainstream',
+      } as any;
+      expect(service['getPlaceCategory'](p2b)).toBe('dining');
+
+      const p3 = {
+        name: 'Hyde Park',
+        type: 'park',
+        sourceType: 'mainstream',
+      } as any;
+      expect(service['getPlaceCategory'](p3)).toBe('outdoors');
+
+      const p4 = { name: 'Random', type: 'other', sourceType: 'niche' } as any;
+      expect(service['getPlaceCategory'](p4)).toBe('other');
+    });
+
+    it('areNamesSimilar should return true for highly similar names', () => {
+      // "Eiffel Tower" and "Eiffel Tower Paris" has Jaccard similarity 2/3 = 0.67 (> 0.55)
+      expect(
+        service['areNamesSimilar']('Eiffel Tower Paris', 'Eiffel Tower'),
+      ).toBe(true);
+      // "Notre Dame Cathedral" and "Notre Dame" has Jaccard similarity 2/2 = 1.0 (> 0.55)
+      expect(
+        service['areNamesSimilar']('Notre Dame Cathedral', 'Notre Dame'),
+      ).toBe(true);
+      expect(service['areNamesSimilar']('Notre Dame', 'Eiffel Tower')).toBe(
+        false,
+      );
+    });
+
+    it('isUtilityPlace should return true for utility names', () => {
+      const p1 = { name: 'Metro Station ATM' } as any;
+      expect(service['isUtilityPlace'](p1)).toBe(true);
+
+      const p2 = { name: 'Eiffel Tower' } as any;
+      expect(service['isUtilityPlace'](p2)).toBe(false);
+    });
+
+    it('isLowQuality should flag low ratings or reviews', () => {
+      const p1 = { rating: 2.5, userRatingsTotal: 10 } as any;
+      expect(service['isLowQuality'](p1)).toBe(true);
+
+      const p2 = { rating: 4.5, userRatingsTotal: 1 } as any;
+      expect(service['isLowQuality'](p2)).toBe(true);
+
+      const p3 = { rating: 4.5, userRatingsTotal: 100 } as any;
+      expect(service['isLowQuality'](p3)).toBe(false);
+    });
+  });
+
+  describe('getCuratedPlaces pruning', () => {
+    it('should prune duplicates and similar places', async () => {
+      const mainstream = [
+        {
+          place_id: 'm1',
+          name: 'Eiffel Tower',
+          rating: 4.8,
+          user_ratings_total: 1000,
+          geometry: { location: { lat: 48.8584, lng: 2.2945 } },
+          types: ['tourist_attraction'],
+        },
+        {
+          place_id: 'm2',
+          name: 'Eiffel Tower Paris', // similar name and close distance (<30m)
+          rating: 4.7,
+          user_ratings_total: 800,
+          geometry: { location: { lat: 48.8585, lng: 2.2946 } },
+          types: ['tourist_attraction'],
+        },
+        {
+          place_id: 'm3',
+          name: 'Public Restroom ATM', // utility
+          rating: 4.0,
+          user_ratings_total: 10,
+          geometry: { location: { lat: 48.858, lng: 2.294 } },
+          types: ['establishment'],
+        },
+        {
+          place_id: 'm4',
+          name: 'Eiffel Tower Tour', // similar name and distance ~100m (>30m and <150m)
+          rating: 4.6,
+          user_ratings_total: 700,
+          geometry: { location: { lat: 48.8593, lng: 2.2945 } },
+          types: ['tourist_attraction'],
+        },
+      ];
+
+      mockedAxios.get.mockImplementation((url: string) => {
+        if (
+          url.includes('query=restaurant') ||
+          url.includes('type=restaurant')
+        ) {
+          return Promise.resolve({ data: { status: 'OK', results: [] } });
+        }
+        return Promise.resolve({ data: { status: 'OK', results: mainstream } });
+      });
+
+      const result = await service.getCuratedPlaces(
+        'Paris',
+        TravelType.CULTURAL,
+        1,
+      );
+      // Eiffel Tower Paris and Eiffel Tower Tour should be pruned, and Public Restroom ATM should be filtered out
+      expect(result.some((p) => p.id === 'm2')).toBe(false);
+      expect(result.some((p) => p.id === 'm3')).toBe(false);
+      expect(result.some((p) => p.id === 'm4')).toBe(false);
+      expect(result.some((p) => p.id === 'm1')).toBe(true);
+    });
+  });
 });

@@ -423,11 +423,13 @@ describe('ItineraryService', () => {
         activities: { create: [] },
         weather: { create: {} },
       });
-      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue({
-        itinerary: savedItineraryRecord,
-        geocodeTimeMs: 0,
-        txTimeMs: 0,
-      });
+      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
+      );
 
       // Simulate two observable events: progress then complete
       mockGeminiService.streamGenerateObservable.mockReturnValue(
@@ -763,11 +765,13 @@ describe('ItineraryService', () => {
         prompt: 'test prompt',
       });
       mockGeminiService.streamGenerate.mockResolvedValue(generatedItinerary);
-      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue({
-        itinerary: savedItineraryRecord,
-        geocodeTimeMs: 0,
-        txTimeMs: 0,
-      });
+      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
+      );
       mockPrisma.itinerary.findFirst.mockResolvedValue(savedItineraryRecord);
 
       const result = await service.generateItinerary(userId, baseDto);
@@ -1241,11 +1245,13 @@ describe('ItineraryService', () => {
           obs.complete();
         }),
       );
-      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue({
-        itinerary: savedItineraryRecord,
-        geocodeTimeMs: 0,
-        txTimeMs: 0,
-      });
+      mockItineraryGenerationService.persistGeneratedItinerary.mockResolvedValue(
+        {
+          itinerary: savedItineraryRecord,
+          geocodeTimeMs: 0,
+          txTimeMs: 0,
+        },
+      );
 
       const events: ItineraryGenerateStreamEvent[] = [];
       service.generateStream(userId, baseDto).subscribe({
