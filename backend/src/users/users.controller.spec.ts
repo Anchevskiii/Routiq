@@ -138,18 +138,25 @@ describe('UsersController', () => {
       // Since we know the implementation of fileFilter, we can unit test it by importing/calling it.
       // Since it's inline in the controller, let's look at how we can get it:
       // Let's find the interceptors applied:
-      const interceptors = Reflect.getMetadata('__interceptors__', UsersController.prototype.uploadAvatar);
+      const interceptors = Reflect.getMetadata(
+        '__interceptors__',
+        UsersController.prototype.uploadAvatar,
+      );
       expect(interceptors).toBeDefined();
       expect(interceptors.length).toBeGreaterThan(0);
-      
       // Let's test the logic of mimetype validation directly:
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-      const fileFilter = (mimetype: string, cb: (err: Error | null, accept: boolean) => void) => {
+      const fileFilter = (
+        mimetype: string,
+        cb: (err: Error | null, accept: boolean) => void,
+      ) => {
         const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if (allowed.includes(mimetype)) {
           cb(null, true);
         } else {
-          cb(new Error('Only image files (JPEG, PNG, WebP, GIF) are allowed'), false);
+          cb(
+            new Error('Only image files (JPEG, PNG, WebP, GIF) are allowed'),
+            false,
+          );
         }
       };
 
