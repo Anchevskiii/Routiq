@@ -40,6 +40,9 @@ const NotificationsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('@/features/profile/pages/ProfilePage').then(m => ({ default: m.ProfilePage }))
 )
+const HelpPage = lazy(() =>
+  import('@/features/help/pages/HelpPage').then(m => ({ default: m.HelpPage }))
+)
 
 // Layout components
 import { AppShell } from '@/components/layout/AppShell'
@@ -54,6 +57,7 @@ const PageFallback: React.FC = () => (
     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
   </div>
 )
+
 
 export const AppRouter: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth()
@@ -110,6 +114,7 @@ export const AppRouter: React.FC = () => {
           <Route path={ROUTES.GROUP_DETAIL(':id')} element={<GroupDetailPage />} />
           <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
           <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
+          <Route path={ROUTES.HELP} element={<HelpPage />} />
         </Route>
 
         {/* Shared itinerary route */}
