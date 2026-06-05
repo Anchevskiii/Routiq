@@ -14,6 +14,7 @@ interface DayCardProps {
   dragHandleProps?: DraggableSyntheticListeners
   dragHandleAttributes?: DraggableAttributes
   itineraryId?: string
+  destination?: string
   onAddActivity?: (dayId: string) => void
   onReorderActivities?: (dayId: string, activityIds: string[]) => void
   onActivityUpdated?: () => void
@@ -42,6 +43,7 @@ export const DayCard: React.FC<DayCardProps> = ({
   dragHandleProps,
   dragHandleAttributes,
   itineraryId,
+  destination,
   onAddActivity,
   onReorderActivities,
   onActivityUpdated,
@@ -164,6 +166,7 @@ export const DayCard: React.FC<DayCardProps> = ({
                     activity={activity}
                     index={index}
                     itineraryId={itineraryId}
+                    destination={destination}
                     onUpdated={onActivityUpdated}
                     onDeleted={onActivityDeleted}
                   />

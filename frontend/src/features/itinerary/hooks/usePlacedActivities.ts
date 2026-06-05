@@ -27,6 +27,57 @@ function geocodeQuery(query: string): Promise<{ lat: number; lng: number } | nul
   })
 }
 
+const VENUE_WORDS = new Set([
+  'workshop', 'restaurant', 'cafe', 'temple', 'shrine', 'museum', 'park',
+  'garden', 'gallery', 'center', 'centre', 'hall', 'house', 'church',
+  'cathedral', 'palace', 'castle', 'market', 'square', 'tower', 'walk',
+  'trail', 'tour', 'site', 'nature', 'cutting'
+])
+
+const stripVenueType = (s: string): string => {
+  const words = s.split(/\s+/)
+  for (const word of words) {
+    const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '')
+    if (VENUE_WORDS.has(cleanWord)) {
+      const idx = s.toLowerCase().indexOf(word.toLowerCase())
+      if (idx !== -1) {
+        return s.slice(0, idx).trim()
+      }
+    }
+  }
+  return s.trim()
+}
+
+async function trySearchWikipedia(title: string, destination?: string): Promise<string | null> {
+  if (title.length < 3) return null
+  const queries = [
+    destination ? `${title} ${destination}` : title,
+    title,
+    destination ? `${stripVenueType(title)} ${destination}` : stripVenueType(title),
+    stripVenueType(title),
+  ].filter((q, i, arr) => q && q.length > 2 && arr.indexOf(q) === i)
+
+  for (const query of queries) {
+    try {
+      const res = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`
+      )
+      const [, titles] = await res.json() as [string, string[]]
+      const t = titles?.[0]
+      if (t) {
+        const summary = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(t)}`)
+        const data = await summary.json()
+        if (data.thumbnail?.source) {
+          return data.thumbnail.source
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null
+}
+
 export function usePlacedActivities(days: Day[], isLoaded: boolean, destination?: string) {
   const [placed, setPlaced] = useState<PlacedActivity[]>([])
   const [loading, setLoading] = useState(false)
@@ -61,7 +112,8 @@ export function usePlacedActivities(days: Day[], isLoaded: boolean, destination?
             }
 
             if (lat != null && lng != null) {
-              return { ...activity, dayNumber: day.dayNumber, color, lat, lng } as PlacedActivity
+              const photoUrl = await trySearchWikipedia(activity.title, destination)
+              return { ...activity, dayNumber: day.dayNumber, color, lat, lng, photoUrl } as PlacedActivity
             }
             return null
           })

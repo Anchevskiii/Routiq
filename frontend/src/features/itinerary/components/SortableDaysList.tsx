@@ -12,6 +12,7 @@ interface Props {
   itineraryId: string
   sensors: SensorDescriptor<SensorOptions>[]
   addActivityDayId: string | null
+  destination?: string
   onDragEnd: (e: DragEndEvent) => void
   onAddActivity: (dayId: string) => void
   onReorderActivities: (dayId: string, activityIds: string[]) => void
@@ -25,6 +26,7 @@ export const SortableDaysList: React.FC<Props> = ({
   itineraryId,
   sensors,
   addActivityDayId,
+  destination,
   onDragEnd: onDragEndExternal,
   onAddActivity,
   onReorderActivities,
@@ -66,6 +68,7 @@ export const SortableDaysList: React.FC<Props> = ({
                 day={day}
                 isFirst={i === 0}
                 itineraryId={itineraryId}
+                destination={destination}
                 onAddActivity={onAddActivity}
                 onReorderActivities={onReorderActivities}
                 onActivityUpdated={onActivityUpdated}

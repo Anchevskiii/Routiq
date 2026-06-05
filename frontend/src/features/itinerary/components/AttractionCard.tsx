@@ -15,6 +15,7 @@ interface AttractionCardProps {
   itineraryId?: string
   dragHandleProps?: DraggableSyntheticListeners
   dragHandleAttributes?: DraggableAttributes
+  destination?: string
   onUpdated?: () => void
   onDeleted?: () => void
 }
@@ -29,7 +30,6 @@ const VENUE_WORDS = new Set([
   'trail', 'tour', 'site', 'nature', 'cutting'
 ])
 
-// Strip generic venue-type words to get a more searchable core term
 const stripVenueType = (s: string): string => {
   const words = s.split(/\s+/)
   for (const word of words) {
@@ -62,6 +62,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
   itineraryId,
   dragHandleProps,
   dragHandleAttributes,
+  destination,
   onUpdated,
   onDeleted,
 }) => {
@@ -78,10 +79,12 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
     const fetchPhoto = async () => {
       try {
         const queries = [
+          destination ? `${activity.title} ${destination}` : activity.title,
           activity.title,
+          destination ? `${stripVenueType(activity.title)} ${destination}` : stripVenueType(activity.title),
           stripVenueType(activity.title),
           activity.title.split(' ').slice(0, 2).join(' '),
-        ].filter((q, i, arr) => q.length > 2 && arr.indexOf(q) === i) // dedupe
+        ].filter((q, i, arr) => q && q.length > 2 && arr.indexOf(q) === i) // dedupe
 
         for (const q of queries) {
           const url = await trySearch(q)
@@ -92,7 +95,7 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
 
     fetchPhoto()
     return () => { cancelled = true }
-  }, [activity.title])
+  }, [activity.title, destination])
 
   const deleteMutation = useMutation({
     mutationFn: () => {
@@ -124,15 +127,15 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
 
   const dotBorder  = isMeal ? 'border-orange-400' : 'border-sky-400'
   const dotShadow  = 'shadow-[0_0_0_3px_white] dark:shadow-[0_0_0_3px_rgba(8,9,26,1)]'
-  const iconEl     = isMeal ? <Utensils className="w-4 h-4 text-orange-500 dark:text-orange-400" /> : <Camera className="w-4 h-4 text-sky-500 dark:text-sky-400" />
+  const iconEl     = isMeal ? <Utensils className="w-5 h-5 text-orange-500 dark:text-orange-400" /> : <Camera className="w-5 h-5 text-sky-500 dark:text-sky-400" />
   const iconBg     = isMeal ? 'bg-orange-50 dark:bg-gradient-to-br dark:from-orange-500/20 dark:to-rose-500/15' : 'bg-sky-50 dark:bg-gradient-to-br dark:from-sky-500/20 dark:to-blue-500/15'
   const catBadge   = isMeal
     ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-400/10 border border-orange-200 dark:border-orange-400/25'
     : 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-400/10 border border-sky-200 dark:border-sky-400/25'
 
   const photoContainerClass = photoUrl
-    ? 'w-10 h-10 rounded-[10px] flex-shrink-0 overflow-hidden'
-    : `w-10 h-10 rounded-[10px] flex-shrink-0 overflow-hidden grid place-items-center ${iconBg}`
+    ? 'w-14 h-14 rounded-[10px] flex-shrink-0 overflow-hidden'
+    : `w-14 h-14 rounded-[10px] flex-shrink-0 overflow-hidden grid place-items-center ${iconBg}`
 
   return (
     <div className="relative grid grid-cols-[28px_72px_1fr_auto] gap-3.5 py-2.5 group/act">
@@ -223,9 +226,12 @@ export const AttractionCard: React.FC<AttractionCardProps> = ({
             <GripVertical className="w-3.5 h-3.5" />
           </button>
         )}
-        {activity.placeId && (
+        {(activity.placeId || activity.title) && (
           <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : ''}&query_place_id=${activity.placeId}`}
+            href={activity.placeId
+              ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : destination ? encodeURIComponent(' ' + destination) : ''}&query_place_id=${activity.placeId}`
+              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.title)}${activity.location ? encodeURIComponent(' ' + activity.location) : destination ? encodeURIComponent(' ' + destination) : ''}`
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="w-7 h-7 rounded-[8px] bg-transparent border border-gray-200 dark:border-white/[0.07] grid place-items-center text-gray-400 dark:text-[#a3a1c8] hover:text-gray-700 dark:hover:text-[#f0eeff] hover:border-gray-400 dark:hover:border-white/[0.14] transition-all"

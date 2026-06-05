@@ -114,21 +114,37 @@ export class ItineraryGenerationService {
             ? mappedDay.activities.create
             : [mappedDay.activities.create];
 
-          if (activitiesData.length > 0) {
             const enrichedActivities = await Promise.all(
               activitiesData.map(async (act) => {
-                if (act.latitude === null || act.longitude === null) {
+                if (!act.placeId || act.latitude === null || act.longitude === null || !act.address) {
                   const query = act.location || act.title;
                   if (query) {
-                    const fullQuery = `${query}, ${createItineraryDto.destination}`;
-                    const coords =
-                      await this.attractionsService.geocodeAddress(fullQuery);
-                    if (coords) {
+                    const searchResults = await this.attractionsService.searchAttractions(
+                      query,
+                      createItineraryDto.destination,
+                    );
+                    const bestMatch = searchResults?.[0];
+                    if (bestMatch) {
                       return {
                         ...act,
-                        latitude: coords.lat,
-                        longitude: coords.lng,
+                        title: bestMatch.name || act.title,
+                        location: bestMatch.name || act.location || null,
+                        address: bestMatch.address || act.address || null,
+                        latitude: bestMatch.location.lat,
+                        longitude: bestMatch.location.lng,
+                        placeId: bestMatch.id,
                       };
+                    } else {
+                      const fullQuery = `${query}, ${createItineraryDto.destination}`;
+                      const coords =
+                        await this.attractionsService.geocodeAddress(fullQuery);
+                      if (coords) {
+                        return {
+                          ...act,
+                          latitude: coords.lat,
+                          longitude: coords.lng,
+                        };
+                      }
                     }
                   }
                 }
