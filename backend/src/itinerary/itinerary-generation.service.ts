@@ -176,47 +176,48 @@ export class ItineraryGenerationService {
               })),
             },
             days: {
-              create: mappedDays.map((mappedDay) => ({
-                dayNumber: mappedDay.dayNumber,
-                date: mappedDay.date,
-                theme: mappedDay.theme,
-                weather: mappedDay.weather
-                  ? {
-                      create: {
-                        condition: mappedDay.weather.create.condition,
-                        tempMin: mappedDay.weather.create.tempMin,
-                        tempMax: mappedDay.weather.create.tempMax,
-                        humidity: mappedDay.weather.create.humidity,
-                        windSpeed: mappedDay.weather.create.windSpeed,
-                        precipitation: mappedDay.weather.create.precipitation,
-                        recommendation: mappedDay.weather.create.recommendation,
-                      },
-                    }
-                  : undefined,
-                activities: mappedDay.activities
-                  ? {
-                      create: (Array.isArray(mappedDay.activities.create)
-                        ? mappedDay.activities.create
-                        : [mappedDay.activities.create]
-                      ).map((act) => ({
-                        activityType: act.activityType,
-                        sortOrder: act.sortOrder,
-                        title: act.title,
-                        description: act.description,
-                        location: act.location,
-                        address: act.address,
-                        startTime: act.startTime,
-                        durationMinutes: act.durationMinutes,
-                        cost: act.cost,
-                        tips: act.tips,
-                        latitude: act.latitude,
-                        longitude: act.longitude,
-                        placeId: act.placeId,
-                        mealType: act.mealType,
-                      })),
-                    }
-                  : undefined,
-              })),
+              create: mappedDays.map((mappedDay) => {
+                const weatherCreate = mappedDay.weather?.create;
+                const activitiesCreate = mappedDay.activities?.create;
+
+                return {
+                  dayNumber: mappedDay.dayNumber,
+                  date: mappedDay.date,
+                  theme: mappedDay.theme,
+                  weather: weatherCreate ? {
+                    create: {
+                      condition: weatherCreate.condition,
+                      tempMin: weatherCreate.tempMin,
+                      tempMax: weatherCreate.tempMax,
+                      humidity: weatherCreate.humidity,
+                      windSpeed: weatherCreate.windSpeed,
+                      precipitation: weatherCreate.precipitation,
+                      recommendation: weatherCreate.recommendation,
+                    },
+                  } : undefined,
+                  activities: activitiesCreate ? {
+                    create: (Array.isArray(activitiesCreate)
+                      ? activitiesCreate
+                      : [activitiesCreate]
+                    ).map((act) => ({
+                      activityType: act.activityType,
+                      sortOrder: act.sortOrder,
+                      title: act.title,
+                      description: act.description,
+                      location: act.location,
+                      address: act.address,
+                      startTime: act.startTime,
+                      durationMinutes: act.durationMinutes,
+                      cost: act.cost,
+                      tips: act.tips,
+                      latitude: act.latitude,
+                      longitude: act.longitude,
+                      placeId: act.placeId,
+                      mealType: act.mealType,
+                    })),
+                  } : undefined,
+                };
+              }),
             },
           },
         });
