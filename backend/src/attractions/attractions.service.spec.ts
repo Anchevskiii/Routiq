@@ -261,31 +261,35 @@ describe('AttractionsService', () => {
         name: 'Eiffel Tower',
         type: 'museum',
         sourceType: 'mainstream',
-      } as any;
+      } as unknown as FormattedPlace;
       expect(service['getPlaceCategory'](p1)).toBe('sightseeing');
 
       const p2 = {
         name: 'Nice Bistro',
         type: 'restaurant',
         sourceType: 'dining',
-      } as any;
+      } as unknown as FormattedPlace;
       expect(service['getPlaceCategory'](p2)).toBe('dining');
 
       const p2b = {
         name: 'Nice Food',
         type: 'restaurant',
         sourceType: 'mainstream',
-      } as any;
+      } as unknown as FormattedPlace;
       expect(service['getPlaceCategory'](p2b)).toBe('dining');
 
       const p3 = {
         name: 'Hyde Park',
         type: 'park',
         sourceType: 'mainstream',
-      } as any;
+      } as unknown as FormattedPlace;
       expect(service['getPlaceCategory'](p3)).toBe('outdoors');
 
-      const p4 = { name: 'Random', type: 'other', sourceType: 'niche' } as any;
+      const p4 = {
+        name: 'Random',
+        type: 'other',
+        sourceType: 'niche',
+      } as unknown as FormattedPlace;
       expect(service['getPlaceCategory'](p4)).toBe('other');
     });
 
@@ -304,21 +308,30 @@ describe('AttractionsService', () => {
     });
 
     it('isUtilityPlace should return true for utility names', () => {
-      const p1 = { name: 'Metro Station ATM' } as any;
+      const p1 = { name: 'Metro Station ATM' } as unknown as FormattedPlace;
       expect(service['isUtilityPlace'](p1)).toBe(true);
 
-      const p2 = { name: 'Eiffel Tower' } as any;
+      const p2 = { name: 'Eiffel Tower' } as unknown as FormattedPlace;
       expect(service['isUtilityPlace'](p2)).toBe(false);
     });
 
     it('isLowQuality should flag low ratings or reviews', () => {
-      const p1 = { rating: 2.5, userRatingsTotal: 10 } as any;
+      const p1 = {
+        rating: 2.5,
+        userRatingsTotal: 10,
+      } as unknown as FormattedPlace;
       expect(service['isLowQuality'](p1)).toBe(true);
 
-      const p2 = { rating: 4.5, userRatingsTotal: 1 } as any;
+      const p2 = {
+        rating: 4.5,
+        userRatingsTotal: 1,
+      } as unknown as FormattedPlace;
       expect(service['isLowQuality'](p2)).toBe(true);
 
-      const p3 = { rating: 4.5, userRatingsTotal: 100 } as any;
+      const p3 = {
+        rating: 4.5,
+        userRatingsTotal: 100,
+      } as unknown as FormattedPlace;
       expect(service['isLowQuality'](p3)).toBe(false);
     });
   });
