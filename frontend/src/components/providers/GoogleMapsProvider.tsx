@@ -38,18 +38,18 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
     }
 
     // Define the global callback
-    window.initGoogleMaps = () => {
+    globalThis.window.initGoogleMaps = () => {
       setIsLoaded(true)
       setLoadError(null)
     }
 
-    if (window.google?.maps) {
+    if (globalThis.window.google?.maps) {
       setIsLoaded(true)
       return
     }
 
     const SCRIPT_ID = 'google-maps-sdk'
-    const existingScript = document.getElementById(SCRIPT_ID)
+    const existingScript = globalThis.window.document.getElementById(SCRIPT_ID)
     
     if (existingScript) {
       // If script exists but google.maps is not yet loaded, wait for the callback

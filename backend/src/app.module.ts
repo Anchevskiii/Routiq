@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AttractionsModule } from './attractions/attractions.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -40,7 +40,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       {
         name: 'default',
         ttl: 60000, // 1 minute
-        limit: 100, // 100 requests per minute per IP
+        limit: 10000, // 10000 requests per minute per IP
       },
       {
         name: 'itinerary-generate',
@@ -77,10 +77,6 @@ import { NotificationsModule } from './notifications/notifications.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
     },
   ],
 })
