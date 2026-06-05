@@ -123,7 +123,11 @@ describe('AppThrottlerGuard', () => {
         mockContext,
         5,
         60000,
-        { name: 'itinerary-generate' },
+        {
+          name: 'itinerary-generate',
+          limit: 5,
+          ttl: 60000,
+        },
         jest.fn<Promise<string>, [Record<string, unknown>]>(
           async () => 'tracker',
         ),
@@ -142,7 +146,11 @@ describe('AppThrottlerGuard', () => {
         mockContext,
         500,
         60000,
-        { name: 'default' },
+        {
+          name: 'default',
+          limit: 500,
+          ttl: 60000,
+        },
         jest.fn<Promise<string>, [Record<string, unknown>]>(),
         jest.fn<string, [ExecutionContext, string, string]>(),
       );
@@ -166,7 +174,11 @@ describe('AppThrottlerGuard', () => {
         mockContext,
         5,
         60000,
-        { name: 'itinerary-generate' },
+        {
+          name: 'itinerary-generate',
+          limit: 5,
+          ttl: 60000,
+        },
         jest.fn<Promise<string>, [Record<string, unknown>]>(
           async () => 'tracker',
         ),
