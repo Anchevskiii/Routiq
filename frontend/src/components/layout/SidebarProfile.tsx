@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { Home, Settings, LogOut, HelpCircle } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
@@ -14,7 +15,9 @@ interface Props {
 
 export const SidebarProfile: React.FC<Props> = ({ collapsed, name, avatarUrl, email }) => {
   const [open, setOpen] = useState(false)
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
   const { logout } = useAuth()
   const navigate = useNavigate()
 
@@ -26,16 +29,56 @@ export const SidebarProfile: React.FC<Props> = ({ collapsed, name, avatarUrl, em
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const handleOpen = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPopupStyle({
+        position: 'fixed',
+        bottom: window.innerHeight - rect.top + 6,
+        left: rect.left,
+        width: 192,
+        zIndex: 9999,
+      })
+    }
+    setOpen(o => !o)
+  }
+
   const handleLogout = () => {
     setOpen(false)
     logout()
     navigate(ROUTES.LOGIN)
   }
 
+  const popup = open ? (
+    <div
+      style={popupStyle}
+      className="bg-white dark:bg-[#1a1830] border border-gray-100 dark:border-white/[0.08] rounded-xl shadow-lg dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden"
+    >
+      <Link to={ROUTES.DASHBOARD} onClick={() => setOpen(false)}
+        className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
+        <Home className="w-4 h-4 text-gray-400 dark:text-[#6e6c93]" /> Home
+      </Link>
+      <Link to={ROUTES.PROFILE} onClick={() => setOpen(false)}
+        className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
+        <Settings className="w-4 h-4 text-gray-400 dark:text-[#6e6c93]" /> Settings
+      </Link>
+      <Link to="/help" onClick={() => setOpen(false)}
+        className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
+        <HelpCircle className="w-4 h-4 text-gray-400 dark:text-[#6e6c93]" /> Help
+      </Link>
+      <div className="border-t border-gray-100 dark:border-white/[0.06]" />
+      <button onClick={handleLogout}
+        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+        <LogOut className="w-4 h-4" /> Sign Out
+      </button>
+    </div>
+  ) : null
+
   return (
     <div ref={ref} className="relative mx-2.5 mb-4">
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={handleOpen}
         className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-blue-600/[0.05] dark:bg-blue-900/20 hover:bg-blue-600/10 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
       >
         <div className="shrink-0">
@@ -49,27 +92,7 @@ export const SidebarProfile: React.FC<Props> = ({ collapsed, name, avatarUrl, em
         )}
       </button>
 
-      {open && (
-        <div className={`absolute bottom-full left-0 mb-1 bg-white dark:bg-[#1a1830] border border-gray-100 dark:border-white/[0.08] rounded-xl shadow-lg dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden z-50 ${collapsed ? 'w-48' : 'right-0'}`}>
-          <Link to={ROUTES.DASHBOARD} onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
-            <Home className="w-4 h-4 text-gray-400 dark:text-[#6e6c93]" /> Home
-          </Link>
-          <Link to={ROUTES.PROFILE} onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
-            <Settings className="w-4 h-4 text-gray-400 dark:text-[#6e6c93]" /> Settings
-          </Link>
-          <Link to="/help" onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-700 dark:text-[#c8c6e8] hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors">
-            <HelpCircle className="w-4 h-4 text-gray-400 dark:text-[#6e6c93]" /> Help
-          </Link>
-          <div className="border-t border-gray-100 dark:border-white/[0.06]" />
-          <button onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-            <LogOut className="w-4 h-4" /> Sign Out
-          </button>
-        </div>
-      )}
+      {createPortal(popup, document.body)}
     </div>
   )
 }
