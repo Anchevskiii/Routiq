@@ -170,7 +170,7 @@ Vse klice na backend pišemo v `src/api/`. **Komponente nikoli ne kličejo Axios
 `src/api/axios.ts` vsebuje:
 - Base URL iz `.env` (`VITE_API_URL`)
 - Request interceptor: avtomatično doda Bearer token iz memory/context
-- Response interceptor: ujame 401 → poskusi token refresh → ob neuspehu logout
+- Response interceptor: Preprosto zavrne napako (token refresh je avtomatsko voden prek Supabase SDK)
 
 ```typescript
 // src/api/axios.ts – primer strukture

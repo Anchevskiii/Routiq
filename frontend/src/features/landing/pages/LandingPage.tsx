@@ -1,13 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import * as THREE from 'three'
 import { Link } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
 import './LandingPage.css'
-import {
-  easeInOutCubic,
-  makeSphere, makeTorus, makeIcosahedron, makeHelix, makeBox, makeGalaxy,
-  mapWikiImages,
-} from './landing.utils'
+import { easeInOutCubic, mapWikiImages } from './landing.utils'
 
 /* ── Wikipedia image fetch ───────────────────────────── */
 const WIKI_PAGES: Record<string, string> = {
@@ -15,6 +10,10 @@ const WIKI_PAGES: Record<string, string> = {
   'Colosseum':       'Colosseum',
   'Sagrada Família': 'Sagrada_Família',
   'Santorini':       'Santorini',
+  'Machu Picchu':    'Machu_Picchu',
+  'Acropolis':       'Acropolis_of_Athens',
+  'Burj Khalifa':    'Burj_Khalifa',
+  'Grand Canyon':    'Grand_Canyon',
 }
 
 function useWikiImages(titles: string[]) {
@@ -45,7 +44,7 @@ const SECTIONS = [
   { id: 'lp-cta',          label: 'Get started' },
 ]
 
-/* ── Full-page scroll hook ───────────────────────────── */
+/* ── Full-page scroll ────────────────────────────────── */
 function smoothScrollTo(container: HTMLElement, targetY: number, duration = 750) {
   const start = container.scrollTop
   const delta = targetY - start
@@ -86,7 +85,7 @@ function useFullPageScroll(sectionIds: string[]) {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (window.innerWidth <= 768) return
-      if (!['ArrowDown','ArrowUp','PageDown','PageUp'].includes(e.key)) return
+      if (!['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp'].includes(e.key)) return
       e.preventDefault()
       if (scrollingRef.current) return
       scrollingRef.current = true
@@ -105,182 +104,9 @@ function useFullPageScroll(sectionIds: string[]) {
   }, [sectionIds])
 }
 
-/* ── Three.js particle shape generators ─────────────── */
-// Shape builders imported from landing.utils
-
-/* ── ParticleScene ───────────────────────────────────── */
-const ParticleScene: React.FC<{ section: number }> = ({ section }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const stateRef = useRef<{
-    renderer: THREE.WebGLRenderer
-    scene: THREE.Scene
-    camera: THREE.PerspectiveCamera
-    points: THREE.Points
-    currentPositions: Float32Array
-    targetPositions: Float32Array
-    fromPositions: Float32Array
-    transitionStart: number
-    transitionDuration: number
-    animId: number
-    shapes: Float32Array[]
-  } | null>(null)
-
-  // Initialize Three.js on mount
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
-    renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.setClearColor(0x000000, 0)
-
-    const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100)
-    camera.position.z = 4
-
-    const N = 3000
-    const shapes = [makeSphere(N), makeTorus(N), makeIcosahedron(N), makeHelix(N), makeBox(N), makeGalaxy(N)]
-
-    const geometry = new THREE.BufferGeometry()
-    const initial = shapes[0].slice()
-    geometry.setAttribute('position', new THREE.BufferAttribute(initial.slice(), 3))
-
-    const material = new THREE.PointsMaterial({ size: 0.025, sizeAttenuation: true, transparent: true, opacity: 0.85 })
-    const points = new THREE.Points(geometry, material)
-    scene.add(points)
-
-    const resize = () => {
-      const w = canvas.clientWidth
-      const h = canvas.clientHeight
-      renderer.setSize(w, h, false)
-      camera.aspect = w / h
-      camera.updateProjectionMatrix()
-    }
-    resize()
-    const ro = new ResizeObserver(resize)
-    ro.observe(canvas)
-
-    const state = {
-      renderer, scene, camera, points,
-      currentPositions: initial.slice(),
-      targetPositions: shapes[0].slice(),
-      fromPositions: shapes[0].slice(),
-      transitionStart: -1,
-      transitionDuration: 1200,
-      animId: 0,
-      shapes,
-    }
-    stateRef.current = state
-
-    let time = 0
-    function animate() {
-      state.animId = requestAnimationFrame(animate)
-      time += 0.016
-
-      // color from dark mode
-      const isDark = document.documentElement.classList.contains('dark')
-      ;(points.material as THREE.PointsMaterial).color.setHex(isDark ? 0x818cf8 : 0x3b82f6)
-
-      // transition
-      const positions = geometry.attributes.position.array as Float32Array
-      if (state.transitionStart >= 0) {
-        const elapsed = performance.now() - state.transitionStart
-        const t = Math.min(elapsed / state.transitionDuration, 1)
-        const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2 // easeInOutCubic
-        for (let i = 0; i < positions.length; i++) {
-          positions[i] = state.fromPositions[i] + (state.targetPositions[i] - state.fromPositions[i]) * e
-        }
-        if (t >= 1) state.transitionStart = -1
-      } else {
-        // idle drift
-        for (let i = 0; i < positions.length / 3; i++) {
-          positions[i * 3]     = state.targetPositions[i * 3]     + Math.sin(time * 0.5 + i * 0.1) * 0.008
-          positions[i * 3 + 1] = state.targetPositions[i * 3 + 1] + Math.cos(time * 0.4 + i * 0.13) * 0.008
-          positions[i * 3 + 2] = state.targetPositions[i * 3 + 2] + Math.sin(time * 0.6 + i * 0.07) * 0.008
-        }
-      }
-      geometry.attributes.position.needsUpdate = true
-
-      points.rotation.y += 0.003
-      points.rotation.x += 0.0008
-
-      renderer.render(scene, camera)
-    }
-    animate()
-
-    return () => {
-      cancelAnimationFrame(state.animId)
-      ro.disconnect()
-      renderer.dispose()
-    }
-  }, [])
-
-  // On section change → trigger transition
-  useEffect(() => {
-    const st = stateRef.current
-    if (!st) return
-    const geo = st.points.geometry
-    const cur = geo.attributes.position.array as Float32Array
-    st.fromPositions = cur.slice()
-    st.targetPositions = st.shapes[section].slice()
-    st.transitionStart = performance.now()
-  }, [section])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="lp-particle-canvas"
-      style={{ width: '100%', height: '100%', display: 'block' }}
-    />
-  )
-}
-
-/* ── ParticleNav ─────────────────────────────────────── */
-const ParticleNav: React.FC = () => {
-  const [activeIndex, setActiveIndex] = useState(0)
-
-  useEffect(() => {
-    const observers: IntersectionObserver[] = []
-    SECTIONS.forEach(({ id }, idx) => {
-      const el = document.getElementById(id)
-      if (!el) return
-      const obs = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActiveIndex(idx) },
-        { threshold: 0.4 }
-      )
-      obs.observe(el)
-      observers.push(obs)
-    })
-    return () => observers.forEach(o => o.disconnect())
-  }, [])
-
-  const isLastSection = activeIndex === SECTIONS.length - 1
-
-  return (
-    <div className="lp-3d-panel" style={{ opacity: isLastSection ? 0 : 1, transition: 'opacity .5s' }}>
-      <ParticleScene section={activeIndex} />
-      {/* Section dots overlay on the canvas */}
-      <div className="lp-3d-dots">
-        {SECTIONS.map((s, i) => (
-          <button
-            key={s.id}
-            className={`lp-3d-dot${activeIndex === i ? ' active' : ''}`}
-            onClick={() => {
-              const container = document.querySelector('.lp') as HTMLElement
-              const el = document.getElementById(s.id)
-              if (container && el) smoothScrollTo(container, el.offsetTop)
-            }}
-            title={s.label}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/* ── Map mockup (interactive day filter) ────────────── */
-const DAY_PINS: Record<number, number[]> = { 1: [1,2], 2: [3,4], 3: [5] }
-const PIN_COLORS = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#22c55e']
+/* ── Map mockup ──────────────────────────────────────── */
+const DAY_PINS: Record<number, number[]> = { 1: [1, 2], 2: [3, 4], 3: [5] }
+const PIN_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#22c55e']
 const PIN_POSITIONS = [
   { top: '22%', left: '18%' },
   { top: '38%', left: '52%' },
@@ -323,7 +149,7 @@ const MapMockup: React.FC = () => {
         )
       })}
       <div className="lp-map-day-bar">
-        {[1,2,3].map(d => (
+        {[1, 2, 3].map(d => (
           <button
             key={d}
             className={`lp-map-day-pill${activeDay === d ? ' lp-active' : ''}`}
@@ -345,7 +171,7 @@ const MapMockup: React.FC = () => {
 const INTEGRATIONS = [
   {
     abbr: 'GEM', color: '#1a6bff', bg: 'rgba(26,107,255,.12)',
-    name: 'Gemini 2.5 Flash', service: 'Google Gemini',
+    name: 'Gemini Flash', service: 'Google Gemini',
     desc: 'Generates your complete day-by-day itinerary based on destination, travel style and duration.',
     tag: 'AI',
   },
@@ -383,10 +209,14 @@ const INTEGRATIONS = [
 
 /* ── Places ──────────────────────────────────────────── */
 const PLACES = [
-  { name: 'Eiffel Tower',    loc: 'Paris, France',    cat: 'SIGHT',   catClass: 'lp-badge-sight',   rating: 5, desc: 'Iconic iron lattice tower standing 330 m tall, symbol of Paris since 1889.' },
-  { name: 'Colosseum',       loc: 'Rome, Italy',      cat: 'CULTURE', catClass: 'lp-badge-culture', rating: 5, desc: 'Ancient Roman amphitheater built in 70 AD — one of the world\'s greatest works of architecture.' },
-  { name: 'Sagrada Família', loc: 'Barcelona, Spain', cat: 'SIGHT',   catClass: 'lp-badge-sight',   rating: 5, desc: "Antoni Gaudí's unfinished basilica, under continuous construction since 1882." },
-  { name: 'Santorini',       loc: 'Cyclades, Greece', cat: 'NATURE',  catClass: 'lp-badge-nature',  rating: 5, desc: 'Volcanic island famous for its whitewashed clifftop villages and caldera sunsets.' },
+  { name: 'Eiffel Tower',    loc: 'Paris, France',        cat: 'SIGHT',   catClass: 'lp-badge-sight',   rating: 5, desc: 'Iconic iron lattice tower standing 330 m tall, symbol of Paris since 1889.' },
+  { name: 'Colosseum',       loc: 'Rome, Italy',          cat: 'CULTURE', catClass: 'lp-badge-culture', rating: 5, desc: "Ancient Roman amphitheater built in 70 AD — one of the world's greatest works of architecture." },
+  { name: 'Sagrada Família', loc: 'Barcelona, Spain',     cat: 'SIGHT',   catClass: 'lp-badge-sight',   rating: 5, desc: "Antoni Gaudí's unfinished basilica, under continuous construction since 1882." },
+  { name: 'Santorini',       loc: 'Cyclades, Greece',     cat: 'NATURE',  catClass: 'lp-badge-nature',  rating: 5, desc: 'Volcanic island famous for its whitewashed clifftop villages and caldera sunsets.' },
+  { name: 'Machu Picchu',    loc: 'Cusco, Peru',          cat: 'CULTURE', catClass: 'lp-badge-culture', rating: 5, desc: "15th-century Inca citadel set high in the Andes Mountains, one of the world's most iconic sites." },
+  { name: 'Acropolis',       loc: 'Athens, Greece',       cat: 'CULTURE', catClass: 'lp-badge-culture', rating: 5, desc: 'Ancient hilltop complex crowning Athens, home to the Parthenon and 2,500 years of history.' },
+  { name: 'Burj Khalifa',    loc: 'Dubai, UAE',           cat: 'SIGHT',   catClass: 'lp-badge-sight',   rating: 5, desc: "World's tallest building at 828 m, offering panoramic views across the desert and Gulf." },
+  { name: 'Grand Canyon',    loc: 'Arizona, USA',         cat: 'NATURE',  catClass: 'lp-badge-nature',  rating: 5, desc: 'A mile-deep gorge carved by the Colorado River, stretching 446 km across the Arizona plateau.' },
 ]
 
 function Stars({ n }: { n: number }) {
@@ -401,15 +231,15 @@ function Stars({ n }: { n: number }) {
 
 /* ── Tech stack ──────────────────────────────────────── */
 const TECH = [
-  { name: 'React',        color: '#61dafb', bg: 'rgba(97,218,251,.1)' },
-  { name: 'NestJS',       color: '#e0234e', bg: 'rgba(224,35,78,.1)'  },
-  { name: 'Prisma',       color: '#5a67d8', bg: 'rgba(90,103,216,.1)' },
-  { name: 'PostgreSQL',   color: '#336791', bg: 'rgba(51,103,145,.1)' },
-  { name: 'Supabase',     color: '#3ecf8e', bg: 'rgba(62,207,142,.1)' },
-  { name: 'Vercel',       color: '#64748b', bg: 'rgba(100,116,139,.08)' },
-  { name: 'Render',       color: '#46e3b7', bg: 'rgba(70,227,183,.1)' },
-  { name: 'Gemini',       color: '#1a6bff', bg: 'rgba(26,107,255,.1)' },
-  { name: 'Google Maps',  color: '#34a853', bg: 'rgba(52,168,83,.1)'  },
+  { name: 'React',       color: '#61dafb', bg: 'rgba(97,218,251,.1)'  },
+  { name: 'NestJS',      color: '#e0234e', bg: 'rgba(224,35,78,.1)'   },
+  { name: 'Prisma',      color: '#5a67d8', bg: 'rgba(90,103,216,.1)'  },
+  { name: 'PostgreSQL',  color: '#336791', bg: 'rgba(51,103,145,.1)'  },
+  { name: 'Supabase',    color: '#3ecf8e', bg: 'rgba(62,207,142,.1)'  },
+  { name: 'Vercel',      color: '#64748b', bg: 'rgba(100,116,139,.08)' },
+  { name: 'Render',      color: '#46e3b7', bg: 'rgba(70,227,183,.1)'  },
+  { name: 'Gemini',      color: '#1a6bff', bg: 'rgba(26,107,255,.1)'  },
+  { name: 'Google Maps', color: '#34a853', bg: 'rgba(52,168,83,.1)'   },
 ]
 
 /* ── Page ────────────────────────────────────────────── */
@@ -419,10 +249,14 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="lp">
-      <ParticleNav />
       {/* Nav */}
       <nav className="lp-nav">
-        <div className="lp-nav-brand">
+        <button
+          type="button"
+          className="lp-nav-brand"
+          style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+          onClick={() => { const c = document.querySelector('.lp') as HTMLElement; if (c) smoothScrollTo(c, 0) }}
+        >
           <span className="lp-nav-logo">
             <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
               <path d="M14 4c-3.3 0-6 2.6-6 5.9 0 4 6 11.1 6 11.1s6-7.1 6-11.1C20 6.6 17.3 4 14 4z" fill="#fff"/>
@@ -430,11 +264,11 @@ export const LandingPage: React.FC = () => {
             </svg>
           </span>
           Routiq
-        </div>
+        </button>
         <div className="lp-nav-links">
-          <button className="lp-nav-link" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-map'); if(c&&el) smoothScrollTo(c, el.offsetTop) }}>Maps</button>
-          <button className="lp-nav-link" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-integrations'); if(c&&el) smoothScrollTo(c, el.offsetTop) }}>Integrations</button>
-          <button className="lp-nav-link" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-how'); if(c&&el) smoothScrollTo(c, el.offsetTop) }}>How it works</button>
+          <button className="lp-nav-link" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-map'); if (c && el) smoothScrollTo(c, el.offsetTop) }}>Maps</button>
+          <button className="lp-nav-link" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-integrations'); if (c && el) smoothScrollTo(c, el.offsetTop) }}>Integrations</button>
+          <button className="lp-nav-link" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-how'); if (c && el) smoothScrollTo(c, el.offsetTop) }}>How it works</button>
           <Link to={ROUTES.LOGIN}    className="lp-nav-link">Sign in</Link>
           <Link to={ROUTES.REGISTER} className="lp-nav-btn">Get started</Link>
         </div>
@@ -443,14 +277,10 @@ export const LandingPage: React.FC = () => {
       {/* Hero */}
       <section className="lp-hero lp-fp-section" id="lp-top">
         <div className="lp-hero-inner">
-          <div className="lp-hero-badge">
-            <span className="lp-hero-badge-dot" />
-            POWERED BY THE BEST
-          </div>
           <h1 className="lp-hero-title">
-            Built on<br />
-            <span className="lp-grad">world-class</span><br />
-            technology
+            Plan your next<br />
+            <span className="lp-grad">adventure</span><br />
+            with AI
           </h1>
           <p className="lp-hero-sub">
             Routiq combines Google Maps, AI, and real-world data to plan your perfect trip — automatically.
@@ -460,7 +290,7 @@ export const LandingPage: React.FC = () => {
               Start planning free
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
             </Link>
-            <button className="lp-btn-ghost" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-how'); if(c&&el) smoothScrollTo(c, el.offsetTop) }}>
+            <button className="lp-btn-ghost" onClick={() => { const c = document.querySelector('.lp') as HTMLElement; const el = document.getElementById('lp-how'); if (c && el) smoothScrollTo(c, el.offsetTop) }}>
               See how it works
             </button>
           </div>
@@ -532,7 +362,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Section 3 — Places */}
       <section id="lp-places" className="lp-fp-section">
-        <div className="lp-section">
+        <div className="lp-section lp-places-section">
           <span className="lp-kicker">REAL PLACES</span>
           <h2 className="lp-section-title">Discover real places</h2>
           <p className="lp-section-desc">Every attraction is pulled from Google Places — photos sourced directly from Wikipedia.</p>
@@ -568,12 +398,12 @@ export const LandingPage: React.FC = () => {
       <div className="lp-section-alt lp-fp-section" id="lp-how">
         <div className="lp-section-alt-inner" style={{ textAlign: 'center' }}>
           <span className="lp-kicker">HOW IT WORKS</span>
-          <h2 className="lp-section-title">From idea to itinerary<br />in 60 seconds</h2>
+          <h2 className="lp-section-title">From idea to itinerary<br />in 7 seconds</h2>
           <div className="lp-steps">
             {[
               {
                 num: '01', title: 'Tell us your trip',
-                desc: 'Destination, dates, and travel style. A few inputs — that\'s all it takes to get started.',
+                desc: "Destination, dates, and travel style. A few inputs — that's all it takes to get started.",
                 grad: 'linear-gradient(135deg,#3b82f6,#2563eb)',
                 icon: <><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6 1.3 0 2.6.4 3.6 1.1"/><path d="M17 11v6M14 14h6"/></>,
               },
@@ -608,7 +438,7 @@ export const LandingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* CTA + tech + footer — vse skupaj v eni 100vh sekciji */}
+      {/* CTA + tech + footer */}
       <section id="lp-cta" className="lp-fp-section lp-cta-section">
         {/* Tech strip */}
         <div className="lp-tech-strip">
@@ -616,8 +446,7 @@ export const LandingPage: React.FC = () => {
             <span className="lp-tech-label">BUILT WITH</span>
             <div className="lp-tech-row">
               {TECH.map(t => (
-                <div key={t.name} className="lp-tech-item" style={{ '--tc': t.color, '--tb': t.bg } as React.CSSProperties}>
-                  <span className="lp-tech-dot" style={{ background: t.color }} />
+                <div key={t.name} className="lp-tech-item" style={{ '--tc': t.color } as React.CSSProperties}>
                   {t.name}
                 </div>
               ))}
@@ -625,7 +454,7 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* CTA card — centered */}
+        {/* CTA card */}
         <div className="lp-cta-wrap">
           <div className="lp-cta">
             <div className="lp-cta-inner">
@@ -654,7 +483,9 @@ export const LandingPage: React.FC = () => {
           <div style={{ display: 'flex', gap: 20 }}>
             <Link to={ROUTES.LOGIN}>Sign in</Link>
             <Link to={ROUTES.REGISTER}>Register</Link>
-            <Link to="/help">Help</Link>
+            <Link to={ROUTES.HELP}>Help</Link>
+            <Link to={ROUTES.PRIVACY}>Privacy</Link>
+            <Link to={ROUTES.TERMS}>Terms</Link>
           </div>
         </footer>
       </section>

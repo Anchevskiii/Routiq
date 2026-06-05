@@ -1,6 +1,7 @@
 {
   "name": "routiq-frontend",
   "private": true,
+  "license": "MIT",
   "version": "1.0.0",
   "type": "module",
   "description": "Routiq travel planning frontend - React 18 + TypeScript + Vite",

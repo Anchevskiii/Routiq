@@ -4,6 +4,7 @@ import { AuthProvider } from './Providers.tsx'
 import { GoogleMapsProvider } from '@/components/providers/GoogleMapsProvider.tsx'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary.tsx'
 import { AppRouter } from './router.tsx'
+import { CookieConsent } from '@/components/ui/CookieConsent.tsx'
 
 export const App: React.FC = () => {
   return (
@@ -12,6 +13,7 @@ export const App: React.FC = () => {
         <AuthProvider>
           <GoogleMapsProvider>
             <AppRouter />
+            <CookieConsent />
           </GoogleMapsProvider>
         </AuthProvider>
       </BrowserRouter>

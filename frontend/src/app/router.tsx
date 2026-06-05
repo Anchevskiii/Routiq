@@ -14,6 +14,12 @@ const LoginPage = lazy(() =>
 const RegisterPage = lazy(() =>
   import('@/features/auth/pages/RegisterPage').then(m => ({ default: m.RegisterPage }))
 )
+const PrivacyPage = lazy(() =>
+  import('@/features/landing/pages/PrivacyPage').then(m => ({ default: m.PrivacyPage }))
+)
+const TermsPage = lazy(() =>
+  import('@/features/landing/pages/TermsPage').then(m => ({ default: m.TermsPage }))
+)
 
 // Protected pages (lazy loaded)
 const DashboardPage = lazy(() =>
@@ -97,6 +103,9 @@ export const AppRouter: React.FC = () => {
             )
           }
         />
+        <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
+        <Route path={ROUTES.TERMS} element={<TermsPage />} />
+
 
         {/* Landing page — unauthenticated root */}
         <Route

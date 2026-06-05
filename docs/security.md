@@ -230,7 +230,7 @@ Implementacija prek `@nestjs/throttler`:
 
 ```typescript
 // Na generate endpointu
-@Throttle({ default: { ttl: 60000, limit: 5 } })
+@Throttle({ 'itinerary-generate': { limit: 5, ttl: 60000 } })
 @Post('generate')
 async generate() { ... }
 ```

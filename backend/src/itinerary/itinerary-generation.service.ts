@@ -32,10 +32,6 @@ export class ItineraryGenerationService {
     const { destination, startDate, endDate, days, travelType } =
       createItineraryDto;
     const generationStart = Date.now();
-    console.log(
-      `[PERF] prepareGenerationData started at ${new Date(generationStart).toISOString()}`,
-    );
-
     const [weatherData, attractions] = await Promise.all([
       this.weatherService.getForecast(
         destination,
@@ -44,9 +40,6 @@ export class ItineraryGenerationService {
       ),
       this.attractionsService.getCuratedPlaces(destination, travelType, days),
     ]);
-    console.log(
-      `[PERF] Data fetching (parallel) took ${Date.now() - generationStart}ms`,
-    );
 
     const prompt = buildItineraryPrompt({
       destination,
@@ -58,10 +51,6 @@ export class ItineraryGenerationService {
       attractions,
       travelTimeContext: '', // Not needed for minimalist prompt
     });
-
-    console.log(
-      `[PERF] prepareGenerationData total took ${Date.now() - generationStart}ms`,
-    );
 
     return {
       generationStart,

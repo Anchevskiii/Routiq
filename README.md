@@ -1,7 +1,7 @@
 # Routiq — AI platforma za načrtovanje potovanj
 
-> Routiq je spletna aplikacija za načrtovanje potovanj s pomočjo umetne inteligence.  
-> Uporabnik vnese destinacijo, datume in tip potovanja — sistem generira personaliziran dnevni itinerar z atrakcijami, vremensko napovedjo in optimizirano potjo na Google Maps.
+## English Summary
+Routiq is a state-of-the-art web application for AI-powered travel itinerary planning. Users provide a destination, travel dates, and travel style, and the system automatically generates a personalized day-by-day itinerary complete with curated attractions, weather forecasts, and an optimized route on Google Maps. The backend is built with NestJS 10, TypeScript, Prisma, and PostgreSQL (hosted on Supabase), while the frontend is built with React 18, Vite, and Tailwind CSS.
 
 **Ekipa:** Jan Ančevski · Klemen Novak · Mojca Marin
 
