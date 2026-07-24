@@ -2,20 +2,19 @@ name: SonarCloud Analysis
 
 on:
   push:
-    branches: [development, feature/sonarqube-testing]
-  pull_request:
-    branches: [development]
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   sonarcloud:
+    name: SonarCloud Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -23,10 +22,10 @@ jobs:
             frontend/package-lock.json
             backend/package-lock.json
 
-      - name: Install frontend deps
+      - name: Install frontend dependencies
         run: cd frontend && npm ci
 
-      - name: Install backend deps
+      - name: Install backend dependencies
         run: cd backend && npm ci
 
       - name: Generate Prisma Client
@@ -38,7 +37,7 @@ jobs:
       - name: Run backend unit tests with coverage
         run: cd backend && npm run test:cov
 
-      - name: Fix coverage paths for monorepo
+      - name: Fix backend coverage paths for monorepo
         run: sed -i 's|SF:src|SF:backend/src|g' backend/coverage/lcov.info
 
       - name: Run frontend unit tests with coverage
@@ -52,4 +51,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.ROUTIQ_SONAR }}
           SONAR_HOST_URL: https://sonarcloud.io
-          SONAR_SCANNER_SKIP_JRE_PROVISIONING: true
+          SONAR_SCANNER_SKIP_JRE_PROVISIONING: true
