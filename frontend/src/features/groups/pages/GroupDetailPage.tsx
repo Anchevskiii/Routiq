@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groupsApi } from '@/api/groups.api'
 import { QUERY_KEYS } from '@/constants/queryKeys'
@@ -17,11 +17,19 @@ export const GroupDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const [inviteEmail, setInviteEmail]           = useState('')
   const [isAddItineraryOpen, setIsAddItineraryOpen]   = useState(false)
   const [isSettingsOpen, setSettingsOpen]       = useState(false)
   const [toastDismissed, setToastDismissed]     = useState(false)
+
+  React.useEffect(() => {
+    if (location.state?.openSettings) {
+      setSettingsOpen(true)
+      navigate(location.pathname, { replace: true })
+    }
+  }, [])
 
   const { data: group, isLoading, error } = useQuery({
     queryKey: QUERY_KEYS.group(id!),
