@@ -10,10 +10,9 @@
 2. [GitHub Actions konfiguracija](#2-github-actions-konfiguracija)
 3. [Backend validacija in testiranje](#3-backend-validacija-in-testiranje)
 4. [Frontend validacija in testiranje](#4-frontend-validacija-in-testiranje)
-5. [SonarCloud analiza kode](#5-sonarcloud-analiza-kode)
-6. [Deploy — Vercel (frontend)](#6-deploy--vercel-frontend)
-7. [Deploy — Railway (backend)](#7-deploy--railway-backend)
-8. [Okolja (environments)](#8-okolja-environments)
+5. [Deploy — Vercel (frontend)](#5-deploy--vercel-frontend)
+6. [Deploy — Railway (backend)](#6-deploy--railway-backend)
+7. [Okolja (environments)](#7-okolja-environments)
 
 ---
 
@@ -42,17 +41,8 @@ graph LR
         end
     end
 
-    subgraph SC["SonarCloud (.github/workflows/sonarcloud.yml)"]
-        S1["Backend testi + LCOV coverage"]
-        S2["Frontend Vitest + LCOV coverage"]
-        S3["SonarCloud Scan\n(kakovostni prag)"]
-        S1 --> S3
-        S2 --> S3
-    end
-
     CI -->|"Oba joba zelena"| Deploy
     CI -->|"Kateri koli job rdeč"| Block["❌ Deploy blokiran"]
-    Push --> SC
 
     Deploy --> Vercel["☁️ Vercel\n(frontend auto-deploy)"]
     Deploy --> Railway["☁️ Railway.app\n(backend auto-deploy)"]
@@ -153,47 +143,7 @@ Produkcijski build je strožji od development — ujame manjkajoče module, Type
 
 ---
 
-## 5. SonarCloud analiza kode
-
-Datoteka: `.github/workflows/sonarcloud.yml`
-
-SonarCloud teče **vzporedno** s CI pipeline-om — ne blokira deploya.
-
-```yaml
-on:
-  push:
-    branches: [main, development]
-  pull_request:
-    branches: [main, development]
-```
-
-**Koraki:**
-1. Backend `jest --coverage` → generira `backend/coverage/lcov.info`
-2. Frontend `vitest run --coverage` → generira `frontend/coverage/lcov.info`
-3. Popravi poti za monorepo (`SF:src` → `SF:backend/src` / `SF:frontend/src`)
-4. SonarCloud Scan z obema LCOV datotekama
-
-**Kakovostni prag (Quality Gate):**
-- Pokritost nove kode ≥ 80 %
-- Nobenih novih blokerjev ali kritičnih napak
-
-**Izključene datoteke iz pokritosti:**
-```
-backend/src/main.ts
-backend/src/**/*.module.ts
-backend/src/**/*.dto.ts
-backend/src/config/**/*
-backend/src/health/**/*
-frontend/src/app/**/*
-frontend/src/types/**/*
-frontend/src/constants/**/*
-```
-
-Konfiguracija: `sonar-project.properties` v korenu repota.
-
----
-
-## 6. Deploy — Vercel (frontend)
+## 5. Deploy — Vercel (frontend)
 
 Vercel je konfiguriran za **auto-deploy** ob vsakem push na `main`.
 
@@ -221,7 +171,7 @@ React Router deluje na klientski strani. Ko uporabnik direktno odpre `https://ro
 
 ---
 
-## 7. Deploy — Railway (backend)
+## 6. Deploy — Railway (backend)
 
 Railway je konfiguriran za **auto-deploy** ob vsakem push na `main`.
 
@@ -245,7 +195,7 @@ Railway periodično kliče `GET /api/health` — če endpoint ne odgovori, Railw
 
 ---
 
-## 8. Okolja (environments)
+## 7. Okolja (environments)
 
 | Okolje | Frontend | Backend | Baza |
 |---|---|---|---|

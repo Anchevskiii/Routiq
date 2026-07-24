@@ -322,9 +322,7 @@ routiq/                                             # Koren monorepa
 │
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                                  # CI pipeline: lint, testi, build (main + development)
-│       └── sonarcloud.yml                          # SonarCloud analiza pokritosti kode
-├── sonar-project.properties                        # Konfiguracija SonarCloud projekta
+│       └── ci.yml                                  # CI pipeline: lint, testi, build (main + development)
 ├── FRONTEND_ARCHITECTURE.md                        # FE arhitekturni plan, pravila, razdelitev dela
 ├── BACKEND_ARCHITECTURE.md                         # BE arhitekturni plan, pravila, razdelitev dela
 ├── DIRECTORY.md                                    # Ta dokument

@@ -56,7 +56,7 @@ graph TB
     style Playwright fill:#ef4444,color:#fff
 ```
 
-**Pokritost kode:** SonarCloud meri pokritost nove kode ob vsakem PR-ju (prag ≥ 80 %). Poročilo temelji na LCOV datotekah ki jih generirajo `jest --coverage` in `vitest run --coverage`.
+**Pokritost kode:** Poročilo o pokritosti temelji na LCOV datotekah, ki jih generirajo `jest --coverage` in `vitest run --coverage`.
 
 ---
 
@@ -80,7 +80,7 @@ cd frontend
 
 npm run test:unit:run       # Enkratni tek vseh Vitest testov
 npm run test:unit           # Watch mode
-npx vitest run --coverage   # Z LCOV pokritostjo (za SonarCloud)
+npx vitest run --coverage   # Z LCOV pokritostjo
 
 npm run test:e2e            # Playwright E2E testi
 ```
