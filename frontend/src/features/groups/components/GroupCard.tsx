@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, MapPin, Settings, Trash2 } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -20,6 +20,7 @@ export const GroupCard: React.FC<Props> = ({ group, currentUserId: _currentUserI
   const memberCount    = group.members?.length    ?? group.memberCount    ?? 0
   const itineraryCount = group.itineraries?.length ?? group.itineraryCount ?? 0
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const deleteMutation = useMutation({
     mutationFn: () => groupsApi.deleteGroup(group.id),
@@ -93,9 +94,17 @@ export const GroupCard: React.FC<Props> = ({ group, currentUserId: _currentUserI
                 {group.imageUrl && (
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 )}
-                <div className="grp-card-gear absolute top-2.5 right-2.5 w-[30px] h-[30px] rounded-lg bg-black/35 backdrop-blur-sm grid place-items-center border border-white/[0.15]">
+                <button
+                  onClick={e => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    navigate(ROUTES.GROUP_DETAIL(group.id), { state: { openSettings: true } })
+                  }}
+                  className="grp-card-gear absolute top-2.5 right-2.5 w-[30px] h-[30px] rounded-lg bg-black/35 backdrop-blur-sm grid place-items-center border border-white/[0.15] hover:bg-white/20 transition-colors"
+                  title="Group settings"
+                >
                   <Settings size={13} className="text-white" />
-                </div>
+                </button>
                 <button
                   onClick={e => {
                     e.preventDefault()

@@ -78,7 +78,6 @@ Podroben deployment diagram → [Arhitektura sistema](docs/architecture.md#deplo
 | **E-pošta** | Resend (transakcijska e-pošta) |
 | **Deploy FE** | Vercel |
 | **Deploy BE** | Railway.app |
-| **Kakovost kode** | SonarCloud |
 
 > ⚠️ **Axios 1.14.0 je pinana** — verziji 1.14.1 in 0.30.4 sta bili marca 2026 kompromitirani v supply chain napadu. Ne posodabljaj brez preveritve. Podrobnosti: [Izzivi in rešitve](docs/challenges.md#supply-chain-napad-na-axios).
 
@@ -188,8 +187,7 @@ routiq/                         # Monorepo koren
 │       ├── mail/               # Resend e-pošta
 │       └── common/             # Guards, filters, interceptors, utils
 ├── .github/workflows/
-│   ├── ci.yml                  # GitHub Actions CI pipeline (backend + frontend)
-│   └── sonarcloud.yml          # SonarCloud analiza pokritosti kode
+│   └── ci.yml                  # GitHub Actions CI pipeline (backend + frontend)
 └── docs/                       # Detajlna dokumentacija (→ kazalo zgoraj)
 ```
 
