@@ -29,7 +29,7 @@ export const GroupDetailPage: React.FC = () => {
       setSettingsOpen(true)
       navigate(location.pathname, { replace: true })
     }
-  }, [])
+  }, [location.pathname, location.state?.openSettings, navigate])
 
   const { data: group, isLoading, error } = useQuery({
     queryKey: QUERY_KEYS.group(id!),
