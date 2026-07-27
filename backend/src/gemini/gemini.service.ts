@@ -7,6 +7,7 @@ import axios from 'axios';
 import { Observable, Subject, timeout } from 'rxjs';
 import { AppConfigService } from '../config/config.service';
 import { withRetry } from '../common';
+import { tryParseGeminiResponse } from './parse-response';
 
 export type GeminiStreamEvent =
   | { type: 'chunk'; content: string }
@@ -95,24 +96,12 @@ export class GeminiService {
         });
 
         response.data.on('end', () => {
-          try {
-            const streamItems = JSON.parse(rawBuffer) as GeminiStreamItem[];
-            let fullText = '';
-
-            if (Array.isArray(streamItems)) {
-              for (const item of streamItems) {
-                const text = item.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) fullText += text;
-              }
-            }
-
-            const itineraryData = JSON.parse(fullText) as unknown;
-            resolve(itineraryData);
-          } catch (e) {
-            this.logger.error(
-              `Stream parse failed: ${e instanceof Error ? e.message : String(e)}`,
-            );
-            reject(new Error('Failed to parse AI response as valid JSON'));
+          const result = tryParseGeminiResponse(rawBuffer, rawBuffer, this.logger);
+          if (result.success) {
+            resolve(result.data);
+          } else {
+            this.logger.error(`Stream parse failed: ${result.error.message}`);
+            reject(result.error);
           }
         });
 
@@ -269,63 +258,12 @@ export class GeminiService {
             `[PERF] Gemini Stream ended after ${endTime - startTime}ms. Chunks: ${chunkCount}. Text length: ${lastExtractedText.length}`,
           );
 
-          try {
-            // For the 'complete' event, we need the final parsed object
-            // The buffer should now be a complete JSON array
-            const streamItems = JSON.parse(rawBuffer);
-            let finalFullText = '';
-
-            if (Array.isArray(streamItems)) {
-              for (const item of streamItems) {
-                const text = item.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) finalFullText += text;
-              }
-            }
-
-            const itineraryData = JSON.parse(finalFullText);
-            subject.next({ type: 'complete', data: itineraryData });
+          const result = tryParseGeminiResponse(rawBuffer, lastExtractedText, this.logger);
+          if (result.success) {
+            subject.next({ type: 'complete', data: result.data });
             subject.complete();
-          } catch (e) {
-            this.logger.error(
-              `Final stream parse failed: ${e instanceof Error ? e.message : String(e)}`,
-            );
-            this.logger.debug(
-              `Malformed JSON sample: ${lastExtractedText.slice(-100)}`,
-            );
-
-            // Attempt to recover if it's just missing closing braces/brackets
-            try {
-              let recoveredText = lastExtractedText.trim();
-              if (recoveredText.endsWith(','))
-                recoveredText = recoveredText.slice(0, -1);
-
-              const openBraces = (recoveredText.match(/\{/g) || []).length;
-              let closeBraces = (recoveredText.match(/\}/g) || []).length;
-              const openBrackets = (recoveredText.match(/\[/g) || []).length;
-              let closeBrackets = (recoveredText.match(/\]/g) || []).length;
-
-              while (openBraces > closeBraces) {
-                recoveredText += '}';
-                closeBraces++;
-              }
-              while (openBrackets > closeBrackets) {
-                recoveredText += ']';
-                closeBrackets++;
-              }
-
-              const itineraryData = JSON.parse(recoveredText);
-              this.logger.log(
-                'Successfully recovered truncated AI response JSON',
-              );
-              subject.next({ type: 'complete', data: itineraryData });
-              subject.complete();
-            } catch {
-              subject.error(
-                new Error(
-                  'Failed to parse AI response as valid JSON even after recovery attempt',
-                ),
-              );
-            }
+          } else {
+            subject.error(result.error);
           }
         });
 

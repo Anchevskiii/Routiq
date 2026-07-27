@@ -35,6 +35,9 @@ node_modules/
 # agents + rules
 .agents
 
+# opencode
+.opencode/
+
 # Project-specific
 GEMINI.md
 frontend/test-results/

@@ -99,16 +99,6 @@ export class ItineraryService {
               days: true,
             },
           },
-          groupItineraries: {
-            select: {
-              groupId: true,
-              group: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
         },
       }),
       this.prisma.itinerary.count({ where: baseWhere }),
