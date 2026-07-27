@@ -46,6 +46,7 @@ export class AttractionsService {
   private readonly searchCacheDuration = 24 * 60 * 60 * 1000; // 24 hours in ms
   private readonly utilityRegex =
     /\b(atm|locker|wc|toilet|bus stop|subway station|transit station|train station|parking|car rental|supermarket|pharmacy|police|hospital|baggage storage|luggage storage|airport|taxi stand|public restroom|public toilet)\b/i;
+  private readonly apiKeyInUrlRegex = /key=[^&\s"]+/g;
 
   constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGooglePlacesApiKey();
@@ -57,8 +58,11 @@ export class AttractionsService {
         'Google Places API is not configured',
       );
     }
-    // Strip quotes if they exist (common issue in .env files)
     return this.apiKey.replace(/^["']|["']$/g, '');
+  }
+
+  private redactSensitiveInfo(message: string): string {
+    return message.replace(this.apiKeyInUrlRegex, 'key=REDACTED');
   }
 
   private calculateDistanceMeters(
@@ -380,8 +384,9 @@ export class AttractionsService {
 
       return formatted;
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Legacy search failed for '${query}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Legacy search failed for '${query}': ${this.redactSensitiveInfo(errMsg)}`,
       );
       return [];
     }
@@ -432,8 +437,9 @@ export class AttractionsService {
 
       return this.formatLegacyPlace(response.data.result);
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
       throw new ServiceUnavailableException(
-        `Failed to get attraction details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to get attraction details: ${this.redactSensitiveInfo(errMsg)}`,
       );
     }
   }
@@ -542,8 +548,9 @@ export class AttractionsService {
       }
       return null;
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Geocoding failed for '${address}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Geocoding failed for '${address}': ${this.redactSensitiveInfo(errMsg)}`,
       );
       return null;
     }

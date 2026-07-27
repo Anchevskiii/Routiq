@@ -32,7 +32,8 @@ export class GeminiService {
   private readonly apiKey: string;
   private readonly baseUrl =
     'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent';
-  private static readonly STREAM_TIMEOUT_MS = 60_000; // Adjusted from 180s to 60s to align better with ARCHITECTURE (20s) while allowing for long streams
+  private static readonly STREAM_TIMEOUT_MS = 60_000;
+  private readonly apiKeyInUrlRegex = /key=[^&\s"]+/g;
 
   constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGeminiApiKey();
@@ -43,6 +44,10 @@ export class GeminiService {
       throw new ServiceUnavailableException('Gemini API is not configured');
     }
     return this.apiKey;
+  }
+
+  private redactSensitiveInfo(message: string): string {
+    return message.replace(this.apiKeyInUrlRegex, 'key=REDACTED');
   }
 
   async streamGenerate(prompt: string): Promise<unknown> {
@@ -400,7 +405,7 @@ export class GeminiService {
         }
 
         return new ServiceUnavailableException(
-          `AI service error: ${error.message}`,
+          `AI service error: ${this.redactSensitiveInfo(error.message)}`,
         );
       }
     }

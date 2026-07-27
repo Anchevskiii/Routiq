@@ -896,11 +896,13 @@ export class GroupsService {
       }
     }
 
+    const sanitizedContent = this.sanitizeText(addCommentDto.content);
+
     const comment = await this.prisma.comment.create({
       data: {
         groupId,
         userId,
-        content: addCommentDto.content,
+        content: sanitizedContent,
         parentId: addCommentDto.parentId ?? null,
       },
       include: {
@@ -1184,6 +1186,15 @@ export class GroupsService {
     }
 
     return membership;
+  }
+
+  private sanitizeText(input: string): string {
+    // Strip any HTML tags to prevent XSS in notifications/emails that render content
+    return input
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/[<>]/g, '')
+      .trim();
   }
 
   private async logActivity(
