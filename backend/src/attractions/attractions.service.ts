@@ -191,7 +191,11 @@ export class AttractionsService {
   }
 
   private isLowQuality(place: FormattedPlace): boolean {
-    if (place.rating !== undefined && place.rating > 0 && place.rating < MIN_RATING) {
+    if (
+      place.rating !== undefined &&
+      place.rating > 0 &&
+      place.rating < MIN_RATING
+    ) {
       return true;
     }
     if (
@@ -464,7 +468,9 @@ export class AttractionsService {
         this.extractKeywordsFromName(original.name),
         destination,
       );
-      return alternatives.filter((attr) => attr.id !== placeId).slice(0, ALTERNATIVES_RESULT_LIMIT);
+      return alternatives
+        .filter((attr) => attr.id !== placeId)
+        .slice(0, ALTERNATIVES_RESULT_LIMIT);
     } catch {
       throw new ServiceUnavailableException('Failed to get alternatives');
     }

@@ -96,7 +96,11 @@ export class GeminiService {
         });
 
         response.data.on('end', () => {
-          const result = tryParseGeminiResponse(rawBuffer, rawBuffer, this.logger);
+          const result = tryParseGeminiResponse(
+            rawBuffer,
+            rawBuffer,
+            this.logger,
+          );
           if (result.success) {
             resolve(result.data);
           } else {
@@ -258,7 +262,11 @@ export class GeminiService {
             `[PERF] Gemini Stream ended after ${endTime - startTime}ms. Chunks: ${chunkCount}. Text length: ${lastExtractedText.length}`,
           );
 
-          const result = tryParseGeminiResponse(rawBuffer, lastExtractedText, this.logger);
+          const result = tryParseGeminiResponse(
+            rawBuffer,
+            lastExtractedText,
+            this.logger,
+          );
           if (result.success) {
             subject.next({ type: 'complete', data: result.data });
             subject.complete();

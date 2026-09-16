@@ -29,7 +29,13 @@ export function parseGeminiChunks(rawBuffer: string): string {
 
   if (Array.isArray(streamItems)) {
     for (const item of streamItems) {
-      const candidates = (item as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates;
+      const candidates = (
+        item as {
+          candidates?: Array<{
+            content?: { parts?: Array<{ text?: string }> };
+          }>;
+        }
+      ).candidates;
       const text = candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) fullText += text;
     }
@@ -38,7 +44,11 @@ export function parseGeminiChunks(rawBuffer: string): string {
   return fullText;
 }
 
-export function tryParseGeminiResponse(rawBuffer: string, lastExtractedText: string, logger: Logger): { success: true; data: unknown } | { success: false; error: Error } {
+export function tryParseGeminiResponse(
+  rawBuffer: string,
+  lastExtractedText: string,
+  logger: Logger,
+): { success: true; data: unknown } | { success: false; error: Error } {
   try {
     const finalFullText = parseGeminiChunks(rawBuffer);
     const data: unknown = JSON.parse(finalFullText);

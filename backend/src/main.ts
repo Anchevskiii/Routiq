@@ -33,10 +33,7 @@ async function bootstrap() {
   // CSP violation reporting (must be registered before Helmet middleware)
   app.use('/api/csp-report', (req: Request, res: Response) => {
     if (req.method === 'POST') {
-      Logger.warn(
-        `CSP Violation: ${JSON.stringify(req.body)}`,
-        'CSP',
-      );
+      Logger.warn(`CSP Violation: ${JSON.stringify(req.body)}`, 'CSP');
     }
     res.status(204).end();
   });
@@ -47,7 +44,11 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'https://fonts.googleapis.com',
+          ],
           scriptSrc: [
             "'self'",
             'https://maps.googleapis.com',

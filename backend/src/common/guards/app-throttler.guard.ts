@@ -75,7 +75,10 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     return result;
   }
 
-  private addRateLimitHeaders(context: ExecutionContext, isOverLimit: boolean): void {
+  private addRateLimitHeaders(
+    context: ExecutionContext,
+    isOverLimit: boolean,
+  ): void {
     try {
       const res = context.switchToHttp().getResponse<Response>();
       if (res.headersSent) return;
@@ -94,7 +97,9 @@ export class AppThrottlerGuard extends ThrottlerGuard {
         res.setHeader('X-RateLimit-Reset', existingReset);
         if (isOverLimit) {
           const resetDate = new Date(existingReset as string);
-          const retryAfter = Math.ceil((resetDate.getTime() - Date.now()) / 1000);
+          const retryAfter = Math.ceil(
+            (resetDate.getTime() - Date.now()) / 1000,
+          );
           res.setHeader('Retry-After', String(Math.max(1, retryAfter)));
         }
       }

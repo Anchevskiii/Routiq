@@ -324,7 +324,8 @@ export class ItineraryGenerationService {
           location: activity.location || matchedAttraction?.name || null,
           address: matchedAttraction?.address || null,
           startTime: activity.time || null,
-          durationMinutes: this.parseDuration(activity.duration) || DEFAULT_DURATION_MINUTES,
+          durationMinutes:
+            this.parseDuration(activity.duration) || DEFAULT_DURATION_MINUTES,
           cost: activity.cost || null,
           tips: activity.tips || null,
           latitude:
@@ -429,7 +430,9 @@ export class ItineraryGenerationService {
           to.location.lng,
         );
 
-        const durationMin = Math.round(distanceKm * TRAVEL_TIME_MIN_PER_KM + TRAVEL_TIME_BUFFER_MIN);
+        const durationMin = Math.round(
+          distanceKm * TRAVEL_TIME_MIN_PER_KM + TRAVEL_TIME_BUFFER_MIN,
+        );
         lines.push(
           `${from.name} -> ${to.name}: ~${durationMin} min (${distanceKm.toFixed(1)} km)`,
         );
