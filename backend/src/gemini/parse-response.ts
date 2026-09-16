@@ -61,7 +61,7 @@ export function tryParseGeminiResponse(
       const data: unknown = JSON.parse(recovered);
       logger.log('Successfully recovered truncated AI response JSON');
       return { success: true, data };
-    } catch (innerError) {
+    } catch (_innerError) {
       return {
         success: false,
         error: new Error(

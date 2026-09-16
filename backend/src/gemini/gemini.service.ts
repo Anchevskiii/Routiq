@@ -13,20 +13,6 @@ export type GeminiStreamEvent =
   | { type: 'chunk'; content: string }
   | { type: 'complete'; data: unknown };
 
-interface GeminiPart {
-  text?: string;
-}
-
-interface GeminiCandidate {
-  content?: {
-    parts?: GeminiPart[];
-  };
-}
-
-interface GeminiStreamItem {
-  candidates?: GeminiCandidate[];
-}
-
 @Injectable()
 export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
