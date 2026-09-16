@@ -9,6 +9,12 @@ import { WeatherService } from '../weather/weather.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { buildItineraryPrompt } from './prompts/generate-itinerary.prompt';
 import { GeneratedActivity, GeneratedDay, GeneratedItinerary } from './types';
+import {
+  TRAVEL_TIME_MIN_PER_KM,
+  TRAVEL_TIME_BUFFER_MIN,
+  ROUTE_PREVIEW_ATTRACTIONS_COUNT,
+  DEFAULT_DURATION_MINUTES,
+} from './constants';
 
 export interface PreparedGenerationData {
   generationStart: number;
@@ -318,7 +324,8 @@ export class ItineraryGenerationService {
           location: activity.location || matchedAttraction?.name || null,
           address: matchedAttraction?.address || null,
           startTime: activity.time || null,
-          durationMinutes: this.parseDuration(activity.duration) || 90,
+          durationMinutes:
+            this.parseDuration(activity.duration) || DEFAULT_DURATION_MINUTES,
           cost: activity.cost || null,
           tips: activity.tips || null,
           latitude:
@@ -409,7 +416,7 @@ export class ItineraryGenerationService {
         (a, b) =>
           b.rating - a.rating || b.userRatingsTotal - a.userRatingsTotal,
       )
-      .slice(0, 8);
+      .slice(0, ROUTE_PREVIEW_ATTRACTIONS_COUNT);
 
     const lines: string[] = [];
     for (let i = 0; i < routeAttractions.length; i++) {
@@ -423,8 +430,9 @@ export class ItineraryGenerationService {
           to.location.lng,
         );
 
-        // Simple estimation: 2.5 mins per km in city + 5 mins buffer
-        const durationMin = Math.round(distanceKm * 2.5 + 5);
+        const durationMin = Math.round(
+          distanceKm * TRAVEL_TIME_MIN_PER_KM + TRAVEL_TIME_BUFFER_MIN,
+        );
         lines.push(
           `${from.name} -> ${to.name}: ~${durationMin} min (${distanceKm.toFixed(1)} km)`,
         );

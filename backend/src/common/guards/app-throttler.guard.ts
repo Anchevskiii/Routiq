@@ -5,7 +5,7 @@ import {
   ThrottlerGetTrackerFunction,
   ThrottlerOptions,
 } from '@nestjs/throttler';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 interface RequestWithUser extends Request {
   user?: { sub?: string };
@@ -42,7 +42,6 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     const handler = context.getHandler();
     const classRef = context.getClass();
 
-    // Check if there is specific throttler limit or ttl metadata for this named throttler on this handler/class.
     const hasLimit = this.reflector.getAllAndOverride(
       `THROTTLER:LIMIT${throttler.name}`,
       [handler, classRef],
@@ -52,7 +51,6 @@ export class AppThrottlerGuard extends ThrottlerGuard {
       [handler, classRef],
     );
 
-    // If this is not the 'default' throttler, and the endpoint does NOT have explicit override metadata for it, skip it!
     if (
       throttler.name !== 'default' &&
       hasLimit === undefined &&
@@ -61,7 +59,7 @@ export class AppThrottlerGuard extends ThrottlerGuard {
       return true;
     }
 
-    return super.handleRequest(
+    const result = await super.handleRequest(
       context,
       limit,
       ttl,
@@ -69,5 +67,44 @@ export class AppThrottlerGuard extends ThrottlerGuard {
       getTracker,
       generateKey,
     );
+
+    // The base class already sets RateLimit-* headers.
+    // Add X-RateLimit-* alias and Retry-After for over-limit responses.
+    this.addRateLimitHeaders(context, !result);
+
+    return result;
+  }
+
+  private addRateLimitHeaders(
+    context: ExecutionContext,
+    isOverLimit: boolean,
+  ): void {
+    try {
+      const res = context.switchToHttp().getResponse<Response>();
+      if (res.headersSent) return;
+
+      const existingLimit = res.getHeader('RateLimit-Limit');
+      const existingRemaining = res.getHeader('RateLimit-Remaining');
+      const existingReset = res.getHeader('RateLimit-Reset');
+
+      if (existingLimit !== undefined) {
+        res.setHeader('X-RateLimit-Limit', existingLimit);
+      }
+      if (existingRemaining !== undefined) {
+        res.setHeader('X-RateLimit-Remaining', existingRemaining);
+      }
+      if (existingReset !== undefined) {
+        res.setHeader('X-RateLimit-Reset', existingReset);
+        if (isOverLimit) {
+          const resetDate = new Date(existingReset as string);
+          const retryAfter = Math.ceil(
+            (resetDate.getTime() - Date.now()) / 1000,
+          );
+          res.setHeader('Retry-After', String(Math.max(1, retryAfter)));
+        }
+      }
+    } catch {
+      // Headers are best-effort, never break the request flow
+    }
   }
 }

@@ -8,6 +8,18 @@ import axios from 'axios';
 import { AppConfigService } from '../config/config.service';
 import { withRetry } from '../common';
 import { FormattedPlace } from './types';
+import {
+  PROXIMITY_SAME_CATEGORY_METERS,
+  PROXIMITY_NAME_SIMILARITY_METERS,
+  MIN_RATING,
+  MIN_USER_RATINGS_TOTAL,
+  NAME_SIMILARITY_JACCARD_THRESHOLD,
+  CACHE_DURATION_MS,
+  PLACES_API_TIMEOUT_MS,
+  GEOCODING_TIMEOUT_MS,
+  ALTERNATIVES_RESULT_LIMIT,
+  CURATED_BUDGET_MULTIPLIER,
+} from './constants';
 
 interface GooglePlaceLegacy {
   place_id: string;
@@ -38,14 +50,13 @@ export class AttractionsService {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://maps.googleapis.com/maps/api/place';
 
-  // Cache Places API search queries for 24 hours
   private searchCache = new Map<
     string,
     { data: FormattedPlace[]; timestamp: number }
   >();
-  private readonly searchCacheDuration = 24 * 60 * 60 * 1000; // 24 hours in ms
   private readonly utilityRegex =
     /\b(atm|locker|wc|toilet|bus stop|subway station|transit station|train station|parking|car rental|supermarket|pharmacy|police|hospital|baggage storage|luggage storage|airport|taxi stand|public restroom|public toilet)\b/i;
+  private readonly apiKeyInUrlRegex = /key=[^&\s"]+/g;
 
   constructor(private readonly configService: AppConfigService) {
     this.apiKey = this.configService.getGooglePlacesApiKey();
@@ -57,8 +68,11 @@ export class AttractionsService {
         'Google Places API is not configured',
       );
     }
-    // Strip quotes if they exist (common issue in .env files)
     return this.apiKey.replace(/^["']|["']$/g, '');
+  }
+
+  private redactSensitiveInfo(message: string): string {
+    return message.replace(this.apiKeyInUrlRegex, 'key=REDACTED');
   }
 
   private calculateDistanceMeters(
@@ -169,7 +183,7 @@ export class AttractionsService {
     const union = new Set([...set1, ...set2]);
 
     const jaccard = intersection.size / union.size;
-    return jaccard > 0.55;
+    return jaccard > NAME_SIMILARITY_JACCARD_THRESHOLD;
   }
 
   private isUtilityPlace(place: FormattedPlace): boolean {
@@ -177,13 +191,17 @@ export class AttractionsService {
   }
 
   private isLowQuality(place: FormattedPlace): boolean {
-    if (place.rating !== undefined && place.rating > 0 && place.rating < 3.2) {
+    if (
+      place.rating !== undefined &&
+      place.rating > 0 &&
+      place.rating < MIN_RATING
+    ) {
       return true;
     }
     if (
       place.userRatingsTotal !== undefined &&
       place.userRatingsTotal > 0 &&
-      place.userRatingsTotal < 3
+      place.userRatingsTotal < MIN_USER_RATINGS_TOTAL
     ) {
       return true;
     }
@@ -203,7 +221,7 @@ export class AttractionsService {
       );
 
       // 1. Proximity and category check
-      if (distance < 30) {
+      if (distance < PROXIMITY_SAME_CATEGORY_METERS) {
         const catCandidate = this.getPlaceCategory(candidate);
         const catAccepted = this.getPlaceCategory(accepted);
         if (catCandidate === catAccepted) {
@@ -216,11 +234,11 @@ export class AttractionsService {
 
       // 2. Name similarity check within 150m
       if (
-        distance < 150 &&
+        distance < PROXIMITY_NAME_SIMILARITY_METERS &&
         this.areNamesSimilar(candidate.name, accepted.name)
       ) {
         this.logger.debug(
-          `Pruning '${candidate.name}' due to distance (<150m: ${distance.toFixed(1)}m) and name similarity with '${accepted.name}'`,
+          `Pruning '${candidate.name}' due to distance (<${PROXIMITY_NAME_SIMILARITY_METERS}m: ${distance.toFixed(1)}m) and name similarity with '${accepted.name}'`,
         );
         return true;
       }
@@ -296,15 +314,15 @@ export class AttractionsService {
     // Slice back into category budgets to maintain balanced proportions
     const curatedMainstream = acceptedPlaces
       .filter((p) => p.sourceType === 'mainstream')
-      .slice(0, requiredMainstream * 2);
+      .slice(0, requiredMainstream * CURATED_BUDGET_MULTIPLIER);
 
     const curatedNiche = acceptedPlaces
       .filter((p) => p.sourceType === 'niche')
-      .slice(0, requiredNiche * 2);
+      .slice(0, requiredNiche * CURATED_BUDGET_MULTIPLIER);
 
     const curatedDining = acceptedPlaces
       .filter((p) => p.sourceType === 'dining')
-      .slice(0, requiredMeals * 2);
+      .slice(0, requiredMeals * CURATED_BUDGET_MULTIPLIER);
 
     const result = [...curatedMainstream, ...curatedNiche, ...curatedDining];
 
@@ -329,7 +347,7 @@ export class AttractionsService {
   ): Promise<FormattedPlace[]> {
     const cacheKey = `${query}-${radius || ''}`;
     const cached = this.searchCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < this.searchCacheDuration) {
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION_MS) {
       this.logger.log(`Cache hit for legacy Places search: ${query}`);
       return cached.data;
     }
@@ -343,7 +361,7 @@ export class AttractionsService {
               key: this.getApiKeyOrThrow(),
               ...(radius ? { radius } : {}),
             },
-            timeout: 10000,
+            timeout: PLACES_API_TIMEOUT_MS,
           }),
         {
           shouldRetry: (error) => {
@@ -380,8 +398,9 @@ export class AttractionsService {
 
       return formatted;
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Legacy search failed for '${query}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Legacy search failed for '${query}': ${this.redactSensitiveInfo(errMsg)}`,
       );
       return [];
     }
@@ -410,7 +429,7 @@ export class AttractionsService {
               fields:
                 'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,editorial_summary',
             },
-            timeout: 10000,
+            timeout: PLACES_API_TIMEOUT_MS,
           }),
         {
           shouldRetry: (error) => {
@@ -432,8 +451,9 @@ export class AttractionsService {
 
       return this.formatLegacyPlace(response.data.result);
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
       throw new ServiceUnavailableException(
-        `Failed to get attraction details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to get attraction details: ${this.redactSensitiveInfo(errMsg)}`,
       );
     }
   }
@@ -448,7 +468,9 @@ export class AttractionsService {
         this.extractKeywordsFromName(original.name),
         destination,
       );
-      return alternatives.filter((attr) => attr.id !== placeId).slice(0, 5);
+      return alternatives
+        .filter((attr) => attr.id !== placeId)
+        .slice(0, ALTERNATIVES_RESULT_LIMIT);
     } catch {
       throw new ServiceUnavailableException('Failed to get alternatives');
     }
@@ -498,8 +520,11 @@ export class AttractionsService {
   }
 
   private generateDescription(place: GooglePlaceLegacy): string {
+    const address = place.formatted_address || 'the area';
+    const name = place.name || 'This place';
     const type = (place.types?.[0] || 'establishment').replace(/_/g, ' ');
-    return `${place.name || 'This place'} is a ${type} located in ${place.formatted_address || 'the area'}.`;
+    const article = /^[aeiou]/i.test(type) ? 'an' : 'a';
+    return `${name} is ${article} ${type} located in ${address}.`;
   }
 
   private extractKeywordsFromName(name: string): string {
@@ -517,7 +542,7 @@ export class AttractionsService {
               address,
               key: this.getApiKeyOrThrow(),
             },
-            timeout: 5000,
+            timeout: GEOCODING_TIMEOUT_MS,
           }),
         {
           shouldRetry: (error) => {
@@ -542,8 +567,9 @@ export class AttractionsService {
       }
       return null;
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Geocoding failed for '${address}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Geocoding failed for '${address}': ${this.redactSensitiveInfo(errMsg)}`,
       );
       return null;
     }

@@ -4,7 +4,7 @@ import { AppConfigService } from './config/config.service';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
-import { NextFunction, Request, Response } from 'express';
+import { json, urlencoded, NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import {
@@ -26,18 +26,47 @@ async function bootstrap() {
   // Cookie parser for refresh token handling
   app.use(cookieParser());
 
+  // Global body parser size limits (default Express is 100kb)
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
+
+  // CSP violation reporting (must be registered before Helmet middleware)
+  app.use('/api/csp-report', (req: Request, res: Response) => {
+    if (req.method === 'POST') {
+      Logger.warn(`CSP Violation: ${JSON.stringify(req.body)}`, 'CSP');
+    }
+    res.status(204).end();
+  });
+
   // Security headers with Helmet
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:', 'https:'],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'https://fonts.googleapis.com',
+          ],
+          scriptSrc: [
+            "'self'",
+            'https://maps.googleapis.com',
+            'https://www.gstatic.com',
+          ],
+          imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+          connectSrc: [
+            "'self'",
+            'https://maps.googleapis.com',
+            'https://www.gstatic.com',
+          ],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          frameSrc: ["'self'"],
+          reportUri: ['/api/csp-report'],
         },
+        reportOnly: false,
       },
-      crossOriginEmbedderPolicy: false, // Allow embedding for shared itineraries
+      crossOriginEmbedderPolicy: false,
     }),
   );
 

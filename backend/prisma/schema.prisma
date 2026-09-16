@@ -7,25 +7,25 @@ datasource db {
 }
 
 model User {
-  id               String           @id @db.Uuid
-  email            String           @unique
+  id               String            @id @db.Uuid
+  email            String            @unique
   name             String
   avatarUrl        String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
   lastLoginAt      DateTime?
-  metadata         Json?            @default("{}")
-  activityLogs      ActivityLog[]
-  calendarExports   CalendarExport[]
-  comments          Comment[]
-  commentReactions  CommentReaction[]
-  invitedBy         GroupMember[]     @relation("InvitedByUser")
-  groupMemberships  GroupMember[]
-  createdGroups     Group[]           @relation("GroupCreator")
-  itineraries       Itinerary[]
-  notifications     Notification[]
-  votes             Vote[]
+  metadata         Json?             @default("{}")
+  activityLogs     ActivityLog[]
+  calendarExports  CalendarExport[]
+  commentReactions CommentReaction[]
+  comments         Comment[]
+  invitedBy        GroupMember[]     @relation("InvitedByUser")
+  groupMemberships GroupMember[]
+  createdGroups    Group[]           @relation("GroupCreator")
+  itineraries      Itinerary[]
+  notifications    Notification[]
+  votes            Vote[]
 
   @@index([email])
   @@index([createdAt])
@@ -36,7 +36,6 @@ model Itinerary {
   id               String           @id @default(uuid()) @db.Uuid
   userId           String           @db.Uuid
   destination      String
-  name             String?
   startDate        DateTime         @db.Date
   endDate          DateTime         @db.Date
   travelType       TravelType
@@ -52,6 +51,7 @@ model Itinerary {
   generationTimeMs Int?
   isPublic         Boolean          @default(false)
   totalDays        Int
+  name             String?
   calendarExports  CalendarExport[]
   groupItineraries GroupItinerary[]
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -147,16 +147,16 @@ model Group {
   id           String           @id @default(uuid()) @db.Uuid
   name         String
   description  String?
-  imageUrl     String?
-  themeColor   String?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
   deletedAt    DateTime?
   createdById  String           @db.Uuid
+  imageUrl     String?
+  themeColor   String?
   activityLogs ActivityLog[]
+  comments     Comment[]
   itineraries  GroupItinerary[]
   members      GroupMember[]
-  comments     Comment[]
   createdBy    User             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([createdById])
@@ -206,18 +206,18 @@ model GroupItinerary {
 
 model Comment {
   id        String            @id @default(uuid()) @db.Uuid
-  groupId   String            @db.Uuid
   userId    String            @db.Uuid
   content   String
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   deletedAt DateTime?
   parentId  String?           @db.Uuid
+  groupId   String            @db.Uuid
+  reactions CommentReaction[]
   group     Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
   parent    Comment?          @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[]         @relation("CommentReplies")
   user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reactions CommentReaction[]
 
   @@index([groupId])
   @@index([userId])
@@ -243,10 +243,10 @@ model Vote {
   id               String         @id @default(uuid()) @db.Uuid
   groupItineraryId String         @db.Uuid
   userId           String         @db.Uuid
-  voteType         VoteType       @default(UPVOTE)
   createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
   deletedAt        DateTime?
+  updatedAt        DateTime       @updatedAt
+  voteType         VoteType       @default(UPVOTE)
   groupItinerary   GroupItinerary @relation(fields: [groupItineraryId], references: [id], onDelete: Cascade)
   user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -284,6 +284,23 @@ model CalendarExport {
   @@index([userId])
   @@index([itineraryId])
   @@map("calendar_exports")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String
+  body      String?
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, readAt])
+  @@index([createdAt])
+  @@map("notifications")
 }
 
 enum TravelType {
@@ -325,24 +342,6 @@ enum ActivityType {
 enum ExportFormat {
   ICS
   PDF
-}
-
-model Notification {
-  id        String           @id @default(uuid()) @db.Uuid
-  userId    String           @db.Uuid
-  type      NotificationType
-  title     String
-  body      String?
-  data      Json?
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
-
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, readAt])
-  @@index([createdAt])
-  @@map("notifications")
 }
 
 enum NotificationType {

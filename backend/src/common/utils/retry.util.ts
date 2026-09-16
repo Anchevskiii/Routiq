@@ -10,6 +10,23 @@ export interface RetryOptions {
 
 const logger = new Logger('RetryUtility');
 
+export function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+export class RetryExhaustedError extends Error {
+  public readonly lastError: unknown;
+
+  constructor(message: string, lastError: unknown) {
+    super(message);
+    this.name = 'RetryExhaustedError';
+    this.lastError = lastError;
+  }
+}
+
 export async function withRetry<T>(
   fn: () => Promise<T>,
   options: RetryOptions = {},
@@ -28,11 +45,21 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error;
       attempt++;
-      if (attempt > maxRetries || !shouldRetry(error)) {
+
+      if (!shouldRetry(error)) {
+        logger.warn(
+          `Operation failed with non-retryable error on attempt ${attempt}/${maxRetries}: ${formatError(error)}`,
+        );
         break;
       }
 
-      // Exponential backoff with jitter
+      if (attempt > maxRetries) {
+        logger.error(
+          `Operation exhausted after ${maxRetries} retries. Last error: ${formatError(error)}`,
+        );
+        break;
+      }
+
       const delay = Math.min(
         backoffMs * Math.pow(2, attempt - 1),
         maxBackoffMs,
@@ -41,14 +68,15 @@ export async function withRetry<T>(
       const finalDelay = delay + jitter;
 
       logger.warn(
-        `Operation failed. Attempt ${attempt}/${maxRetries}. Retrying in ${Math.round(finalDelay)}ms... Error: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Operation failed. Attempt ${attempt}/${maxRetries}. Retrying in ${Math.round(finalDelay)}ms... Error: ${formatError(error)}`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, finalDelay));
     }
   }
 
-  throw lastError;
+  throw new RetryExhaustedError(
+    `Operation failed after ${maxRetries} retries: ${formatError(lastError)}`,
+    lastError,
+  );
 }

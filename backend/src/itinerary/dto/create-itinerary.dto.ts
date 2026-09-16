@@ -40,7 +40,7 @@ function IsAfterProperty(
             return false;
           }
 
-          return value.getTime() > relatedValue.getTime();
+          return value.getTime() >= relatedValue.getTime();
         },
       },
     });
